@@ -1,6 +1,6 @@
 import React from 'react';
 import { Layout as AntLayout, Menu } from 'antd';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, Outlet } from 'react-router-dom';
 import {
   DashboardOutlined,
   ProductOutlined,
@@ -19,7 +19,7 @@ const menuItems = [
   { key: '/parameters', icon: <SettingOutlined />, label: '参数配置' },
 ];
 
-const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const Layout: React.FC = () => {
   const location = useLocation();
 
   return (
@@ -44,7 +44,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           ABF 产品销售营业额模型与产能应用计算器
         </Header>
         <Content style={{ margin: '24px', padding: 24, background: '#fff' }}>
-          {children}
+          <Outlet />
         </Content>
       </AntLayout>
     </AntLayout>
