@@ -483,7 +483,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
       ),
       dataIndex: month,
       key: month,
-      width: 140,
+      width: 110,
       render: (_: any, record) => {
         const cell = getCell(month, record.factoryId);
         if (record.isTotal) {
@@ -499,26 +499,28 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
         }
         return (
           <div style={{ textAlign: 'center' }}>
-            <InputNumber
-              size="small"
-              min={0}
-              value={cell.core}
-              onChange={(v) => setCell(month, record.factoryId, v || 0, cell.bu)}
-              style={{ width: 100 }}
-              addonBefore="C"
-              controls={false}
-            />
-            <div style={{ marginTop: 2 }}>
+            <Space size={2}>
+              <InputNumber
+                size="small"
+                min={0}
+                value={cell.core}
+                onChange={(v) => setCell(month, record.factoryId, v || 0, cell.bu)}
+                style={{ width: 78 }}
+                addonBefore="C"
+                controls={false}
+                variant="borderless"
+              />
               <InputNumber
                 size="small"
                 min={0}
                 value={cell.bu}
                 onChange={(v) => setCell(month, record.factoryId, cell.core, v || 0)}
-                style={{ width: 100 }}
+                style={{ width: 78 }}
                 addonBefore="B"
                 controls={false}
+                variant="borderless"
               />
-            </div>
+            </Space>
           </div>
         );
       },
