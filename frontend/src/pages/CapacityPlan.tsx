@@ -3,7 +3,7 @@ import { Card, Table, Space } from 'antd';
 import { getCapacity } from '../api';
 
 function CapacityPlan() {
-  const [capacity, setCapacity] = useState([]);
+  const [capacity, setCapacity] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

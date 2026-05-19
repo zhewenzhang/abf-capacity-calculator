@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { getProducts } from '../api';
 
 function ProductList() {
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 

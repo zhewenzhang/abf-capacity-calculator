@@ -6,7 +6,7 @@ const { Option } = Select;
 
 function Calculation() {
   const [form] = Form.useForm();
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   const handleCalculate = async (values: any) => {

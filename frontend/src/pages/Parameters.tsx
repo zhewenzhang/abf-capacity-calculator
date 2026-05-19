@@ -3,7 +3,7 @@ import { Card, Table, Space } from 'antd';
 import { getParameters } from '../api';
 
 function Parameters() {
-  const [params, setParams] = useState([]);
+  const [params, setParams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
