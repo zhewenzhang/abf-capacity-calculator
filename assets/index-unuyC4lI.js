@@ -1,1 +1,1 @@
-function $1(e,t){for(var n=0;n<t.length;n++){const r=t[n];if(typeof r!="string"&&!Array.isArray(r)){for(const o in r)if(o!=="default"&&!(o in e)){const a=Object.getOwnPropertyDescriptor(r,o);a&&Object.defineProperty(e,o,{enumerable:!0,get:a.get})}}}return e}
+404: Not Found
