@@ -42,6 +42,7 @@ import {
 } from 'recharts';
 import { getCapacityPlans, batchSaveCapacityPlans } from '../services/capacityService';
 import { getParameters, saveParameters } from '../services/parameterService';
+import { saveVersion, getVersions, deleteVersion, restoreVersion } from '../services/versionService';
 import { generateDefaultCapacityPlans, generateMonths } from '../core/defaults';
 import type { CapacityPlan, FactoryDef, ProjectParameters } from '../types';
 
@@ -562,6 +563,62 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
   // Chart lines colors
   const COLORS = ['#1890ff', '#52c41a', '#fa8c16', '#eb2f96', '#722ed1', '#13c2c2'];
 
+  // --- Version management ---
+  const [versions, setVersions] = useState<Array<{ id: string; versionName: string; createdAt: Date }>>([]);
+  const [versionsLoading, setVersionsLoading] = useState(false);
+  const [versionName, setVersionName] = useState('');
+
+  const loadVersions = async () => {
+    setVersionsLoading(true);
+    try {
+      const v = await getVersions(userId, projectId);
+      setVersions(v);
+    } catch {
+      // ignore
+    } finally {
+      setVersionsLoading(false);
+    }
+  };
+
+  useEffect(() => { loadVersions(); }, [userId, projectId]);
+
+  const handleSaveVersion = async () => {
+    const name = versionName.trim() || `v${versions.length + 1}`;
+    try {
+      await saveVersion(userId, projectId, name, gridData, factories, workingDays);
+      message.success(`Version "${name}" saved`);
+      setVersionName('');
+      loadVersions();
+    } catch (e: any) {
+      message.error(e.message || 'Failed to save version');
+    }
+  };
+
+  const handleRestoreVersion = async (versionId: string) => {
+    try {
+      const vList = await getVersions(userId, projectId);
+      const ver = vList.find((v) => v.id === versionId);
+      if (!ver) return;
+      const restored = restoreVersion(ver);
+      setGridData(restored.gridData);
+      setFactories(restored.factories);
+      setWorkingDays(restored.workingDays);
+      message.success(`Restored "${ver.versionName}"`);
+    } catch (e: any) {
+      message.error(e.message || 'Failed to restore');
+    }
+  };
+
+  const handleDeleteVersion = async (versionId: string) => {
+    try {
+      await deleteVersion(userId, projectId, versionId);
+      message.success('Version deleted');
+      loadVersions();
+    } catch (e: any) {
+      message.error(e.message || 'Failed to delete');
+    }
+  };
+
   return (
     <div>
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
@@ -742,16 +799,16 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
         </Space>
       </Card>
 
-      {/* Capacity Trend Chart */}
+      {/* Capacity Trend Charts */}
       <Card title="Capacity Trend" style={{ marginTop: 16 }} extra={<BarChartOutlined />}>
         <Tabs
           size="small"
           items={[
             {
-              key: 'panels',
-              label: 'Panel/Day',
+              key: 'core',
+              label: '🔵 Core Panel/Day',
               children: (
-                <ResponsiveContainer width="100%" height={400}>
+                <ResponsiveContainer width="100%" height={350}>
                   <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="label" angle={displayMonths.length > 20 ? -45 : 0} textAnchor={displayMonths.length > 20 ? 'end' : 'middle'} height={displayMonths.length > 20 ? 60 : 30} />
@@ -760,7 +817,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
                     <Legend />
                     {factories.map((factory, i) => (
                       <Line
-                        key={`${factory.id}-core`}
+                        key={`core-${factory.id}`}
                         type="monotone"
                         dataKey={`${factory.name} Core`}
                         stroke={COLORS[i % COLORS.length]}
@@ -774,10 +831,36 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
               ),
             },
             {
-              key: 'capacity',
-              label: 'Monthly Capacity',
+              key: 'bu',
+              label: '🟢 BU Panel/Day',
               children: (
-                <ResponsiveContainer width="100%" height={400}>
+                <ResponsiveContainer width="100%" height={350}>
+                  <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="label" angle={displayMonths.length > 20 ? -45 : 0} textAnchor={displayMonths.length > 20 ? 'end' : 'middle'} height={displayMonths.length > 20 ? 60 : 30} />
+                    <YAxis />
+                    <Tooltip formatter={(value: any) => typeof value === 'number' ? value.toLocaleString() : value} />
+                    <Legend />
+                    {factories.map((factory, i) => (
+                      <Line
+                        key={`bu-${factory.id}`}
+                        type="monotone"
+                        dataKey={`${factory.name} BU`}
+                        stroke={COLORS[i % COLORS.length]}
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    ))}
+                    <ReferenceLine y={0} stroke="#999" />
+                  </LineChart>
+                </ResponsiveContainer>
+              ),
+            },
+            {
+              key: 'capacity',
+              label: '📊 Monthly Capacity',
+              children: (
+                <ResponsiveContainer width="100%" height={350}>
                   <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="label" angle={displayMonths.length > 20 ? -45 : 0} textAnchor={displayMonths.length > 20 ? 'end' : 'middle'} height={displayMonths.length > 20 ? 60 : 30} />
@@ -797,6 +880,68 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
         <Text type="secondary" style={{ fontSize: 12 }}>
           View: <Text strong>{viewMode}</Text> | Working Days: {workingDays}/month
         </Text>
+      </Card>
+
+      {/* Version Management */}
+      <Card title="Version History" style={{ marginTop: 16 }}>
+        <Row gutter={8} align="middle" style={{ marginBottom: 12 }}>
+          <Col><Text strong>Save current as:</Text></Col>
+          <Col>
+            <Input
+              size="small"
+              value={versionName}
+              onChange={(e) => setVersionName(e.target.value)}
+              placeholder="e.g. Q1 2027 plan"
+              style={{ width: 180 }}
+              onPressEnter={handleSaveVersion}
+            />
+          </Col>
+          <Col>
+            <Button size="small" type="primary" onClick={handleSaveVersion}>
+              Save Version
+            </Button>
+          </Col>
+        </Row>
+        {versionsLoading ? (
+          <Text type="secondary">Loading...</Text>
+        ) : versions.length === 0 ? (
+          <Text type="secondary">No versions saved yet</Text>
+        ) : (
+          <Table
+            size="small"
+            dataSource={versions}
+            rowKey="id"
+            pagination={{ pageSize: 10 }}
+            columns={[
+              {
+                title: 'Version',
+                dataIndex: 'versionName',
+                key: 'versionName',
+                render: (v: string) => <Text strong>{v}</Text>,
+              },
+              {
+                title: 'Date',
+                dataIndex: 'createdAt',
+                key: 'createdAt',
+                render: (d: Date) => d?.toLocaleString?.() || '-',
+              },
+              {
+                title: 'Actions',
+                key: 'actions',
+                render: (_: any, record: { id: string; versionName: string }) => (
+                  <Space>
+                    <Popconfirm title={`Restore "${record.versionName}"? This will replace your current data.`} onConfirm={() => handleRestoreVersion(record.id)}>
+                      <Button size="small" type="primary">Restore</Button>
+                    </Popconfirm>
+                    <Popconfirm title="Delete this version?" onConfirm={() => handleDeleteVersion(record.id)}>
+                      <Button size="small" danger>Delete</Button>
+                    </Popconfirm>
+                  </Space>
+                ),
+              },
+            ]}
+          />
+        )}
       </Card>
     </div>
   );
