@@ -11,30 +11,45 @@ import {
   Card,
   Row,
   Col,
-  DatePicker,
   Typography,
   Divider,
+  Input,
+  Select,
+  Tabs,
 } from 'antd';
-import { SyncOutlined, SaveOutlined, PlusOutlined, MinusOutlined } from '@ant-design/icons';
+import {
+  SyncOutlined,
+  SaveOutlined,
+  PlusOutlined,
+  MinusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+} from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { getCapacityPlans, batchSaveCapacityPlans } from '../services/capacityService';
-import { getParameters } from '../services/parameterService';
-import { generateDefaultCapacityPlans, generateMonths, DEFAULT_FACTORIES } from '../core/defaults';
-import type { CapacityPlan } from '../types';
+import { getParameters, saveParameters } from '../services/parameterService';
+import { generateDefaultCapacityPlans, generateMonths } from '../core/defaults';
+import type { CapacityPlan, FactoryDef, ProjectParameters } from '../types';
 
 const { Text } = Typography;
-const { RangePicker } = DatePicker;
 
 interface CapacityPlanPageProps {
   userId: string;
   projectId: string;
 }
 
-// Cell key: "month-factoryId" (factoryId = "total" for aggregate, or factory.id)
 interface CellData {
   core: number;
   bu: number;
 }
+
+// Quarter definitions
+const QUARTERS = [
+  { label: 'Q1', startMonth: 1, endMonth: 3 },
+  { label: 'Q2', startMonth: 4, endMonth: 6 },
+  { label: 'Q3', startMonth: 7, endMonth: 9 },
+  { label: 'Q4', startMonth: 10, endMonth: 12 },
+];
 
 const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }) => {
   const [plans, setPlans] = useState<CapacityPlan[]>([]);
@@ -42,7 +57,11 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const factories = DEFAULT_FACTORIES;
+
+  // Editable factories
+  const [factories, setFactories] = useState<FactoryDef[]>([]);
+  const [editingFactoryId, setEditingFactoryId] = useState<string | null>(null);
+  const [editingFactoryName, setEditingFactoryName] = useState('');
 
   // Grid data: key = "month-factoryId"
   const [gridData, setGridData] = useState<Map<string, CellData>>(new Map());
@@ -66,8 +85,24 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
         getParameters(userId, projectId),
       ]);
       setPlans(planData);
-      if (params.defaultWorkingDays) {
-        setWorkingDays(params.defaultWorkingDays);
+      setWorkingDays(params.defaultWorkingDays || 28);
+
+      // Load factories from params (or use defaults)
+      const loadedFactories = (params as any).factories;
+      if (loadedFactories && loadedFactories.length > 0) {
+        setFactories(loadedFactories);
+      } else {
+        const defaults: FactoryDef[] = [
+          { id: 'fab-a', name: 'Fab A' },
+          { id: 'fab-b', name: 'Fab B' },
+          { id: 'fab-c', name: 'Fab C' },
+        ];
+        setFactories(defaults);
+        // Save factories to params
+        await saveParameters(userId, projectId, {
+          ...params,
+          factories: defaults,
+        } as unknown as ProjectParameters);
       }
 
       // Build grid from plans
@@ -123,14 +158,79 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
     [getCell, factories]
   );
 
-  // Batch update selected months
-  const [selectedMonths, setSelectedMonths] = useState<string[] | null>(null);
+  // --- Factory management ---
+  const handleRenameFactory = (factoryId: string) => {
+    setEditingFactoryId(factoryId);
+    const factory = factories.find((f) => f.id === factoryId);
+    setEditingFactoryName(factory?.name || '');
+  };
+
+  const handleSaveFactoryName = () => {
+    if (!editingFactoryId || !editingFactoryName.trim()) {
+      message.warning('Factory name cannot be empty');
+      return;
+    }
+    const updated = factories.map((f) =>
+      f.id === editingFactoryId ? { ...f, name: editingFactoryName.trim() } : f
+    );
+    setFactories(updated);
+    setEditingFactoryId(null);
+    setEditingFactoryName('');
+    message.success('Factory name updated');
+  };
+
+  const handleAddFactory = () => {
+    const id = `fab-${Date.now()}`;
+    const name = `Fab ${String.fromCharCode(65 + factories.length)}`;
+    const updated = [...factories, { id, name }];
+    setFactories(updated);
+    message.success(`Added ${name}`);
+  };
+
+  const handleRemoveFactory = (factoryId: string) => {
+    if (factories.length <= 1) {
+      message.warning('Must have at least one factory');
+      return;
+    }
+    const updated = factories.filter((f) => f.id !== factoryId);
+    setFactories(updated);
+    // Clear grid data for this factory
+    setGridData((prev) => {
+      const next = new Map(prev);
+      for (const key of next.keys()) {
+        if (key.endsWith(`-${factoryId}`)) {
+          next.delete(key);
+        }
+      }
+      return next;
+    });
+    message.success('Factory removed');
+  };
+
+  // --- Batch update by year/quarter ---
+  const [batchYear, setBatchYear] = useState(2026);
+  const [batchQuarter, setBatchQuarter] = useState<number | null>(null); // null = whole year
+  const [batchMode, setBatchMode] = useState<'year' | 'quarter'>('year');
   const [batchCore, setBatchCore] = useState<number | null>(null);
   const [batchBu, setBatchBu] = useState<number | null>(null);
 
-  const handleBatchUpdate = () => {
-    if (!selectedMonths || selectedMonths.length === 0) {
-      message.warning('Select a date range first');
+  const getBatchMonths = useCallback(() => {
+    if (batchMode === 'year') {
+      return months.filter((m) => m.startsWith(`${batchYear}-`));
+    } else {
+      const q = QUARTERS.find((q) => q.label === `Q${batchQuarter}`);
+      if (!q) return [];
+      return months.filter((m) => {
+        const [y, monthNum] = m.split('-').map(Number);
+        return y === batchYear && monthNum >= q.startMonth && monthNum <= q.endMonth;
+      });
+    }
+  }, [batchMode, batchYear, batchQuarter, months]);
+
+  const handleBatchApply = () => {
+    const targetMonths = getBatchMonths();
+    if (targetMonths.length === 0) {
+      message.warning('No months in selected range');
       return;
     }
     if (batchCore === null && batchBu === null) {
@@ -139,7 +239,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
     }
     setGridData((prev) => {
       const next = new Map(prev);
-      for (const month of selectedMonths) {
+      for (const month of targetMonths) {
         for (const factory of factories) {
           const existing = prev.get(`${month}-${factory.id}`) || { core: 0, bu: 0 };
           next.set(`${month}-${factory.id}`, {
@@ -150,16 +250,8 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
       }
       return next;
     });
-    message.success(`Updated ${selectedMonths.length} months × ${factories.length} factories`);
-  };
-
-  const handleDateRange = (_: any, dateStrings: [string, string]) => {
-    if (dateStrings[0] && dateStrings[1]) {
-      const selected = months.filter((m) => m >= dateStrings[0] && m <= dateStrings[1]);
-      setSelectedMonths(selected);
-    } else {
-      setSelectedMonths(null);
-    }
+    const label = batchMode === 'year' ? `${batchYear}` : `${batchYear} Q${batchQuarter}`;
+    message.success(`Updated ${targetMonths.length} months in ${label}`);
   };
 
   // Load defaults
@@ -168,15 +260,14 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
     setGridData((prev) => {
       const next = new Map(prev);
       for (const d of defaults) {
-        // Spread evenly across factories for default
-        const perFactory = Math.floor(d.corePanelPerDay / factories.length);
-        const remainder = d.corePanelPerDay - perFactory * factories.length;
+        const perFactoryCore = Math.floor(d.corePanelPerDay / factories.length);
+        const remainderCore = d.corePanelPerDay - perFactoryCore * factories.length;
+        const perFactoryBu = Math.floor(d.buPanelPerDay / factories.length);
+        const remainderBu = d.buPanelPerDay - perFactoryBu * factories.length;
         for (let i = 0; i < factories.length; i++) {
-          const factoryCore = perFactory + (i < remainder ? 1 : 0);
-          const factoryBu = Math.floor(d.buPanelPerDay / factories.length);
           next.set(`${d.month}-${factories[i].id}`, {
-            core: factoryCore,
-            bu: factoryBu,
+            core: perFactoryCore + (i < remainderCore ? 1 : 0),
+            bu: perFactoryBu + (i < remainderBu ? 1 : 0),
           });
         }
       }
@@ -202,8 +293,14 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
           });
         }
       }
+      // Also save factories
+      const params = await getParameters(userId, projectId);
+      await saveParameters(userId, projectId, {
+        ...params,
+        factories: factories,
+      } as unknown as ProjectParameters);
       await batchSaveCapacityPlans(userId, projectId, updates, workingDays);
-      message.success(`Saved ${updates.length} rows`);
+      message.success(`Saved ${updates.length} rows + ${factories.length} factories`);
       loadPlans();
     } catch (e: any) {
       message.error(e.message || 'Failed to save');
@@ -232,18 +329,53 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
   };
 
   // Build columns
-  const gridColumns: ColumnsType<{ key: string; label: string; isTotal: boolean }> = [
+  const gridColumns: ColumnsType<{ key: string; label: string; isTotal: boolean; factoryId: string }> = [
     {
-      title: 'Factory / Category',
+      title: 'Factory',
       dataIndex: 'label',
       key: 'label',
-      width: 160,
+      width: 200,
       fixed: 'left' as const,
-      render: (text: string, record) => (
-        <Text strong={record.isTotal} style={record.isTotal ? { color: '#1890ff' } : {}}>
-          {text}
-        </Text>
-      ),
+      render: (text: string, record) => {
+        if (record.isTotal) {
+          return (
+            <Text strong style={{ color: '#1890ff', fontSize: 13 }}>
+              📊 Total (all factories)
+            </Text>
+          );
+        }
+        if (editingFactoryId === record.factoryId) {
+          return (
+            <Space size={4}>
+              <Input
+                size="small"
+                value={editingFactoryName}
+                onChange={(e) => setEditingFactoryName(e.target.value)}
+                onPressEnter={handleSaveFactoryName}
+                style={{ width: 120 }}
+                autoFocus
+              />
+              <Button size="small" type="link" onClick={handleSaveFactoryName}>
+                ✓
+              </Button>
+            </Space>
+          );
+        }
+        return (
+          <Space size={4}>
+            <Text>{text}</Text>
+            <Button
+              size="small"
+              type="text"
+              icon={<EditOutlined />}
+              onClick={() => handleRenameFactory(record.factoryId)}
+            />
+            <Popconfirm title="Remove this factory?" onConfirm={() => handleRemoveFactory(record.factoryId)}>
+              <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+            </Popconfirm>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -252,34 +384,32 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
     gridColumns.push({
       title: (
         <div style={{ textAlign: 'center', fontSize: 11 }}>
-          <div style={{ fontWeight: 600 }}>{month}</div>
-          <div style={{ color: '#1890ff' }}>C: {total.core.toLocaleString()}</div>
-          <div style={{ color: '#52c41a' }}>B: {total.bu.toLocaleString()}</div>
+          <div style={{ fontWeight: 600, fontSize: 12 }}>{month}</div>
+          <div style={{ color: '#1890ff', fontSize: 10 }}>C: {total.core.toLocaleString()}</div>
+          <div style={{ color: '#52c41a', fontSize: 10 }}>B: {total.bu.toLocaleString()}</div>
+          <div style={{ color: '#999', fontSize: 9 }}>
+            Cap: {(total.core * workingDays).toLocaleString()}/{(total.bu * workingDays).toLocaleString()}
+          </div>
           <Button
             size="small"
             type="text"
             danger
             icon={<MinusOutlined />}
             onClick={() => handleRemoveMonth(month)}
+            style={{ marginTop: 2 }}
           />
         </div>
       ),
       dataIndex: month,
       key: month,
-      width: 130,
+      width: 140,
       render: (_: any, record) => {
-        const cell = getCell(month, record.isTotal ? '__total__' : record.key);
+        const cell = getCell(month, record.factoryId);
         if (record.isTotal) {
           return (
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontWeight: 700, color: '#1890ff' }}>{total.core.toLocaleString()}</div>
-              <div style={{ fontWeight: 700, color: '#52c41a' }}>{total.bu.toLocaleString()}</div>
-              <div style={{ fontSize: 10, color: '#999', marginTop: 2 }}>
-                Cap C: {(total.core * workingDays).toLocaleString()}
-              </div>
-              <div style={{ fontSize: 10, color: '#999' }}>
-                Cap B: {(total.bu * workingDays).toLocaleString()}
-              </div>
+            <div style={{ textAlign: 'center', background: '#f0f5ff', padding: '4px 0' }}>
+              <div style={{ fontWeight: 700, color: '#1890ff' }}>C: {total.core.toLocaleString()}</div>
+              <div style={{ fontWeight: 700, color: '#52c41a' }}>B: {total.bu.toLocaleString()}</div>
             </div>
           );
         }
@@ -289,18 +419,20 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
               size="small"
               min={0}
               value={cell.core}
-              onChange={(v) => setCell(month, record.key, v || 0, cell.bu)}
-              style={{ width: 90 }}
+              onChange={(v) => setCell(month, record.factoryId, v || 0, cell.bu)}
+              style={{ width: 100 }}
               addonBefore="C"
+              controls={false}
             />
             <div style={{ marginTop: 2 }}>
               <InputNumber
                 size="small"
                 min={0}
                 value={cell.bu}
-                onChange={(v) => setCell(month, record.key, cell.core, v || 0)}
-                style={{ width: 90 }}
+                onChange={(v) => setCell(month, record.factoryId, cell.core, v || 0)}
+                style={{ width: 100 }}
                 addonBefore="B"
+                controls={false}
               />
             </div>
           </div>
@@ -310,76 +442,142 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
   }
 
   const gridRows = [
-    { key: '__total__', label: 'Total', isTotal: true },
-    ...factories.map((f) => ({ key: f.id, label: f.name, isTotal: false })),
+    { key: '__total__', label: 'Total', isTotal: true, factoryId: '__total__' },
+    ...factories.map((f) => ({ key: f.id, label: f.name, isTotal: false, factoryId: f.id })),
   ];
+
+  const availableYears = useMemo(() => {
+    const years = new Set(months.map((m) => parseInt(m.split('-')[0], 10)));
+    return Array.from(years).sort();
+  }, [months]);
 
   return (
     <div>
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
 
-      {/* Toolbar */}
+      {/* Batch Update Card */}
       <Card size="small" style={{ marginBottom: 16 }}>
-        <Row gutter={[12, 8]} align="middle" wrap>
-          <Col>
-            <Text strong>Batch Set:</Text>
-          </Col>
-          <Col>
-            <RangePicker picker="month" onChange={handleDateRange} />
-            {selectedMonths && (
-              <Tag color="blue" style={{ marginLeft: 8 }}>
-                {selectedMonths.length} months
-              </Tag>
-            )}
-          </Col>
-          <Col>
-            <InputNumber
-              size="small"
-              min={0}
-              placeholder="Core"
-              value={batchCore}
-              onChange={(v) => setBatchCore(v)}
-              style={{ width: 100 }}
-              addonBefore="C"
-            />
-          </Col>
-          <Col>
-            <InputNumber
-              size="small"
-              min={0}
-              placeholder="BU"
-              value={batchBu}
-              onChange={(v) => setBatchBu(v)}
-              style={{ width: 100 }}
-              addonBefore="B"
-            />
-          </Col>
-          <Col>
-            <Button size="small" onClick={handleBatchUpdate} disabled={!selectedMonths}>
-              Apply to Range
-            </Button>
-          </Col>
-          <Col flex="auto" />
-          <Col>
-            <Space>
-              <Button icon={<SyncOutlined />} onClick={handleGenerateDefaults}>
-                Defaults 2026-28
-              </Button>
-              <Button icon={<PlusOutlined />} onClick={handleAddMonth}>
-                Add Month
-              </Button>
-              <Popconfirm title="Save all changes to Firestore?" onConfirm={handleSaveAll}>
-                <Button type="primary" icon={<SaveOutlined />} loading={saving}>
-                  Save All ({months.length} months)
-                </Button>
-              </Popconfirm>
-            </Space>
-          </Col>
-        </Row>
+        <Tabs
+          size="small"
+          items={[
+            {
+              key: 'batch',
+              label: 'Batch Set (Year / Quarter)',
+              children: (
+                <Row gutter={[12, 8]} align="middle" wrap>
+                  <Col>
+                    <Text strong>Apply to:</Text>
+                  </Col>
+                  <Col>
+                    <Select
+                      size="small"
+                      value={batchMode}
+                      onChange={(v) => {
+                        setBatchMode(v);
+                        if (v === 'year') setBatchQuarter(null);
+                      }}
+                      style={{ width: 100 }}
+                      options={[
+                        { label: 'Year', value: 'year' },
+                        { label: 'Quarter', value: 'quarter' },
+                      ]}
+                    />
+                  </Col>
+                  <Col>
+                    <Select
+                      size="small"
+                      value={batchYear}
+                      onChange={setBatchYear}
+                      style={{ width: 90 }}
+                      options={availableYears.map((y) => ({ label: String(y), value: y }))}
+                    />
+                  </Col>
+                  {batchMode === 'quarter' && (
+                    <Col>
+                      <Select
+                        size="small"
+                        value={batchQuarter}
+                        onChange={setBatchQuarter}
+                        style={{ width: 80 }}
+                        placeholder="Quarter"
+                        options={[
+                          { label: 'Q1', value: 1 },
+                          { label: 'Q2', value: 2 },
+                          { label: 'Q3', value: 3 },
+                          { label: 'Q4', value: 4 },
+                        ]}
+                      />
+                    </Col>
+                  )}
+                  <Col>
+                    <Tag color="blue">
+                      {getBatchMonths().length} months
+                    </Tag>
+                  </Col>
+                  <Col>
+                    <InputNumber
+                      size="small"
+                      min={0}
+                      placeholder="Core"
+                      value={batchCore}
+                      onChange={(v) => setBatchCore(v)}
+                      style={{ width: 100 }}
+                      addonBefore="C"
+                    />
+                  </Col>
+                  <Col>
+                    <InputNumber
+                      size="small"
+                      min={0}
+                      placeholder="BU"
+                      value={batchBu}
+                      onChange={(v) => setBatchBu(v)}
+                      style={{ width: 100 }}
+                      addonBefore="B"
+                    />
+                  </Col>
+                  <Col>
+                    <Button size="small" type="primary" onClick={handleBatchApply}>
+                      Apply
+                    </Button>
+                  </Col>
+                </Row>
+              ),
+            },
+            {
+              key: 'defaults',
+              label: 'Defaults',
+              children: (
+                <Space>
+                  <Button icon={<SyncOutlined />} onClick={handleGenerateDefaults}>
+                    Load 2026-2028 Defaults (6000 Core, 0 BU base)
+                  </Button>
+                </Space>
+              ),
+            },
+          ]}
+        />
       </Card>
 
       {/* Capacity Grid */}
-      <Card title="Capacity Plan (panels/day per factory)">
+      <Card
+        title="Capacity Plan (panels/day)"
+        extra={
+          <Space>
+            <Button icon={<PlusOutlined />} onClick={handleAddFactory}>
+              Add Factory
+            </Button>
+            <Button icon={<PlusOutlined />} onClick={handleAddMonth}>
+              Add Month
+            </Button>
+            <Popconfirm title="Save all changes?" onConfirm={handleSaveAll}>
+              <Button type="primary" icon={<SaveOutlined />} loading={saving}>
+                Save All ({months.length} months × {factories.length} factories)
+              </Button>
+            </Popconfirm>
+          </Space>
+        }
+      >
         <Table
           columns={gridColumns}
           dataSource={gridRows}
@@ -389,13 +587,20 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
           scroll={{ x: 'max-content' }}
           pagination={false}
           sticky
+          rowClassName={(record) => (record.isTotal ? 'total-row' : '')}
         />
         <Divider style={{ margin: '12px 0 8px' }} />
-        <Space>
+        <Space wrap>
           <Tag color="blue">C = Core</Tag>
           <Tag color="green">B = BU</Tag>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            Working Days: <Text strong>{workingDays}</Text> (set in Parameters)
+            Working Days: <Text strong>{workingDays}</Text>/month (set in Parameters)
+          </Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            Cap = Panel/Day × {workingDays}
+          </Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            💡 Click ✏️ to rename a factory | Edit cells directly for month-level tweaks
           </Text>
         </Space>
       </Card>

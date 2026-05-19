@@ -72,6 +72,7 @@ export interface ProjectParameters {
   yieldMatrix: YieldMatrix;
   panelParams: PanelParams;
   defaultWorkingDays?: number;
+  factories?: FactoryDef[];
   updatedAt?: Date;
 }
 
