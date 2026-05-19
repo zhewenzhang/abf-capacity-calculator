@@ -923,7 +923,12 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
                 title: 'Date',
                 dataIndex: 'createdAt',
                 key: 'createdAt',
-                render: (d: Date) => d?.toLocaleString?.() || '-',
+                render: (d: any) => {
+                  if (!d) return '-';
+                  const date = d.toDate ? d.toDate() : d;
+                  if (date instanceof Date && date.toLocaleString) return date.toLocaleString();
+                  return '-';
+                },
               },
               {
                 title: 'Actions',

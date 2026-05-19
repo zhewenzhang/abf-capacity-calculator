@@ -50,7 +50,15 @@ export async function saveVersion(
 export async function getVersions(userId: string, projectId: string): Promise<VersionSnapshot[]> {
   const q = query(collection(db!, versionsPath(userId, projectId)), orderBy('createdAt', 'desc'));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as VersionSnapshot));
+  return snapshot.docs.map((d) => {
+    const data = d.data();
+    // Convert Firestore Timestamp to Date
+    let createdAt = data.createdAt as any;
+    if (createdAt && typeof createdAt.toDate === 'function') {
+      createdAt = createdAt.toDate();
+    }
+    return { id: d.id, ...data, createdAt } as VersionSnapshot;
+  });
 }
 
 export async function deleteVersion(userId: string, projectId: string, versionId: string): Promise<void> {
