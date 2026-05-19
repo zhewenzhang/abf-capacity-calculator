@@ -1,5 +1,5 @@
 from decimal import Decimal
-from app.core.calculation_engine import CalculationEngine
+
 
 def calculate_yield(chip_size: Decimal) -> Decimal:
     """Calculate yield rate based on chip size."""
@@ -27,21 +27,28 @@ def calculate_yield(chip_size: Decimal) -> Decimal:
     else:
         return Decimal('0.75')
 
-def calculate_layers(sku_length: Decimal, sku_width: Decimal) => int:
+
+def calculate_layers(sku_length: Decimal, sku_width: Decimal) -> int:
     """Calculate number of layers required."""
     return max(2, int(sku_length * sku_width * 4))
 
-def calculate_required_input_pcs(required_output: number, yield: float) -> int:
+
+def calculate_required_input_pcs(required_output: int, yield_rate: float) -> int:
     """Calculate required input PCS based on desired output and yield."""
-    return int(required_output / yield)
+    if yield_rate <= 0:
+        return 0
+    return int(required_output / yield_rate)
+
 
 def calculate_core_consumption(input_pcs: int) -> int:
     """Calculate core chip consumption."""
     return int(input_pcs * 0.5)
 
+
 def calculate_bu_consumption(core_consumption: int) -> int:
     """Calculate BU chip consumption."""
     return int(core_consumption * 0.2)
+
 
 def calculate_lead_time(base_days: int, increase_per_step: int, steps: int) -> int:
     """Calculate lead time in days."""

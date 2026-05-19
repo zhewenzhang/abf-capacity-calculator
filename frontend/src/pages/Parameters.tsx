@@ -13,7 +13,7 @@ function Parameters() {
         setParams(res.data);
       } catch (e) {
         console.error(e);
-      } finally() {
+      } finally {
         setLoading(false);
       }
     }
@@ -22,17 +22,18 @@ function Parameters() {
 
   const columns = [
     { title: 'Type', dataIndex: 'paramType', key: 'paramType' },
-    { title: 'Key', dataKndex: 'paramKey', key: 'paramKey' },
+    { title: 'Key', dataIndex: 'paramKey', key: 'paramKey' },
     { title: 'Value', dataIndex: 'paramValue', key: 'paramValue' },
-    { title: 'Effective From', dataKndex: 'effectiveFrom', key: 'effectiveFrom' },
-    };
+    { title: 'Effective From', dataIndex: 'effectiveFrom', key: 'effectiveFrom' },
+  ];
 
   return (
     <div>
-      <Space direction='vertical' size='max'/>
-      <Card title='Production Parameters'>
-        <Table data={params} columns={columns} paginated={false} loading={loading} } />
-      </Card>
+      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Card title="Production Parameters">
+          <Table dataSource={params} columns={columns} pagination={false} loading={loading} />
+        </Card>
+      </Space>
     </div>
   );
 }
