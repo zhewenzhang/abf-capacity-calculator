@@ -92,13 +92,15 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
   // Grid data: key = "month-factoryId" (always stored at month level)
   const [gridData, setGridData] = useState<Map<string, CellData>>(new Map());
 
-  // All months in system
+  // All months in system: always 2026-2040, plus any extra from existing data
   const months = useMemo(() => {
+    const baseMonths = generateMonths(2026, 2040);
     if (plans.length > 0) {
-      const monthSet = new Set(plans.map((p) => p.month));
+      const monthSet = new Set(baseMonths);
+      for (const p of plans) monthSet.add(p.month);
       return Array.from(monthSet).sort();
     }
-    return generateMonths(2026, 2040);
+    return baseMonths;
   }, [plans]);
 
   // Derived display months based on view mode
