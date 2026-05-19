@@ -812,7 +812,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
                   <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="label" angle={displayMonths.length > 20 ? -45 : 0} textAnchor={displayMonths.length > 20 ? 'end' : 'middle'} height={displayMonths.length > 20 ? 60 : 30} />
-                    <YAxis />
+                    <YAxis tickFormatter={(v: number) => v >= 10000 ? `${(v/1000).toFixed(0)}k` : v.toLocaleString()} />
                     <Tooltip formatter={(value: any) => typeof value === 'number' ? value.toLocaleString() : value} />
                     <Legend />
                     {factories.map((factory, i) => (
@@ -838,7 +838,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
                   <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="label" angle={displayMonths.length > 20 ? -45 : 0} textAnchor={displayMonths.length > 20 ? 'end' : 'middle'} height={displayMonths.length > 20 ? 60 : 30} />
-                    <YAxis />
+                    <YAxis tickFormatter={(v: number) => v >= 10000 ? `${(v/1000).toFixed(0)}k` : v.toLocaleString()} />
                     <Tooltip formatter={(value: any) => typeof value === 'number' ? value.toLocaleString() : value} />
                     <Legend />
                     {factories.map((factory, i) => (
@@ -864,7 +864,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
                   <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="label" angle={displayMonths.length > 20 ? -45 : 0} textAnchor={displayMonths.length > 20 ? 'end' : 'middle'} height={displayMonths.length > 20 ? 60 : 30} />
-                    <YAxis />
+                    <YAxis tickFormatter={(v: number) => v >= 10000 ? `${(v/1000).toFixed(0)}k` : v.toLocaleString()} />
                     <Tooltip formatter={(value: any) => typeof value === 'number' ? value.toLocaleString() : value} />
                     <Legend />
                     <Line type="monotone" dataKey="Core Capacity" stroke="#1890ff" strokeWidth={3} dot={false} />

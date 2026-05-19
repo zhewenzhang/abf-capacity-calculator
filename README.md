@@ -6,6 +6,7 @@ A browser-based ABF (Ajinomoto Build-up Film) substrate capacity planning tool b
 
 - **Frontend**: React 19 + TypeScript + Vite
 - **UI**: Ant Design 5
+- **Charts**: Recharts
 - **Backend**: Firebase (Auth + Firestore + Hosting)
 - **Testing**: Vitest
 - **Routing**: React Router v7
@@ -13,18 +14,25 @@ A browser-based ABF (Ajinomoto Build-up Film) substrate capacity planning tool b
 ## Features
 
 1. **Product/SKU Management** — Create, edit, and delete SKUs with chip dimensions, layer count, size category, and pricing.
-2. **Monthly Forecasts** — Enter or bulk-generate sales forecasts by SKU and month (2026–2028).
-3. **Capacity Planning** — Manage monthly Core/BU panel-per-day capacity and working days with default generation.
+2. **Monthly Forecasts** — Enter or bulk-generate sales forecasts by SKU and month (2026–2040).
+3. **Capacity Planning** — Excel-style grid with:
+   - **Factory management**: Add, rename, and remove factories dynamically
+   - **Batch operations**: Set values by year or quarter across selected factories
+   - **Fill Forward (→→)**: Copy a month's values to all subsequent months in one click
+   - **View modes**: Month / Quarter / Year with auto-aggregation
+   - **Working Days**: Configurable default (28 days/month) in Parameters
 4. **Yield & Panel Parameters** — Edit yield rate matrix and panel layout parameters.
 5. **Calculation Engine** — Deterministic TypeScript calculation of panel demand, utilization, shortages, and revenue.
 6. **Dashboard** — Real-time metrics: total SKUs, forecast PCS, revenue, max utilization, shortage months.
 7. **Results** — Detailed SKU-month breakdown and monthly capacity summary with bottleneck identification.
+8. **Capacity Trend Charts** — Three chart tabs: Core Panel/Day, BU Panel/Day, Monthly Capacity
+9. **Version History** — Save, restore, and delete named snapshots of the entire capacity plan
 
 ## Firebase Setup
 
 1. Create a project at [Firebase Console](https://console.firebase.google.com).
 2. Enable **Authentication** with Google sign-in.
-3. Enable **Firestore Database**.
+3. Enable **Firestore Database** (test mode for development).
 4. Enable **Hosting**.
 5. Copy your web app config into `frontend/.env.local`:
 
@@ -60,10 +68,12 @@ npm run build      # TypeScript + Vite production build
 ```bash
 npm install -g firebase-tools
 firebase login
-firebase use --add           # Select your Firebase project
+firebase use abf-capacity-calculator   # ensure correct project
 cd frontend && npm run build
 firebase deploy --only hosting
 ```
+
+**⚠️ Important**: This is an independent project. Never deploy to `homebox-hosting` or any other Firebase project from this repository.
 
 ## Core Calculation Formulas
 
@@ -128,7 +138,7 @@ bottleneck      = Core / BU / None
 |------|---------------|--------------|
 | 2026 | 6,000 (flat)  | 0 (flat)     |
 | 2027 | +650/quarter  | +3,000/quarter |
-| 2028 | +1,800/yr from 2027 exit | +10,000/yr from 2027 exit |
+| 2028–2040 | Core +1,800/yr from 2027 exit | BU +10,000/yr from 2027 exit |
 
 ## Firestore Data Model
 
@@ -136,8 +146,9 @@ bottleneck      = Core / BU / None
 users/{userId}/projects/{projectId}/
   skus/{skuId}
   forecasts/{forecastId}
-  capacityPlans/{planId}
+  capacityPlans/{month}-{factoryId}
   parameters/default
+  capacityVersions/{versionId}
 ```
 
 ## Project Structure
@@ -148,7 +159,7 @@ frontend/src/
     calculationEngine.ts        # Main calculation logic
     yieldMatrix.ts              # Yield rate lookup
     panelLayout.ts              # Pcs per panel calculation
-    defaults.ts                 # Default yield matrix, panel params, capacity generator
+    defaults.ts                 # Default yield matrix, panel params, factories, capacity generator
     validation.ts               # Input validators
     calculationEngine.test.ts   # 31 Vitest tests
   firebase/
@@ -157,22 +168,30 @@ frontend/src/
   services/
     skuService.ts               # Firestore CRUD for SKUs
     forecastService.ts          # Firestore CRUD for forecasts
-    capacityService.ts          # Firestore CRUD for capacity plans
-    parameterService.ts         # Firestore CRUD for parameters
+    capacityService.ts          # Firestore CRUD for capacity plans (batch support)
+    parameterService.ts         # Firestore CRUD for parameters (incl. factories)
     projectService.ts           # Firestore CRUD for projects
+    versionService.ts           # Version save/restore/delete
+    demoDataService.ts          # Demo data loader (5 SKUs, 30 forecasts, capacity)
   pages/
     SetupPage.tsx               # Firebase setup guidance
     LoginPage.tsx               # Google sign-in
-    Dashboard.tsx               # Real-time metrics + summary table
+    Dashboard.tsx               # Real-time metrics + summary table + demo data loader
     Products.tsx                # SKU CRUD
-    Forecasts.tsx               # Forecast CRUD + bulk generation
-    CapacityPlan.tsx            # Capacity plan CRUD + default generation
-    Parameters.tsx              # Yield matrix + panel parameter editor
+    Forecasts.tsx               # Forecast CRUD + bulk generation (2026-2040)
+    CapacityPlan.tsx            # Excel-style grid, batch operations, Fill Forward, version management, charts
+    Parameters.tsx              # Yield matrix + panel params + working days
     CalculationResults.tsx      # Detailed results with tabs
   types/index.ts                # All TypeScript types
   App.tsx                       # Auth routing + sidebar layout
   main.tsx                      # Entry point
 ```
+
+## UI Formatting Standards
+
+- **All numbers** displayed to users must include thousand separators (e.g., `12,345` not `12345`)
+- Input fields show raw numbers for easy editing
+- Chart tooltips and Y-axis labels use `toLocaleString()` for readability
 
 ## Known Limitations
 
@@ -180,7 +199,11 @@ frontend/src/
 - No data export/import (CSV, Excel).
 - No real-time collaboration (Firestore listeners not used).
 - Firebase credentials required for full functionality; no mock data mode yet.
-- Working days are hardcoded averages per month.
+- Working days are configurable but fixed across all months (not per-month).
+
+## Version History
+
+- **2026-05-19**: Initial rebuild — Firebase-backed React + TypeScript + Ant Design frontend replacing broken Python backend. Excel-style capacity grid with factory management, batch operations, Fill Forward, view modes (Month/Quarter/Year), capacity trend charts, version save/restore, demo data loader.
 
 ## License
 
