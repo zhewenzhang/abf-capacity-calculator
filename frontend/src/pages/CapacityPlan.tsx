@@ -98,7 +98,6 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
           { id: 'fab-c', name: 'Fab C' },
         ];
         setFactories(defaults);
-        // Save factories to params
         await saveParameters(userId, projectId, {
           ...params,
           factories: defaults,
@@ -194,7 +193,6 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
     }
     const updated = factories.filter((f) => f.id !== factoryId);
     setFactories(updated);
-    // Clear grid data for this factory
     setGridData((prev) => {
       const next = new Map(prev);
       for (const key of next.keys()) {
@@ -207,12 +205,14 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
     message.success('Factory removed');
   };
 
-  // --- Batch update by year/quarter ---
+  // --- Batch update: year/quarter + factories + clear ---
   const [batchYear, setBatchYear] = useState(2026);
-  const [batchQuarter, setBatchQuarter] = useState<number | null>(null); // null = whole year
+  const [batchQuarter, setBatchQuarter] = useState<number | null>(null);
   const [batchMode, setBatchMode] = useState<'year' | 'quarter'>('year');
+  const [batchFactories, setBatchFactories] = useState<string[] | null>(null); // null = all factories
   const [batchCore, setBatchCore] = useState<number | null>(null);
   const [batchBu, setBatchBu] = useState<number | null>(null);
+  const [batchAction, setBatchAction] = useState<'set' | 'clear'>('set');
 
   const getBatchMonths = useCallback(() => {
     if (batchMode === 'year') {
@@ -227,31 +227,48 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
     }
   }, [batchMode, batchYear, batchQuarter, months]);
 
+  const getBatchFactories = useCallback(() => {
+    if (batchFactories && batchFactories.length > 0) {
+      return factories.filter((f) => batchFactories.includes(f.id));
+    }
+    return factories;
+  }, [batchFactories, factories]);
+
   const handleBatchApply = () => {
     const targetMonths = getBatchMonths();
+    const targetFactories = getBatchFactories();
     if (targetMonths.length === 0) {
       message.warning('No months in selected range');
       return;
     }
-    if (batchCore === null && batchBu === null) {
+    if (batchAction === 'set' && batchCore === null && batchBu === null) {
       message.warning('Enter at least Core or BU value');
       return;
     }
     setGridData((prev) => {
       const next = new Map(prev);
       for (const month of targetMonths) {
-        for (const factory of factories) {
-          const existing = prev.get(`${month}-${factory.id}`) || { core: 0, bu: 0 };
-          next.set(`${month}-${factory.id}`, {
-            core: batchCore !== null ? batchCore : existing.core,
-            bu: batchBu !== null ? batchBu : existing.bu,
-          });
+        for (const factory of targetFactories) {
+          if (batchAction === 'clear') {
+            next.set(`${month}-${factory.id}`, { core: 0, bu: 0 });
+          } else {
+            const existing = prev.get(`${month}-${factory.id}`) || { core: 0, bu: 0 };
+            next.set(`${month}-${factory.id}`, {
+              core: batchCore !== null ? batchCore : existing.core,
+              bu: batchBu !== null ? batchBu : existing.bu,
+            });
+          }
         }
       }
       return next;
     });
-    const label = batchMode === 'year' ? `${batchYear}` : `${batchYear} Q${batchQuarter}`;
-    message.success(`Updated ${targetMonths.length} months in ${label}`);
+    const timeLabel = batchMode === 'year' ? `${batchYear}` : `${batchYear} Q${batchQuarter}`;
+    const factoryLabel =
+      batchFactories && batchFactories.length > 0
+        ? `${batchFactories.length} factories`
+        : 'all factories';
+    const actionLabel = batchAction === 'clear' ? 'Cleared' : 'Updated';
+    message.success(`${actionLabel}: ${targetMonths.length} months × ${factoryLabel} in ${timeLabel}`);
   };
 
   // Load defaults
@@ -293,7 +310,6 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
           });
         }
       }
-      // Also save factories
       const params = await getParameters(userId, projectId);
       await saveParameters(userId, projectId, {
         ...params,
@@ -451,6 +467,8 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
     return Array.from(years).sort();
   }, [months]);
 
+  const factoryOptions = factories.map((f) => ({ label: f.name, value: f.id }));
+
   return (
     <div>
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
@@ -462,11 +480,12 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
           items={[
             {
               key: 'batch',
-              label: 'Batch Set (Year / Quarter)',
+              label: 'Batch Set / Modify',
               children: (
                 <Row gutter={[12, 8]} align="middle" wrap>
+                  {/* Time range */}
                   <Col>
-                    <Text strong>Apply to:</Text>
+                    <Text strong>Time:</Text>
                   </Col>
                   <Col>
                     <Select
@@ -509,36 +528,74 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
                       />
                     </Col>
                   )}
+
+                  {/* Factory selector */}
+                  <Col>
+                    <Text strong>Factories:</Text>
+                  </Col>
+                  <Col>
+                    <Select
+                      size="small"
+                      mode="multiple"
+                      value={batchFactories || undefined}
+                      onChange={(v) => setBatchFactories(v.length > 0 ? v : null)}
+                      style={{ minWidth: 160 }}
+                      placeholder="All factories"
+                      options={factoryOptions}
+                      allowClear
+                    />
+                  </Col>
+
+                  {/* Action type */}
+                  <Col>
+                    <Select
+                      size="small"
+                      value={batchAction}
+                      onChange={(v) => setBatchAction(v)}
+                      style={{ width: 100 }}
+                      options={[
+                        { label: '✏️ Set', value: 'set' },
+                        { label: '🗑️ Clear', value: 'clear' },
+                      ]}
+                    />
+                  </Col>
+
+                  {/* Values */}
+                  {batchAction === 'set' && (
+                    <>
+                      <Col>
+                        <InputNumber
+                          size="small"
+                          min={0}
+                          placeholder="Core"
+                          value={batchCore}
+                          onChange={(v) => setBatchCore(v)}
+                          style={{ width: 100 }}
+                          addonBefore="C"
+                        />
+                      </Col>
+                      <Col>
+                        <InputNumber
+                          size="small"
+                          min={0}
+                          placeholder="BU"
+                          value={batchBu}
+                          onChange={(v) => setBatchBu(v)}
+                          style={{ width: 100 }}
+                          addonBefore="B"
+                        />
+                      </Col>
+                    </>
+                  )}
+
                   <Col>
                     <Tag color="blue">
-                      {getBatchMonths().length} months
+                      {getBatchMonths().length} months × {(batchFactories?.length || factories.length)} factories
                     </Tag>
                   </Col>
                   <Col>
-                    <InputNumber
-                      size="small"
-                      min={0}
-                      placeholder="Core"
-                      value={batchCore}
-                      onChange={(v) => setBatchCore(v)}
-                      style={{ width: 100 }}
-                      addonBefore="C"
-                    />
-                  </Col>
-                  <Col>
-                    <InputNumber
-                      size="small"
-                      min={0}
-                      placeholder="BU"
-                      value={batchBu}
-                      onChange={(v) => setBatchBu(v)}
-                      style={{ width: 100 }}
-                      addonBefore="B"
-                    />
-                  </Col>
-                  <Col>
                     <Button size="small" type="primary" onClick={handleBatchApply}>
-                      Apply
+                      {batchAction === 'clear' ? 'Clear Selected' : 'Apply'}
                     </Button>
                   </Col>
                 </Row>
@@ -600,7 +657,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
             Cap = Panel/Day × {workingDays}
           </Text>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            💡 Click ✏️ to rename a factory | Edit cells directly for month-level tweaks
+            💡 Click ✏️ to rename | Edit cells directly for month-level tweaks
           </Text>
         </Space>
       </Card>
