@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Statistic, Table, Typography, Spin, Alert, Tag } from 'antd';
+import { Card, Row, Col, Statistic, Table, Typography, Spin, Alert, Tag, Button, Popconfirm, Space } from 'antd';
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
   WarningOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { getSKUs } from '../services/skuService';
 import { getForecasts } from '../services/forecastService';
 import { getCapacityPlans } from '../services/capacityService';
 import { getParameters } from '../services/parameterService';
 import { runCalculation } from '../core/calculationEngine';
+import { loadDemoData } from '../services/demoDataService';
 import type { MonthlyCapacitySummary } from '../types';
 import type { ColumnsType } from 'antd/es/table';
+import { message } from 'antd';
 
 const { Text } = Typography;
 
@@ -22,6 +25,7 @@ interface DashboardPageProps {
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
   const [loading, setLoading] = useState(true);
+  const [loadingDemo, setLoadingDemo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalSkus, setTotalSkus] = useState(0);
   const [totalForecastPcs, setTotalForecastPcs] = useState(0);
@@ -64,6 +68,35 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
     };
     loadData();
   }, [userId, projectId]);
+
+  const handleLoadDemo = async () => {
+    setLoadingDemo(true);
+    setError(null);
+    try {
+      const result = await loadDemoData(userId, projectId);
+      message.success(result);
+      // Reload dashboard data
+      const [skus, forecasts, capacityPlans, params] = await Promise.all([
+        getSKUs(userId, projectId),
+        getForecasts(userId, projectId),
+        getCapacityPlans(userId, projectId),
+        getParameters(userId, projectId),
+      ]);
+      setTotalSkus(skus.length);
+      const calcResult = runCalculation(skus, forecasts, capacityPlans, params);
+      setTotalForecastPcs(calcResult.totalForecastPcs);
+      setTotalRevenue(calcResult.totalRevenue);
+      setMaxCoreUtil(calcResult.maxCoreUtilization);
+      setMaxBuUtil(calcResult.maxBuUtilization);
+      setShortageCount(calcResult.shortageMonthCount);
+      setWorstMonth(calcResult.worstBottleneckMonth);
+      setSummaries(calcResult.monthlySummaries);
+    } catch (e: any) {
+      setError(e.message || 'Failed to load demo data');
+    } finally {
+      setLoadingDemo(false);
+    }
+  };
 
   const formatUtilization = (val: number | null) => {
     if (val === null) return 'Over Capacity';
@@ -127,6 +160,25 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
   return (
     <div>
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
+      {totalSkus === 0 && (
+        <Card style={{ marginBottom: 16, background: '#e6f7ff', border: '1px solid #91d5ff' }}>
+          <Space direction="vertical" size={8} style={{ width: '100%' }}>
+            <Typography.Text strong>Welcome! You have no data yet.</Typography.Text>
+            <Typography.Text>
+              Click below to load 5 demo SKUs (TSMC, Intel, AMD, NVIDIA, Qualcomm), 6 months of forecasts, and 2026–2028 capacity plans.
+            </Typography.Text>
+            <Popconfirm
+              title="Load Demo Data"
+              description="This will create 5 SKUs, 30 forecasts, and 36 capacity plan rows. Continue?"
+              onConfirm={handleLoadDemo}
+            >
+              <Button type="primary" icon={<ThunderboltOutlined />} loading={loadingDemo}>
+                Load Demo Data
+              </Button>
+            </Popconfirm>
+          </Space>
+        </Card>
+      )}
       <Row gutter={[16, 16]}>
         <Col span={4}>
           <Card className="stat-card">
