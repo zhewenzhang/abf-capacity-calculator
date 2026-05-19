@@ -60,7 +60,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
       message.warning('Add SKUs first before generating forecasts');
       return;
     }
-    const months = generateMonths(2026, 2028);
+    const months = generateMonths(2026, 2040);
     const existing = new Map<string, Forecast>();
     for (const f of forecasts) {
       existing.set(`${f.skuId}-${f.month}`, f);

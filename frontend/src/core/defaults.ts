@@ -27,10 +27,10 @@ export const DEFAULT_FACTORIES: FactoryDef[] = [
   { id: 'fab-c', name: 'Fab C' },
 ];
 
-// Default capacity: generate monthly rows for 2026-2028
+// Default capacity: generate monthly rows for 2026-2040
 // 2026: Core 6000/day, BU 0/day
 // 2027: Core +650 per quarter, BU +3000 per quarter
-// 2028: Core +1800/year from 2027 exit level, BU +10000/year from 2027 exit level
+// 2028+: Core +1800/year from 2027 exit level, BU +10000/year from 2027 exit level
 export function generateDefaultCapacityPlans(): Array<{ month: string; corePanelPerDay: number; buPanelPerDay: number }> {
   const plans: Array<{ month: string; corePanelPerDay: number; buPanelPerDay: number }> = [];
 
@@ -62,15 +62,20 @@ export function generateDefaultCapacityPlans(): Array<{ month: string; corePanel
   coreRate = coreRate + 650 * 4; // 6000 + 2600 = 8600
   buRate = buRate + 3000 * 4;     // 0 + 12000 = 12000
 
-  // 2028: Core +1800/year from 2027 exit, BU +10000/year from 2027 exit
-  const core2028 = coreRate + 1800; // 10400
-  const bu2028 = buRate + 10000;     // 22000
-  for (let m = 0; m < 12; m++) {
-    plans.push({
-      month: `2028-${String(m + 1).padStart(2, '0')}`,
-      corePanelPerDay: core2028,
-      buPanelPerDay: bu2028,
-    });
+  // 2028-2040: Core +1800/year from 2027 exit, BU +10000/year from 2027 exit
+  let coreCurrent = coreRate + 1800; // 2028: 10400
+  let buCurrent = buRate + 10000;     // 2028: 22000
+  for (let y = 2028; y <= 2040; y++) {
+    for (let m = 0; m < 12; m++) {
+      plans.push({
+        month: `${y}-${String(m + 1).padStart(2, '0')}`,
+        corePanelPerDay: coreCurrent,
+        buPanelPerDay: buCurrent,
+      });
+    }
+    // Increment each year
+    coreCurrent += 1800;
+    buCurrent += 10000;
   }
 
   return plans;

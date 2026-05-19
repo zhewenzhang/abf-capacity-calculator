@@ -72,7 +72,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
       const monthSet = new Set(plans.map((p) => p.month));
       return Array.from(monthSet).sort();
     }
-    return generateMonths(2026, 2028);
+    return generateMonths(2026, 2040);
   }, [plans]);
 
   // Load from Firestore
