@@ -1,61 +1,208 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Statistic, Space } from 'antd';
-import { getProducts, getCapacity } from '../api';
+import { Card, Row, Col, Statistic, Table, Typography, Spin, Alert, Tag } from 'antd';
+import {
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+  WarningOutlined,
+} from '@ant-design/icons';
+import { getSKUs } from '../services/skuService';
+import { getForecasts } from '../services/forecastService';
+import { getCapacityPlans } from '../services/capacityService';
+import { getParameters } from '../services/parameterService';
+import { runCalculation } from '../core/calculationEngine';
+import type { MonthlyCapacitySummary } from '../types';
+import type { ColumnsType } from 'antd/es/table';
 
-function Dashboard() {
-  const [data, setData] = useState({
-    totalProducts: 0,
-    totalRevenue: 0,
-    averageYield: 0,
-    capacityUtilization: 0,
-  });
+const { Text } = Typography;
+
+interface DashboardPageProps {
+  userId: string;
+  projectId: string;
+}
+
+const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [totalSkus, setTotalSkus] = useState(0);
+  const [totalForecastPcs, setTotalForecastPcs] = useState(0);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [maxCoreUtil, setMaxCoreUtil] = useState<number | null>(null);
+  const [maxBuUtil, setMaxBuUtil] = useState<number | null>(null);
+  const [shortageCount, setShortageCount] = useState(0);
+  const [worstMonth, setWorstMonth] = useState<string | null>(null);
+  const [summaries, setSummaries] = useState<MonthlyCapacitySummary[]>([]);
 
   useEffect(() => {
-    async function fetchData() {
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const [productsRes, capacityRes] = await Promise.all([
-          getProducts(),
-          getCapacity(),
+        const [skus, forecasts, capacityPlans, params] = await Promise.all([
+          getSKUs(userId, projectId),
+          getForecasts(userId, projectId),
+          getCapacityPlans(userId, projectId),
+          getParameters(userId, projectId),
         ]);
-        setData({
-          totalProducts: productsRes.data.length,
-          totalRevenue: 1234567,
-          averageYield: 90.5,
-          capacityUtilization: 75.8,
-        });
-      } catch (e) {
-        console.error(e);
+
+        setTotalSkus(skus.length);
+
+        if (skus.length > 0 && forecasts.length > 0) {
+          const result = runCalculation(skus, forecasts, capacityPlans, params);
+          setTotalForecastPcs(result.totalForecastPcs);
+          setTotalRevenue(result.totalRevenue);
+          setMaxCoreUtil(result.maxCoreUtilization);
+          setMaxBuUtil(result.maxBuUtilization);
+          setShortageCount(result.shortageMonthCount);
+          setWorstMonth(result.worstBottleneckMonth);
+          setSummaries(result.monthlySummaries);
+        }
+      } catch (e: any) {
+        setError(e.message || 'Failed to load dashboard data');
       } finally {
         setLoading(false);
       }
-    }
-    fetchData();
-  }, []);
+    };
+    loadData();
+  }, [userId, projectId]);
+
+  const formatUtilization = (val: number | null) => {
+    if (val === null) return 'Over Capacity';
+    return `${(val * 100).toFixed(1)}%`;
+  };
+
+  const summaryColumns: ColumnsType<MonthlyCapacitySummary> = [
+    { title: 'Month', dataIndex: 'month', key: 'month', sorter: (a, b) => a.month.localeCompare(b.month) },
+    {
+      title: 'Core Demand',
+      dataIndex: 'totalCorePanelDemand',
+      key: 'totalCorePanelDemand',
+      render: (v: number) => v.toLocaleString(),
+    },
+    {
+      title: 'Core Capacity',
+      dataIndex: 'coreCapacity',
+      key: 'coreCapacity',
+      render: (v: number) => v.toLocaleString(),
+    },
+    {
+      title: 'Core Util.',
+      dataIndex: 'coreUtilization',
+      key: 'coreUtilization',
+      render: (v: number | null) => formatUtilization(v),
+    },
+    {
+      title: 'BU Demand',
+      dataIndex: 'totalBuPanelDemand',
+      key: 'totalBuPanelDemand',
+      render: (v: number) => v.toLocaleString(),
+    },
+    {
+      title: 'BU Capacity',
+      dataIndex: 'buCapacity',
+      key: 'buCapacity',
+      render: (v: number) => v.toLocaleString(),
+    },
+    {
+      title: 'BU Util.',
+      dataIndex: 'buUtilization',
+      key: 'buUtilization',
+      render: (v: number | null) => formatUtilization(v),
+    },
+    {
+      title: 'Bottleneck',
+      dataIndex: 'bottleneck',
+      key: 'bottleneck',
+      render: (v: string) => {
+        if (v === 'None') return <Tag color="green">None</Tag>;
+        if (v === 'Core') return <Tag color="orange">Core</Tag>;
+        return <Tag color="red">BU</Tag>;
+      },
+    },
+  ];
+
+  if (loading) {
+    return <Spin size="large" />;
+  }
 
   return (
     <div>
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        <Row gutter={[16, 16]}>
-          <Col span={8}>
-            <Card title="产品总数">
-              <Statistic value={data.totalProducts} prefix="产品" suffix="个" loading={loading} />
-            </Card>
-          </Col>
-          <Col span={8}>
-            <Card title="销售总额">
-              <Statistic value={data.totalRevenue} prefix="¥" suffix="K" loading={loading} />
-            </Card>
-          </Col>
-          <Col span={8}>
-            <Card title="产能利用率">
-              <Statistic value={data.capacityUtilization} suffix="%" precision={1} loading={loading} />
-            </Card>
-          </Col>
-        </Row>
-      </Space>
+      {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
+      <Row gutter={[16, 16]}>
+        <Col span={4}>
+          <Card className="stat-card">
+            <Statistic title="Total SKUs" value={totalSkus} />
+          </Card>
+        </Col>
+        <Col span={4}>
+          <Card className="stat-card">
+            <Statistic title="Total Forecast PCS" value={totalForecastPcs} precision={0} />
+          </Card>
+        </Col>
+        <Col span={4}>
+          <Card className="stat-card">
+            <Statistic
+              title="Total Revenue"
+              value={totalRevenue}
+              precision={2}
+              prefix="$"
+            />
+          </Card>
+        </Col>
+        <Col span={4}>
+          <Card className="stat-card">
+            <Statistic
+              title="Max Core Util."
+              value={maxCoreUtil === null ? 100 : maxCoreUtil * 100}
+              precision={1}
+              suffix="%"
+              valueStyle={{ color: (maxCoreUtil === null || maxCoreUtil > 1) ? '#cf1322' : '#3f8600' }}
+              prefix={maxCoreUtil === null ? <WarningOutlined /> : maxCoreUtil > 1 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
+            />
+            {maxCoreUtil === null && <Text type="danger">Over Capacity</Text>}
+          </Card>
+        </Col>
+        <Col span={4}>
+          <Card className="stat-card">
+            <Statistic
+              title="Max BU Util."
+              value={maxBuUtil === null ? 100 : maxBuUtil * 100}
+              precision={1}
+              suffix="%"
+              valueStyle={{ color: (maxBuUtil === null || maxBuUtil > 1) ? '#cf1322' : '#3f8600' }}
+              prefix={maxBuUtil === null ? <WarningOutlined /> : maxBuUtil > 1 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
+            />
+            {maxBuUtil === null && <Text type="danger">Over Capacity</Text>}
+          </Card>
+        </Col>
+        <Col span={4}>
+          <Card className="stat-card">
+            <Statistic
+              title="Shortage Months"
+              value={shortageCount}
+              suffix={`/ ${summaries.length}`}
+              valueStyle={{ color: shortageCount > 0 ? '#cf1322' : '#3f8600' }}
+            />
+            {worstMonth && (
+              <Text type="danger">Worst: {worstMonth}</Text>
+            )}
+          </Card>
+        </Col>
+      </Row>
+
+      <Card title="Monthly Capacity Summary" style={{ marginTop: 16 }}>
+        <Table
+          columns={summaryColumns}
+          dataSource={summaries}
+          rowKey="month"
+          size="small"
+          pagination={{ pageSize: 12 }}
+          rowClassName={(record) =>
+            record.coreShortage > 0 || record.buShortage > 0 ? 'shortage-row' : ''
+          }
+        />
+      </Card>
     </div>
   );
-}
+};
 
-export default Dashboard;
+export default DashboardPage;

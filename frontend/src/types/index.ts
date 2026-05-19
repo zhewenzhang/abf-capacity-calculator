@@ -1,83 +1,127 @@
-/**
- * ABF 产能计算器 - 类型定义
- */
+// Size categories
+export type SizeCategory = 'small' | 'medium' | 'large' | 'xlarge';
 
-// 产品
-export interface Product {
-  id: number;
-  sku: string;
-  customer?: string;
-  size_category: string;
-  layer_count: number;
-  monthly_forecast: Record<string, number>;
-  price?: Record<string, number>;
+// Layer buckets for yield matrix
+export type LayerBucket = '4-8L' | '10-14L' | '16-20L' | '20L+';
+
+// SKU/Product data
+export interface SKU {
+  id: string;
+  skuCode: string;
+  customer: string;
+  deviceName: string;
+  osat: string;
+  application: string;
+  productGrade: string;
+  sizeCategory: SizeCategory;
+  chipLengthMm: number;
+  chipWidthMm: number;
+  layerCount: number;
+  unitPrice: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-// 良率矩阵
-export interface YieldMatrixEntry {
-  size_category: string;
-  layer_range_start: number;
-  layer_range_end: number;
-  yield_rate: number;
+// Monthly forecast
+export interface Forecast {
+  id: string;
+  skuId: string;
+  month: string; // YYYY-MM
+  forecastPcs: number;
+  unitPrice: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-// 产能规划
+// Monthly capacity plan
 export interface CapacityPlan {
-  id: number;
-  period: string;
-  core_capacity: number;
-  bu_capacity: number;
+  id: string;
+  month: string; // YYYY-MM
+  workingDays: number;
+  corePanelPerDay: number;
+  buPanelPerDay: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-// 计算结果
-export interface CalculationResult {
-  sku: string;
-  size_category: string;
-  layer_count: number;
-  yield_rate: number;
-  core_consumption: number;
-  bu_consumption: number;
-  monthly_results: MonthlyResult[];
-  total_revenue: number;
-  capacity_utilization: CapacityUtilization;
+// Yield matrix parameters
+export interface YieldMatrix {
+  small: Record<LayerBucket, number>;
+  medium: Record<LayerBucket, number>;
+  large: Record<LayerBucket, number>;
+  xlarge: Record<LayerBucket, number>;
 }
 
-export interface MonthlyResult {
+// Panel layout parameters
+export interface PanelParams {
+  panelLengthMm: number;
+  panelWidthMm: number;
+  marginLengthMm: number;
+  marginWidthMm: number;
+  toleranceMm: number;
+}
+
+// Project parameters
+export interface ProjectParameters {
+  yieldMatrix: YieldMatrix;
+  panelParams: PanelParams;
+  updatedAt?: Date;
+}
+
+// Per-SKU monthly calculation result
+export interface SkuCalculationResult {
+  skuId: string;
+  skuCode: string;
   month: string;
-  output_pcs: number;
-  core_panels: number;
-  bu_panels: number;
-  daily_core_demand: number;
-  daily_bu_demand: number;
-  yield_rate: number;
+  forecastPcs: number;
+  unitPrice: number;
+  yieldRate: number;
+  requiredInputPcs: number;
+  pcsPerPanel: number;
+  requiredPanels: number;
+  coreSteps: number;
+  buSteps: number;
+  corePanelDemand: number;
+  buPanelDemand: number;
   revenue: number;
 }
 
-export interface CapacityUtilization {
-  core_utilization: number;
-  bu_utilization: number;
-  total_utilization: number;
-  core_capacity: number;
-  bu_capacity: number;
+// Monthly capacity summary
+export interface MonthlyCapacitySummary {
+  month: string;
+  totalCorePanelDemand: number;
+  totalBuPanelDemand: number;
+  coreCapacity: number;
+  buCapacity: number;
+  coreUtilization: number | null; // null means Infinity (capacity 0, demand > 0)
+  buUtilization: number | null;
+  coreShortage: number;
+  buShortage: number;
+  bottleneck: 'Core' | 'BU' | 'None';
 }
 
-// 生产参数
-export interface ProductionParameter {
-  id: number;
-  parameter_key: string;
-  parameter_value: Record<string, any>;
-  version: number;
-  description?: string;
+// Full calculation result
+export interface CalculationResult {
+  skuResults: SkuCalculationResult[];
+  monthlySummaries: MonthlyCapacitySummary[];
+  totalRevenue: number;
+  totalForecastPcs: number;
+  maxCoreUtilization: number | null;
+  maxBuUtilization: number | null;
+  shortageMonthCount: number;
+  worstBottleneckMonth: string | null;
 }
 
-// 计算请求
-export interface CalculationRequest {
-  products: Array<{
-    sku: string;
-    size_category: string;
-    layer_count: number;
-    monthly_forecast: Record<string, number>;
-    prices?: Record<string, number>;
-  }>;
-  period: string;
+// Validation error
+export interface ValidationError {
+  field: string;
+  message: string;
+}
+
+// Project
+export interface Project {
+  id: string;
+  name: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }

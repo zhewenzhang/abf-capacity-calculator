@@ -1,33 +1,139 @@
-import React from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
-import { ConfigProvider } from 'antd';
-import zhCN from 'antd/locale/zh_CN';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { ConfigProvider, Layout, Menu, Spin, Button, Typography, Space } from 'antd';
+import {
+  DashboardOutlined,
+  InboxOutlined,
+  BarChartOutlined,
+  SettingOutlined,
+  LogoutOutlined,
+  CloudOutlined,
+  CalculatorOutlined,
+} from '@ant-design/icons';
+import type { User } from 'firebase/auth';
+import { isConfigured } from './firebase/config';
+import { onAuthChange, signOutUser } from './firebase/auth';
+import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/Dashboard';
+import ProductsPage from './pages/Products';
+import ForecastsPage from './pages/Forecasts';
+import CapacityPlanPage from './pages/CapacityPlan';
+import ParametersPage from './pages/Parameters';
+import CalculationResultsPage from './pages/CalculationResults';
+import SetupPage from './pages/SetupPage';
 
-import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';
-import ProductList from './pages/ProductList';
-import ProductCreate from './pages/ProductCreate';
-import Calculation from './pages/Calculation';
-import CapacityPlan from './pages/CapacityPlan';
-import Parameters from './pages/Parameters';
+const { Sider, Content } = Layout;
+const { Title } = Typography;
 
-function App() {
+const AppContent: React.FC<{ user: User }> = ({ user }) => {
+  const navigate = useNavigate();
+  const [current, setCurrent] = useState('dashboard');
+
+  const menuItems = [
+    { key: 'dashboard', icon: <DashboardOutlined />, label: 'Dashboard' },
+    { key: 'products', icon: <InboxOutlined />, label: 'Products' },
+    { key: 'forecasts', icon: <BarChartOutlined />, label: 'Forecasts' },
+    { key: 'capacity', icon: <CloudOutlined />, label: 'Capacity Plan' },
+    { key: 'parameters', icon: <SettingOutlined />, label: 'Parameters' },
+    { key: 'results', icon: <CalculatorOutlined />, label: 'Results' },
+  ];
+
+  const handleMenuClick = ({ key }: { key: string }) => {
+    setCurrent(key);
+    navigate(`/${key}`);
+  };
+
+  const handleLogout = async () => {
+    await signOutUser();
+  };
+
   return (
-    <ConfigProvider locale={zhCN}>
-      <HashRouter>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="products" element={<ProductList />} />
-            <Route path="products/new" element={<ProductCreate />} />
-            <Route path="calculate" element={<Calculation />} />
-            <Route path="capacity" element={<CapacityPlan />} />
-            <Route path="parameters" element={<Parameters />} />
-          </Route>
-        </Routes>
-      </HashRouter>
+    <Layout style={{ minHeight: '100vh' }}>
+      <Sider breakpoint="lg" collapsedWidth="80">
+        <div style={{ padding: '16px', textAlign: 'center' }}>
+          <Title level={4} style={{ color: '#fff', margin: 0 }}>
+            ABF Calc
+          </Title>
+        </div>
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[current]}
+          items={menuItems}
+          onClick={handleMenuClick}
+        />
+      </Sider>
+      <Layout>
+        <Content
+          className="site-layout-content"
+          style={{ margin: '0 16px' }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+            <Title level={3} style={{ margin: 0 }}>
+              {menuItems.find((i) => i.key === current)?.label}
+            </Title>
+            <Space>
+              <span>{user.email}</span>
+              <Button icon={<LogoutOutlined />} onClick={handleLogout}>
+                Logout
+              </Button>
+            </Space>
+          </div>
+          <Routes>
+            <Route path="/dashboard" element={<DashboardPage userId={user.uid} projectId="default" />} />
+            <Route path="/products" element={<ProductsPage userId={user.uid} projectId="default" />} />
+            <Route path="/forecasts" element={<ForecastsPage userId={user.uid} projectId="default" />} />
+            <Route path="/capacity" element={<CapacityPlanPage userId={user.uid} projectId="default" />} />
+            <Route path="/parameters" element={<ParametersPage userId={user.uid} projectId="default" />} />
+            <Route path="/results" element={<CalculationResultsPage userId={user.uid} projectId="default" />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Content>
+      </Layout>
+    </Layout>
+  );
+};
+
+const AuthRouter: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthChange((u) => {
+      setUser(u);
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, []);
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Spin size="large" tip="Loading..." />
+      </div>
+    );
+  }
+
+  if (!user) {
+    if (!isConfigured) {
+      return <SetupPage />;
+    }
+    return <LoginPage />;
+  }
+
+  return (
+    <BrowserRouter>
+      <AppContent user={user} />
+    </BrowserRouter>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <ConfigProvider>
+      <AuthRouter />
     </ConfigProvider>
   );
-}
+};
 
 export default App;
