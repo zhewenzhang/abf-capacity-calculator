@@ -504,10 +504,9 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
               min={0}
               value={cell.core}
               onChange={(v) => setCell(month, record.factoryId, v || 0, cell.bu)}
-              style={{ width: 82 }}
+              style={{ width: 86 }}
               addonBefore="C"
               controls={false}
-              variant="borderless"
             />
             <div style={{ marginTop: 2 }}>
               <InputNumber
@@ -515,10 +514,9 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
                 min={0}
                 value={cell.bu}
                 onChange={(v) => setCell(month, record.factoryId, cell.core, v || 0)}
-                style={{ width: 82 }}
+                style={{ width: 86 }}
                 addonBefore="B"
                 controls={false}
-                variant="borderless"
               />
             </div>
           </div>
