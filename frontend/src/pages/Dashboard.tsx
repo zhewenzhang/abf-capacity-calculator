@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Statistic, Space } from 'antd';
-import api from '../api';
+import { getProducts, getCapacity } from '../api';
 
 function Dashboard() {
   const [data, setData] = useState({
@@ -15,8 +15,8 @@ function Dashboard() {
     async function fetchData() {
       try {
         const [productsRes, capacityRes] = await Promise.all([
-          api.get('/products'),
-          api.get('/capacity'),
+          getProducts(),
+          getCapacity(),
         ]);
         setData({
           totalProducts: productsRes.data.length,
