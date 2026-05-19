@@ -1,4 +1,4 @@
-/** ABF 产能计算器 - API Client with mock data fallback */
+/** ABF 产能计算器 - API Client with mock data (static deployment) */
 
 import axios from 'axios';
 
@@ -41,19 +41,9 @@ const mockData = {
   ],
 };
 
-// Helper: try API first, fall back to mock data
-async function fetchWithMock<T>(endpoint: string, mock: T): Promise<T> {
-  try {
-    const res = await api.get(endpoint);
-    return res.data;
-  } catch {
-    return mock;
-  }
-}
-
-// 产品管理
+// 产品管理 - 直接返回 mock 数据，不请求服务器
 export const getProducts = () => {
-  return fetchWithMock('/products', mockData.products).then(data => ({ data }));
+  return Promise.resolve({ data: mockData.products });
 };
 export const createProduct = (data: any) => {
   mockData.products.push({ ...data, skuCode: data.skuCode || `ABF-${String(mockData.products.length + 1).padStart(3, '0')}` });
@@ -79,14 +69,14 @@ export const calculate = (data: any) => {
   return Promise.resolve({ data: results });
 };
 
-// 产能规划
+// 产能规划 - 直接返回 mock 数据
 export const getCapacity = () => {
-  return fetchWithMock('/capacity', mockData.capacity).then(data => ({ data }));
+  return Promise.resolve({ data: mockData.capacity });
 };
 
-// 参数配置
+// 参数配置 - 直接返回 mock 数据
 export const getParameters = () => {
-  return fetchWithMock('/parameters', mockData.parameters).then(data => ({ data }));
+  return Promise.resolve({ data: mockData.parameters });
 };
 
 export default api;
