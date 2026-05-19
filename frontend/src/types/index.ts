@@ -18,6 +18,8 @@ export interface SKU {
   chipWidthMm: number;
   layerCount: number;
   unitPrice: number;
+  upp?: number;           // units per panel, auto-calculated
+  yieldEstimate?: number; // estimated yield rate from matrix
   createdAt?: Date;
   updatedAt?: Date;
 }

@@ -3,7 +3,22 @@ import { saveForecast } from './forecastService';
 import { saveCapacityPlan } from './capacityService';
 import { saveParameters } from './parameterService';
 import { generateDefaultCapacityPlans, DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_FACTORIES, DEFAULT_WORKING_DAYS } from '../core/defaults';
-import type { ProjectParameters } from '../types';
+import type { ProjectParameters, SizeCategory } from '../types';
+
+// UPP calculation
+function calculateUPP(chipLengthMm: number, chipWidthMm: number): number {
+  const PL = 244.1, PW = 246.2, ML = 10, MW = 5.3, T = 0.3;
+  const nL1 = Math.floor((PL - ML + T) / (chipLengthMm + T));
+  const nW1 = Math.floor((PW - MW + T) / (chipWidthMm + T));
+  const nL2 = Math.floor((PL - ML + T) / (chipWidthMm + T));
+  const nW2 = Math.floor((PW - MW + T) / (chipLengthMm + T));
+  return Math.max(nL1 * nW1 * 4, nL2 * nW2 * 4, 0);
+}
+
+function getYieldEstimate(sizeCategory: SizeCategory, layerCount: number): number {
+  const bucket = layerCount <= 8 ? '4-8L' : layerCount <= 14 ? '10-14L' : layerCount <= 20 ? '16-20L' : '20L+';
+  return DEFAULT_YIELD_MATRIX[sizeCategory][bucket] || 0;
+}
 
 // Demo SKUs
 const DEMO_SKUS = [
@@ -119,7 +134,12 @@ export async function loadDemoData(userId: string, projectId: string): Promise<s
   // 2. Save SKUs
   const skuIds: string[] = [];
   for (const sku of DEMO_SKUS) {
-    const id = await saveSKU(userId, projectId, sku as any);
+    const skuWithCalc = {
+      ...sku,
+      upp: calculateUPP(sku.chipLengthMm, sku.chipWidthMm),
+      yieldEstimate: getYieldEstimate(sku.sizeCategory as SizeCategory, sku.layerCount),
+    };
+    const id = await saveSKU(userId, projectId, skuWithCalc as any);
     skuIds.push(id);
   }
 

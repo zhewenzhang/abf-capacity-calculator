@@ -7,6 +7,7 @@ import {
   deleteDoc,
   query,
   orderBy,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import type { SKU } from '../types';
@@ -48,4 +49,27 @@ export async function saveSKU(userId: string, projectId: string, sku: Omit<SKU, 
 export async function deleteSKU(userId: string, projectId: string, skuId: string): Promise<void> {
   const ref = doc(db!, skuPath(userId, projectId), skuId);
   await deleteDoc(ref);
+}
+
+export async function batchSaveSKUs(
+  userId: string,
+  projectId: string,
+  skus: Array<Omit<SKU, 'id'> & { id?: string }>
+): Promise<string[]> {
+  const batch = writeBatch(db!);
+  const now = new Date();
+  const ids: string[] = [];
+  for (const sku of skus) {
+    const id = sku.id || crypto.randomUUID();
+    ids.push(id);
+    const ref = doc(db!, skuPath(userId, projectId), id);
+    batch.set(ref, {
+      ...sku,
+      id,
+      createdAt: sku.createdAt || now,
+      updatedAt: now,
+    });
+  }
+  await batch.commit();
+  return ids;
 }
