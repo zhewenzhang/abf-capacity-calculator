@@ -1,4 +1,4 @@
-import type { YieldMatrix, PanelParams } from '../types';
+import type { YieldMatrix, PanelParams, FactoryDef } from '../types';
 
 // Default yield matrix per task spec
 export const DEFAULT_YIELD_MATRIX: YieldMatrix = {
@@ -17,19 +17,22 @@ export const DEFAULT_PANEL_PARAMS: PanelParams = {
   toleranceMm: 0,
 };
 
+// Default working days per month
+export const DEFAULT_WORKING_DAYS = 28;
+
+// Factory definitions
+export const DEFAULT_FACTORIES: FactoryDef[] = [
+  { id: 'fab-a', name: 'Fab A' },
+  { id: 'fab-b', name: 'Fab B' },
+  { id: 'fab-c', name: 'Fab C' },
+];
+
 // Default capacity: generate monthly rows for 2026-2028
 // 2026: Core 6000/day, BU 0/day
 // 2027: Core +650 per quarter, BU +3000 per quarter
 // 2028: Core +1800/year from 2027 exit level, BU +10000/year from 2027 exit level
-export function generateDefaultCapacityPlans(): Array<{ month: string; workingDays: number; corePanelPerDay: number; buPanelPerDay: number }> {
-  const plans: Array<{ month: string; workingDays: number; corePanelPerDay: number; buPanelPerDay: number }> = [];
-
-  // Working days per month (average ~22)
-  const workingDaysPerMonth: Record<number, number[]> = {
-    2026: [22, 19, 22, 22, 21, 22, 23, 21, 22, 22, 21, 22],
-    2027: [21, 20, 23, 22, 21, 22, 22, 22, 22, 21, 21, 22],
-    2028: [21, 20, 23, 20, 22, 22, 21, 23, 21, 21, 22, 21],
-  };
+export function generateDefaultCapacityPlans(): Array<{ month: string; corePanelPerDay: number; buPanelPerDay: number }> {
+  const plans: Array<{ month: string; corePanelPerDay: number; buPanelPerDay: number }> = [];
 
   // 2026: flat 6000 Core, 0 BU
   let coreRate = 6000;
@@ -37,7 +40,6 @@ export function generateDefaultCapacityPlans(): Array<{ month: string; workingDa
   for (let m = 0; m < 12; m++) {
     plans.push({
       month: `2026-${String(m + 1).padStart(2, '0')}`,
-      workingDays: workingDaysPerMonth[2026][m],
       corePanelPerDay: coreRate,
       buPanelPerDay: buRate,
     });
@@ -51,7 +53,6 @@ export function generateDefaultCapacityPlans(): Array<{ month: string; workingDa
       const monthIdx = q * 3 + m;
       plans.push({
         month: `2027-${String(monthIdx + 1).padStart(2, '0')}`,
-        workingDays: workingDaysPerMonth[2027][monthIdx],
         corePanelPerDay: rate,
         buPanelPerDay: bu,
       });
@@ -67,7 +68,6 @@ export function generateDefaultCapacityPlans(): Array<{ month: string; workingDa
   for (let m = 0; m < 12; m++) {
     plans.push({
       month: `2028-${String(m + 1).padStart(2, '0')}`,
-      workingDays: workingDaysPerMonth[2028][m],
       corePanelPerDay: core2028,
       buPanelPerDay: bu2028,
     });

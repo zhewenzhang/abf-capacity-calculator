@@ -13,7 +13,7 @@ import {
 import { SaveOutlined, UndoOutlined } from '@ant-design/icons';
 import { getParameters, saveParameters } from '../services/parameterService';
 import type { ProjectParameters, SizeCategory, LayerBucket } from '../types';
-import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS } from '../core/defaults';
+import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_WORKING_DAYS } from '../core/defaults';
 
 interface ParametersPageProps {
   userId: string;
@@ -37,6 +37,7 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
       const data = await getParameters(userId, projectId);
       setParams(data);
       form.setFieldsValue({
+        defaultWorkingDays: data.defaultWorkingDays || DEFAULT_WORKING_DAYS,
         panelLengthMm: data.panelParams.panelLengthMm,
         panelWidthMm: data.panelParams.panelWidthMm,
         marginLengthMm: data.panelParams.marginLengthMm,
@@ -60,6 +61,7 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
       const panelValues = form.getFieldsValue();
       if (!params) return;
       const updated: ProjectParameters = {
+        defaultWorkingDays: panelValues.defaultWorkingDays || DEFAULT_WORKING_DAYS,
         yieldMatrix: params.yieldMatrix,
         panelParams: {
           panelLengthMm: panelValues.panelLengthMm,
@@ -81,6 +83,7 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
 
   const handleRestoreDefaults = async () => {
     const defaults: ProjectParameters = {
+      defaultWorkingDays: DEFAULT_WORKING_DAYS,
       yieldMatrix: DEFAULT_YIELD_MATRIX,
       panelParams: DEFAULT_PANEL_PARAMS,
     };
@@ -152,8 +155,11 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
         />
       </Card>
 
-      <Card title="Panel Parameters">
+      <Card title="General & Panel Parameters">
         <Form form={form} layout="inline">
+          <Form.Item name="defaultWorkingDays" label="Working Days/month">
+            <InputNumber min={1} max={31} />
+          </Form.Item>
           <Form.Item name="panelLengthMm" label="Panel Length (mm)">
             <InputNumber min={0} step={0.1} precision={1} />
           </Form.Item>

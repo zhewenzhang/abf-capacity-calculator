@@ -2,7 +2,7 @@ import { saveSKU } from './skuService';
 import { saveForecast } from './forecastService';
 import { saveCapacityPlan } from './capacityService';
 import { saveParameters } from './parameterService';
-import { generateDefaultCapacityPlans, DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS } from '../core/defaults';
+import { generateDefaultCapacityPlans, DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_FACTORIES, DEFAULT_WORKING_DAYS } from '../core/defaults';
 import type { ProjectParameters } from '../types';
 
 // Demo SKUs
@@ -110,6 +110,7 @@ function generateDemoForecasts(skuIds: string[]): Array<{ skuId: string; month: 
 export async function loadDemoData(userId: string, projectId: string): Promise<string> {
   // 1. Save default parameters
   const params: ProjectParameters = {
+    defaultWorkingDays: DEFAULT_WORKING_DAYS,
     yieldMatrix: DEFAULT_YIELD_MATRIX,
     panelParams: DEFAULT_PANEL_PARAMS,
   };
@@ -133,11 +134,24 @@ export async function loadDemoData(userId: string, projectId: string): Promise<s
     });
   }
 
-  // 4. Generate default capacity plans (2026-2028)
+  // 4. Generate default capacity plans (2026-2028), spread across factories
   const capacityPlans = generateDefaultCapacityPlans();
+  let planCount = 0;
   for (const cp of capacityPlans) {
-    await saveCapacityPlan(userId, projectId, cp);
+    const perFactoryCore = Math.floor(cp.corePanelPerDay / DEFAULT_FACTORIES.length);
+    const remainderCore = cp.corePanelPerDay - perFactoryCore * DEFAULT_FACTORIES.length;
+    const perFactoryBu = Math.floor(cp.buPanelPerDay / DEFAULT_FACTORIES.length);
+    const remainderBu = cp.buPanelPerDay - perFactoryBu * DEFAULT_FACTORIES.length;
+    for (let i = 0; i < DEFAULT_FACTORIES.length; i++) {
+      await saveCapacityPlan(userId, projectId, {
+        month: cp.month,
+        factoryId: DEFAULT_FACTORIES[i].id,
+        corePanelPerDay: perFactoryCore + (i < remainderCore ? 1 : 0),
+        buPanelPerDay: perFactoryBu + (i < remainderBu ? 1 : 0),
+      });
+      planCount++;
+    }
   }
 
-  return `Loaded ${DEMO_SKUS.length} SKUs, ${forecasts.length} forecasts, ${capacityPlans.length} capacity plans`;
+  return `Loaded ${DEMO_SKUS.length} SKUs, ${forecasts.length} forecasts, ${planCount} capacity rows (${DEFAULT_FACTORIES.length} factories × ${capacityPlans.length} months)`;
 }

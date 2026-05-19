@@ -33,11 +33,17 @@ export interface Forecast {
   updatedAt?: Date;
 }
 
-// Monthly capacity plan
+// Factory definition
+export interface FactoryDef {
+  id: string;
+  name: string;
+}
+
+// Monthly capacity plan (per factory per month)
 export interface CapacityPlan {
   id: string;
   month: string; // YYYY-MM
-  workingDays: number;
+  factoryId: string;
   corePanelPerDay: number;
   buPanelPerDay: number;
   createdAt?: Date;
@@ -65,6 +71,7 @@ export interface PanelParams {
 export interface ProjectParameters {
   yieldMatrix: YieldMatrix;
   panelParams: PanelParams;
+  defaultWorkingDays?: number;
   updatedAt?: Date;
 }
 

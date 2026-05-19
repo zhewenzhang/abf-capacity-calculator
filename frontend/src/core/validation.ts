@@ -55,8 +55,8 @@ export function validateCapacityPlan(cp: Partial<CapacityPlan>): ValidationError
   if (!cp.month || !/^\d{4}-\d{2}$/.test(cp.month)) {
     errors.push({ field: 'month', message: 'Month must be in YYYY-MM format' });
   }
-  if (cp.workingDays === undefined || cp.workingDays === null || cp.workingDays < 0) {
-    errors.push({ field: 'workingDays', message: 'Working days must be >= 0' });
+  if (!cp.factoryId) {
+    errors.push({ field: 'factoryId', message: 'Factory is required' });
   }
   if (cp.corePanelPerDay === undefined || cp.corePanelPerDay === null || cp.corePanelPerDay < 0) {
     errors.push({ field: 'corePanelPerDay', message: 'Core panel/day must be >= 0' });

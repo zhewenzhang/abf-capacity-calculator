@@ -6,7 +6,7 @@ import {
 } from './calculationEngine';
 import { getYieldRate, layerCountToBucket } from './yieldMatrix';
 import { calculatePanelLayout } from './panelLayout';
-import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS } from './defaults';
+import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_WORKING_DAYS } from './defaults';
 import type { SKU, Forecast, CapacityPlan, ProjectParameters } from '../types';
 
 // Helper to create test data
@@ -43,7 +43,7 @@ function makeCapacityPlan(overrides: Partial<CapacityPlan> = {}): CapacityPlan {
   return {
     id: 'cp-1',
     month: '2026-01',
-    workingDays: 22,
+    factoryId: 'fab-a',
     corePanelPerDay: 6000,
     buPanelPerDay: 0,
     ...overrides,
@@ -51,6 +51,7 @@ function makeCapacityPlan(overrides: Partial<CapacityPlan> = {}): CapacityPlan {
 }
 
 const defaultParams: ProjectParameters = {
+  defaultWorkingDays: DEFAULT_WORKING_DAYS,
   yieldMatrix: DEFAULT_YIELD_MATRIX,
   panelParams: DEFAULT_PANEL_PARAMS,
 };
@@ -189,7 +190,7 @@ describe('BU shortage when capacity is 0', () => {
   it('produces shortage and bottleneck when BU capacity is 0 but demand > 0', () => {
     const sku = makeSku({ layerCount: 8 }); // buSteps = 3
     const fc = makeForecast({ forecastPcs: 10000 });
-    const cp = makeCapacityPlan({ corePanelPerDay: 100000, buPanelPerDay: 0, workingDays: 22 });
+    const cp = makeCapacityPlan({ corePanelPerDay: 100000, buPanelPerDay: 0 });
     
     const result = runCalculation([sku], [fc], [cp], defaultParams);
     
@@ -245,7 +246,7 @@ describe('runCalculation', () => {
   it('identifies shortage months correctly', () => {
     const sku = makeSku({ layerCount: 8 });
     const fc = makeForecast({ forecastPcs: 1000000 }); // huge demand
-    const cp = makeCapacityPlan({ corePanelPerDay: 100, buPanelPerDay: 100, workingDays: 22 });
+    const cp = makeCapacityPlan({ corePanelPerDay: 100, buPanelPerDay: 100 });
     
     const result = runCalculation([sku], [fc], [cp], defaultParams);
     

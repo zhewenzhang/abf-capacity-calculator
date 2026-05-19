@@ -4,6 +4,7 @@ import {
   setDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { DEFAULT_WORKING_DAYS } from '../core/defaults';
 import type { ProjectParameters, YieldMatrix, PanelParams } from '../types';
 
 if (!db) {
@@ -40,6 +41,7 @@ export async function getParameters(userId: string, projectId: string): Promise<
   return {
     yieldMatrix: DEFAULT_YIELD,
     panelParams: DEFAULT_PANEL,
+    defaultWorkingDays: DEFAULT_WORKING_DAYS,
   };
 }
 

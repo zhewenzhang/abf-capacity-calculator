@@ -1,1 +1,7 @@
 gh-pages-worktree/
+.firebase/
+_archived_backend/
+task/
+frontend/.env.local
+frontend/node_modules/
+frontend/dist/

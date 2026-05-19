@@ -60,10 +60,16 @@ export function runCalculation(
   capacityPlans: CapacityPlan[],
   params: ProjectParameters
 ): CalculationResult {
-  const capacityMap = new Map<string, CapacityPlan>();
+  // Aggregate capacity by month (sum across factories)
+  const capacityMap = new Map<string, { corePanelPerDay: number; buPanelPerDay: number }>();
   for (const cp of capacityPlans) {
-    capacityMap.set(cp.month, cp);
+    const existing = capacityMap.get(cp.month) || { corePanelPerDay: 0, buPanelPerDay: 0 };
+    existing.corePanelPerDay += cp.corePanelPerDay;
+    existing.buPanelPerDay += cp.buPanelPerDay;
+    capacityMap.set(cp.month, existing);
   }
+
+  const workingDays = params.defaultWorkingDays || 28;
 
   const skuResults: SkuCalculationResult[] = [];
   for (const sku of skus) {
@@ -92,8 +98,8 @@ export function runCalculation(
     const totalBuPanelDemand = monthResults.reduce((sum, r) => sum + r.buPanelDemand, 0);
 
     const cp = capacityMap.get(month);
-    const coreCapacity = cp ? cp.corePanelPerDay * cp.workingDays : 0;
-    const buCapacity = cp ? cp.buPanelPerDay * cp.workingDays : 0;
+    const coreCapacity = cp ? cp.corePanelPerDay * workingDays : 0;
+    const buCapacity = cp ? cp.buPanelPerDay * workingDays : 0;
 
     let coreUtilization: number | null = null;
     if (coreCapacity > 0) {
