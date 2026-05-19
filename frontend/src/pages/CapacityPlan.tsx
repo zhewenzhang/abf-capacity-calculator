@@ -389,6 +389,26 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
     });
   };
 
+  // Fill forward: from a given month, copy its value to all subsequent months
+  const handleFillForward = (month: string) => {
+    const monthIndex = months.indexOf(month);
+    if (monthIndex < 0) return;
+    const fillFrom = months.slice(monthIndex);
+    setGridData((prev) => {
+      const next = new Map(prev);
+      for (const m of fillFrom) {
+        for (const factory of factories) {
+          // Use the source month's values
+          const sourceKey = `${month}-${factory.id}`;
+          const source = prev.get(sourceKey) || { core: 0, bu: 0 };
+          next.set(`${m}-${factory.id}`, { core: source.core, bu: source.bu });
+        }
+      }
+      return next;
+    });
+    message.success(`Filled ${fillFrom.length} months from ${month}`);
+  };
+
   // --- Build grid columns ---
   const gridColumns: ColumnsType<{ key: string; label: string; isTotal: boolean; factoryId: string }> = [
     {
@@ -401,7 +421,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
         if (record.isTotal) {
           return (
             <Text strong style={{ color: '#1890ff', fontSize: 13 }}>
-              📊 Total (all factories)
+              📊 Total
             </Text>
           );
         }
@@ -440,23 +460,25 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
     const label = formatMonthLabel(month);
     gridColumns.push({
       title: (
-        <div style={{ textAlign: 'center', fontSize: 11 }}>
+        <div style={{ textAlign: 'center' }}>
           <div style={{ fontWeight: 600, fontSize: 12 }}>{label}</div>
-          <div style={{ color: '#1890ff', fontSize: 10 }}>C: {total.core.toLocaleString()}</div>
-          <div style={{ color: '#52c41a', fontSize: 10 }}>B: {total.bu.toLocaleString()}</div>
-          <div style={{ color: '#999', fontSize: 9 }}>
-            Cap: {(total.core * workingDays).toLocaleString()}/{(total.bu * workingDays).toLocaleString()}
-          </div>
-          {viewMode === 'month' && (
-            <Button
-              size="small"
-              type="text"
-              danger
-              icon={<MinusOutlined />}
-              onClick={() => handleRemoveMonth(month)}
-              style={{ marginTop: 2 }}
-            />
-          )}
+          <Space size={0} style={{ marginTop: 2 }}>
+            {viewMode === 'month' && (
+              <Popconfirm
+                title={`Fill ${label} values to all months after?`}
+                onConfirm={() => handleFillForward(month)}
+              >
+                <Button size="small" type="text" style={{ fontSize: 10, padding: '0 2px' }}>
+                  →→
+                </Button>
+              </Popconfirm>
+            )}
+            {viewMode === 'month' && (
+              <Popconfirm title={`Remove ${month}?`} onConfirm={() => handleRemoveMonth(month)}>
+                <Button size="small" type="text" danger icon={<MinusOutlined />} style={{ fontSize: 10, padding: '0 2px' }} />
+              </Popconfirm>
+            )}
+          </Space>
         </div>
       ),
       dataIndex: month,
@@ -469,6 +491,9 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
             <div style={{ textAlign: 'center', background: '#f0f5ff', padding: '4px 0' }}>
               <div style={{ fontWeight: 700, color: '#1890ff' }}>C: {total.core.toLocaleString()}</div>
               <div style={{ fontWeight: 700, color: '#52c41a' }}>B: {total.bu.toLocaleString()}</div>
+              <div style={{ fontSize: 9, color: '#999' }}>
+                Cap: {(total.core * workingDays).toLocaleString()} / {(total.bu * workingDays).toLocaleString()}
+              </div>
             </div>
           );
         }
