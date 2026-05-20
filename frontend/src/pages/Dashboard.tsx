@@ -1,20 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Row, Col, Statistic, Table, Typography, Spin, Alert, Tag, Button, Popconfirm, Space } from 'antd';
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
   WarningOutlined,
   ThunderboltOutlined,
+  LineChartOutlined,
 } from '@ant-design/icons';
+import { Line } from '@ant-design/charts';
 import { getSKUs } from '../services/skuService';
 import { getForecasts } from '../services/forecastService';
 import { getCapacityPlans } from '../services/capacityService';
 import { getParameters } from '../services/parameterService';
-import { runCalculation } from '../core/calculationEngine';
+import { buildAnalyticsModel, getDashboardHighlights, type AnalyticsModel, type DashboardHighlights, type YearlyHealth } from '../core/analytics';
 import { loadDemoData } from '../services/demoDataService';
-import type { MonthlyCapacitySummary } from '../types';
+import { Link } from 'react-router-dom';
+import TimeMatrixTable from '../components/analytics/TimeMatrixTable';
 import type { ColumnsType } from 'antd/es/table';
-import { message } from 'antd';
 
 const { Text } = Typography;
 
@@ -28,69 +30,43 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
   const [loadingDemo, setLoadingDemo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalSkus, setTotalSkus] = useState(0);
-  const [totalForecastPcs, setTotalForecastPcs] = useState(0);
-  const [totalRevenue, setTotalRevenue] = useState(0);
-  const [maxCoreUtil, setMaxCoreUtil] = useState<number | null>(null);
-  const [maxBuUtil, setMaxBuUtil] = useState<number | null>(null);
-  const [shortageCount, setShortageCount] = useState(0);
-  const [worstMonth, setWorstMonth] = useState<string | null>(null);
-  const [summaries, setSummaries] = useState<MonthlyCapacitySummary[]>([]);
+  const [model, setModel] = useState<AnalyticsModel | null>(null);
+  const [highlights, setHighlights] = useState<DashboardHighlights | null>(null);
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [skus, forecasts, capacityPlans, params] = await Promise.all([
-          getSKUs(userId, projectId),
-          getForecasts(userId, projectId),
-          getCapacityPlans(userId, projectId),
-          getParameters(userId, projectId),
-        ]);
-
-        setTotalSkus(skus.length);
-
-        if (skus.length > 0 && forecasts.length > 0) {
-          const result = runCalculation(skus, forecasts, capacityPlans, params);
-          setTotalForecastPcs(result.totalForecastPcs);
-          setTotalRevenue(result.totalRevenue);
-          setMaxCoreUtil(result.maxCoreUtilization);
-          setMaxBuUtil(result.maxBuUtilization);
-          setShortageCount(result.shortageMonthCount);
-          setWorstMonth(result.worstBottleneckMonth);
-          setSummaries(result.monthlySummaries);
-        }
-      } catch (e: any) {
-        setError(e.message || 'Failed to load dashboard data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, [userId, projectId]);
-
-  const handleLoadDemo = async () => {
-    setLoadingDemo(true);
+  const loadData = async () => {
+    setLoading(true);
     setError(null);
     try {
-      const result = await loadDemoData(userId, projectId);
-      message.success(result);
-      // Reload dashboard data
       const [skus, forecasts, capacityPlans, params] = await Promise.all([
         getSKUs(userId, projectId),
         getForecasts(userId, projectId),
         getCapacityPlans(userId, projectId),
         getParameters(userId, projectId),
       ]);
+
       setTotalSkus(skus.length);
-      const calcResult = runCalculation(skus, forecasts, capacityPlans, params);
-      setTotalForecastPcs(calcResult.totalForecastPcs);
-      setTotalRevenue(calcResult.totalRevenue);
-      setMaxCoreUtil(calcResult.maxCoreUtilization);
-      setMaxBuUtil(calcResult.maxBuUtilization);
-      setShortageCount(calcResult.shortageMonthCount);
-      setWorstMonth(calcResult.worstBottleneckMonth);
-      setSummaries(calcResult.monthlySummaries);
+
+      if (skus.length > 0 && forecasts.length > 0) {
+        const m = buildAnalyticsModel(skus, forecasts, capacityPlans, params);
+        setModel(m);
+        setHighlights(getDashboardHighlights(m));
+      }
+    } catch (e: any) {
+      setError(e.message || 'Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadData(); }, [userId, projectId]);
+
+  const handleLoadDemo = async () => {
+    setLoadingDemo(true);
+    setError(null);
+    try {
+      const result = await loadDemoData(userId, projectId);
+      (window as any).message?.success?.(result);
+      await loadData();
     } catch (e: any) {
       setError(e.message || 'Failed to load demo data');
     } finally {
@@ -98,53 +74,69 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
     }
   };
 
-  const formatUtilization = (val: number | null) => {
-    if (val === null) return 'Over Capacity';
-    return `${(val * 100).toFixed(1)}%`;
-  };
+  // --- Revenue chart data ---
+  const revenueChartData = useMemo(() => {
+    if (!model) return [];
+    return model.monthlyRevenue.map(r => ({
+      month: r.month,
+      revenue: r.revenue,
+    }));
+  }, [model]);
 
-  const summaryColumns: ColumnsType<MonthlyCapacitySummary> = [
-    { title: 'Month', dataIndex: 'month', key: 'month', sorter: (a, b) => a.month.localeCompare(b.month) },
+  // --- Yearly health table ---
+  const yearlyHealthColumns: ColumnsType<YearlyHealth> = [
     {
-      title: 'Core Demand',
-      dataIndex: 'totalCorePanelDemand',
-      key: 'totalCorePanelDemand',
-      render: (v: number) => v.toLocaleString(),
+      title: 'Year',
+      dataIndex: 'year',
+      key: 'year',
+      width: 70,
+      fixed: 'left',
+      render: (v: string, r: YearlyHealth) => (
+        <Tag color={r.severity === 'red' ? 'red' : r.severity === 'orange' ? 'orange' : 'green'}>{v}</Tag>
+      ),
     },
-    {
-      title: 'Core Capacity',
-      dataIndex: 'coreCapacity',
-      key: 'coreCapacity',
-      render: (v: number) => v.toLocaleString(),
-    },
+    { title: 'Revenue', dataIndex: 'revenue', key: 'revenue', width: 120, render: (v: number) => `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}` },
+    { title: 'Forecast PCS', dataIndex: 'forecastPcs', key: 'forecastPcs', width: 110, render: (v: number) => v.toLocaleString() },
+    { title: 'Core Demand', dataIndex: 'coreDemand', key: 'coreDemand', width: 100, render: (v: number) => v.toLocaleString() },
+    { title: 'Core Capacity', dataIndex: 'coreCapacity', key: 'coreCapacity', width: 110, render: (v: number) => v.toLocaleString() },
     {
       title: 'Core Util.',
-      dataIndex: 'coreUtilization',
-      key: 'coreUtilization',
-      render: (v: number | null) => formatUtilization(v),
+      dataIndex: 'coreUtil',
+      key: 'coreUtil',
+      width: 90,
+      render: (v: number | null, r: YearlyHealth) => {
+        if (v === null && r.coreDemand > 0) return <Tag color="red">Over</Tag>;
+        if (v === null) return '-';
+        const pct = v * 100;
+        return <Tag color={pct > 100 ? 'red' : pct > 85 ? 'orange' : 'green'}>{pct.toFixed(1)}%</Tag>;
+      },
     },
-    {
-      title: 'BU Demand',
-      dataIndex: 'totalBuPanelDemand',
-      key: 'totalBuPanelDemand',
-      render: (v: number) => v.toLocaleString(),
-    },
-    {
-      title: 'BU Capacity',
-      dataIndex: 'buCapacity',
-      key: 'buCapacity',
-      render: (v: number) => v.toLocaleString(),
-    },
+    { title: 'BU Demand', dataIndex: 'buDemand', key: 'buDemand', width: 100, render: (v: number) => v.toLocaleString() },
+    { title: 'BU Capacity', dataIndex: 'buCapacity', key: 'buCapacity', width: 110, render: (v: number) => v.toLocaleString() },
     {
       title: 'BU Util.',
-      dataIndex: 'buUtilization',
-      key: 'buUtilization',
-      render: (v: number | null) => formatUtilization(v),
+      dataIndex: 'buUtil',
+      key: 'buUtil',
+      width: 90,
+      render: (v: number | null, r: YearlyHealth) => {
+        if (v === null && r.buDemand > 0) return <Tag color="red">Over</Tag>;
+        if (v === null) return '-';
+        const pct = v * 100;
+        return <Tag color={pct > 100 ? 'red' : pct > 85 ? 'orange' : 'green'}>{pct.toFixed(1)}%</Tag>;
+      },
+    },
+    {
+      title: 'Shortage Months',
+      dataIndex: 'shortageMonths',
+      key: 'shortageMonths',
+      width: 120,
+      render: (v: string[]) => v.length > 0 ? <Text type="danger">{v.length} months</Text> : <Text type="success">0</Text>,
     },
     {
       title: 'Bottleneck',
       dataIndex: 'bottleneck',
       key: 'bottleneck',
+      width: 90,
       render: (v: string) => {
         if (v === 'None') return <Tag color="green">None</Tag>;
         if (v === 'Core') return <Tag color="orange">Core</Tag>;
@@ -179,6 +171,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
           </Space>
         </Card>
       )}
+
+      {/* Executive KPI Cards */}
       <Row gutter={[16, 16]}>
         <Col span={4}>
           <Card className="stat-card">
@@ -187,72 +181,170 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
         </Col>
         <Col span={4}>
           <Card className="stat-card">
-            <Statistic title="Total Forecast PCS" value={totalForecastPcs} precision={0} />
+            <Statistic title="Total Revenue" value={model?.totalRevenue ?? 0} precision={0} prefix="$" />
           </Card>
         </Col>
         <Col span={4}>
           <Card className="stat-card">
             <Statistic
-              title="Total Revenue"
-              value={totalRevenue}
-              precision={2}
-              prefix="$"
+              title="Revenue Trend"
+              value={highlights?.revenueTrend === 'up' ? '↑' : highlights?.revenueTrend === 'down' ? '↓' : '→'}
+              valueStyle={{
+                color: highlights?.revenueTrend === 'up' ? '#3f8600' : highlights?.revenueTrend === 'down' ? '#cf1322' : '#666',
+              }}
             />
+            {highlights?.peakRevenueYear && (
+              <Text type="secondary">Peak: {highlights.peakRevenueYear}</Text>
+            )}
+          </Card>
+        </Col>
+        <Col span={4}>
+          <Card className="stat-card">
+            <Statistic
+              title="Worst Year"
+              value={highlights?.worstYear ?? '—'}
+              valueStyle={{ color: highlights?.worstYear ? '#cf1322' : '#3f8600' }}
+            />
+            {highlights?.worstYear && <Text type="danger">Capacity constrained</Text>}
           </Card>
         </Col>
         <Col span={4}>
           <Card className="stat-card">
             <Statistic
               title="Max Core Util."
-              value={maxCoreUtil === null ? 100 : maxCoreUtil * 100}
+              value={model?.maxCoreUtil === null ? 100 : (model?.maxCoreUtil ?? 0) * 100}
               precision={1}
               suffix="%"
-              valueStyle={{ color: (maxCoreUtil === null || maxCoreUtil > 1) ? '#cf1322' : '#3f8600' }}
-              prefix={maxCoreUtil === null ? <WarningOutlined /> : maxCoreUtil > 1 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
+              valueStyle={{ color: (model?.maxCoreUtil === null || (model?.maxCoreUtil ?? 0) > 1) ? '#cf1322' : '#3f8600' }}
+              prefix={model?.maxCoreUtil === null ? <WarningOutlined /> : (model?.maxCoreUtil ?? 0) > 1 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
             />
-            {maxCoreUtil === null && <Text type="danger">Over Capacity</Text>}
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card className="stat-card">
-            <Statistic
-              title="Max BU Util."
-              value={maxBuUtil === null ? 100 : maxBuUtil * 100}
-              precision={1}
-              suffix="%"
-              valueStyle={{ color: (maxBuUtil === null || maxBuUtil > 1) ? '#cf1322' : '#3f8600' }}
-              prefix={maxBuUtil === null ? <WarningOutlined /> : maxBuUtil > 1 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
-            />
-            {maxBuUtil === null && <Text type="danger">Over Capacity</Text>}
           </Card>
         </Col>
         <Col span={4}>
           <Card className="stat-card">
             <Statistic
               title="Shortage Months"
-              value={shortageCount}
-              suffix={`/ ${summaries.length}`}
-              valueStyle={{ color: shortageCount > 0 ? '#cf1322' : '#3f8600' }}
+              value={model?.shortageMonthCount ?? 0}
+              suffix={`/ ${model?.monthlySummaries.length ?? 0}`}
+              valueStyle={{ color: (model?.shortageMonthCount ?? 0) > 0 ? '#cf1322' : '#3f8600' }}
             />
-            {worstMonth && (
-              <Text type="danger">Worst: {worstMonth}</Text>
-            )}
+            {model?.worstMonth && <Text type="danger">Worst: {model.worstMonth}</Text>}
           </Card>
         </Col>
       </Row>
 
-      <Card title="Monthly Capacity Summary" style={{ marginTop: 16 }}>
-        <Table
-          columns={summaryColumns}
-          dataSource={summaries}
-          rowKey="month"
-          size="small"
-          pagination={{ pageSize: 12 }}
-          rowClassName={(record) =>
-            record.coreShortage > 0 || record.buShortage > 0 ? 'shortage-row' : ''
-          }
-        />
-      </Card>
+      {/* Yearly Capacity Health */}
+      {model && model.yearlyHealth.length > 0 && (
+        <Card title="Yearly Capacity Health" style={{ marginTop: 16 }}>
+          <Table
+            columns={yearlyHealthColumns}
+            dataSource={model.yearlyHealth}
+            rowKey="year"
+            size="small"
+            pagination={false}
+            scroll={{ x: 'max-content' }}
+            rowClassName={(r) => r.severity === 'red' ? 'shortage-row' : r.severity === 'orange' ? 'warning-row' : ''}
+          />
+        </Card>
+      )}
+
+      {/* Revenue Trend Chart */}
+      {model && model.monthlyRevenue.length > 0 && (
+        <Card title="Revenue Trend" extra={<LineChartOutlined />} style={{ marginTop: 16 }}>
+          {revenueChartData.length > 0 ? (
+            <Line
+              data={revenueChartData}
+              xField="month"
+              yField="revenue"
+              height={250}
+              autoFit
+              xAxis={{ label: { autoRotate: true } }}
+              yAxis={{ label: { formatter: (v: any) => `$${Number(v).toLocaleString()}` } }}
+            />
+          ) : (
+            <Text type="secondary">No revenue data</Text>
+          )}
+        </Card>
+      )}
+
+      {/* Utilization Trend Chart */}
+      {model && model.monthlyUtilization.length > 0 && (
+        <Card title="Core & BU Utilization Trend" extra={<LineChartOutlined />} style={{ marginTop: 16 }}>
+          <Line
+            data={(() => {
+              const data: any[] = [];
+              model.monthlyUtilization.forEach(u => {
+                if (u.coreUtil !== null) data.push({ month: u.month, type: 'Core Util.', value: u.coreUtil * 100 });
+                if (u.buUtil !== null) data.push({ month: u.month, type: 'BU Util.', value: u.buUtil * 100 });
+              });
+              return data;
+            })()}
+            xField="month"
+            yField="value"
+            seriesField="type"
+            height={250}
+            autoFit
+            xAxis={{ label: { autoRotate: true } }}
+            yAxis={{ label: { formatter: (v: any) => `${v}%` } }}
+            color={['#1677ff', '#ff4d4f']}
+          />
+        </Card>
+      )}
+
+      {/* Top Driver Snapshots */}
+      {model && (
+        <Row gutter={16} style={{ marginTop: 16 }}>
+          <Col span={8}>
+            <Card title="Revenue by Customer" extra={<Link to="/results">View Detail →</Link>} size="small">
+              <TimeMatrixTable
+                rows={model.revenueByCustomer.slice(0, 5)}
+                timeColumns={model.yearlyHealth.map(y => y.year)}
+                formatValue={(v) => `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+              />
+            </Card>
+          </Col>
+          <Col span={8}>
+            <Card title="Core Demand by Size" extra={<Link to="/results">View Detail →</Link>} size="small">
+              <TimeMatrixTable
+                rows={model.coreDemandBySize}
+                timeColumns={model.yearlyHealth.map(y => y.year)}
+                formatValue={(v) => v.toLocaleString()}
+              />
+            </Card>
+          </Col>
+          <Col span={8}>
+            <Card title="Revenue by Application" extra={<Link to="/results">View Detail →</Link>} size="small">
+              <TimeMatrixTable
+                rows={model.revenueByApplication}
+                timeColumns={model.yearlyHealth.map(y => y.year)}
+                formatValue={(v) => `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+              />
+            </Card>
+          </Col>
+        </Row>
+      )}
+
+      {/* Key Insights */}
+      {highlights && (
+        <Card title="Key Insights" style={{ marginTop: 16 }} size="small">
+          <Space direction="vertical" size={8} style={{ width: '100%' }}>
+            {highlights.bottleneckDriver !== 'None' && (
+              <Text>
+                🔧 <Tag color={highlights.bottleneckDriver === 'Core' ? 'orange' : 'red'}>{highlights.bottleneckDriver}</Tag> is the primary bottleneck driver.
+              </Text>
+            )}
+            {highlights.topCustomer && (
+              <Text>💰 <strong>{highlights.topCustomer}</strong> is the top revenue customer.</Text>
+            )}
+            {highlights.topSizeCategory && (
+              <Text>📐 <strong>{highlights.topSizeCategory}</strong> size category dominates revenue.</Text>
+            )}
+            {highlights.worstYear && (
+              <Text type="danger">⚠️ <strong>{highlights.worstYear}</strong> is the most constrained year — review capacity plans.</Text>
+            )}
+          </Space>
+        </Card>
+      )}
     </div>
   );
 };

@@ -203,6 +203,7 @@ frontend/src/
 
 ## Version History
 
+- **2026-05-21 v1.7.0**: Dashboard and Results analytics redesign — yearly capacity health table with red/orange/green severity, revenue and Core/BU utilization trend charts, matrix analysis tables (Revenue by Customer/Size/Application, Core/BU Demand by Size/Application/ProductGrade/LayerBucket), Dashboard answers "which year has problems / revenue trend / bottleneck", Results organized into Sales View / Product Planning View / Capacity Analysis View / Raw Detail tabs, reusable analytics.ts helper layer and TimeMatrixTable component.
 - **2026-05-20 v1.2.6**: Products page — inline edit with expanded form (3-row layout with labels), download/import template with Yield Rate + Core Type + Core Thickness + ABF Type fields, fixed chip dimension column name mismatch (NaN fix), price display 1 decimal, yield display as integer percentage, sidebar optimized with sticky layout + scrollable menu + version footer.
 - **2026-05-19**: Initial rebuild — Firebase-backed React + TypeScript + Ant Design frontend replacing broken Python backend. Excel-style capacity grid with factory management, batch operations, Fill Forward, view modes (Month/Quarter/Year), capacity trend charts, version save/restore, demo data loader.
 

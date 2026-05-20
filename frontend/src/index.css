@@ -58,3 +58,13 @@ body {
   display: flex;
   align-items: center;
 }
+
+/* react-datasheet-grid dirty cell highlight */
+.rdg-cell.dirty-cell {
+  background-color: #fff7e6 !important;
+  border-color: #ffa940 !important;
+}
+
+.rdg-cell.dirty-cell:hover {
+  background-color: #ffe7ba !important;
+}

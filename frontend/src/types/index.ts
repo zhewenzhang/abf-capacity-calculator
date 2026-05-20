@@ -1,6 +1,9 @@
 // Size categories
 export type SizeCategory = 'small' | 'medium' | 'large' | 'xlarge';
 
+// Capacity metric type for spreadsheet
+export type CapacityMetric = 'core' | 'bu';
+
 // Layer buckets for yield matrix
 export type LayerBucket = '4-8L' | '10-14L' | '16-20L' | '20L+';
 

@@ -9,6 +9,7 @@ import {
   LogoutOutlined,
   CloudOutlined,
   CalculatorOutlined,
+  ExperimentOutlined,
 } from '@ant-design/icons';
 import type { User } from 'firebase/auth';
 import { isConfigured } from './firebase/config';
@@ -18,6 +19,7 @@ import DashboardPage from './pages/Dashboard';
 import ProductsPage from './pages/Products';
 import ForecastsPage from './pages/Forecasts';
 import CapacityPlanPage from './pages/CapacityPlan';
+import CapacitySpreadsheetPage from './pages/CapacitySpreadsheet';
 import ParametersPage from './pages/Parameters';
 import CalculationResultsPage from './pages/CalculationResults';
 import SetupPage from './pages/SetupPage';
@@ -25,7 +27,7 @@ import SetupPage from './pages/SetupPage';
 const { Sider, Content } = Layout;
 const { Title } = Typography;
 
-const APP_VERSION = 'v1.2.6';
+const APP_VERSION = 'v1.7.0';
 
 const AppContent: React.FC<{ user: User }> = ({ user }) => {
   const navigate = useNavigate();
@@ -36,6 +38,7 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
     { key: 'products', icon: <InboxOutlined />, label: 'Products' },
     { key: 'forecasts', icon: <BarChartOutlined />, label: 'Forecasts' },
     { key: 'capacity', icon: <CloudOutlined />, label: 'Capacity Plan' },
+    { key: 'capacity-lab', icon: <ExperimentOutlined />, label: 'Capacity Lab' },
     { key: 'parameters', icon: <SettingOutlined />, label: 'Parameters' },
     { key: 'results', icon: <CalculatorOutlined />, label: 'Results' },
   ];
@@ -105,6 +108,7 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
             <Route path="/products" element={<ProductsPage userId={user.uid} projectId="default" />} />
             <Route path="/forecasts" element={<ForecastsPage userId={user.uid} projectId="default" />} />
             <Route path="/capacity" element={<CapacityPlanPage userId={user.uid} projectId="default" />} />
+            <Route path="/capacity-lab" element={<CapacitySpreadsheetPage userId={user.uid} projectId="default" />} />
             <Route path="/parameters" element={<ParametersPage userId={user.uid} projectId="default" />} />
             <Route path="/results" element={<CalculationResultsPage userId={user.uid} projectId="default" />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
