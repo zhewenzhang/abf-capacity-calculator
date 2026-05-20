@@ -6,6 +6,7 @@ import 'react-datasheet-grid/dist/style.css';
 import { getCapacityPlans, batchSaveCapacityPlans } from '../services/capacityService';
 import { getParameters } from '../services/parameterService';
 import type { CapacityMetric } from '../types';
+import { useI18n } from '../i18n';
 
 const { Text } = Typography;
 
@@ -60,6 +61,7 @@ interface CapacitySpreadsheetProps {
 }
 
 const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ userId, projectId }) => {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -135,7 +137,7 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ userId, proje
     return [
       keyColumn<CapacitySheetRow, 'factoryName'>('factoryName', {
         ...textColumn,
-        title: 'Factory',
+        title: t('capacity.factory'),
         basis: 120,
         grow: 0,
         shrink: 0,
@@ -185,7 +187,7 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ userId, proje
   // ---------- Save All ----------
   const handleSaveAll = async () => {
     if (dirtySet.size === 0) {
-      message.info('No changes to save');
+      message.info(t('capacityLab.noChanges'));
       return;
     }
 
@@ -221,10 +223,10 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ userId, proje
 
     try {
       await batchSaveCapacityPlans(userId, projectId, updates, workingDays);
-      message.success(`Saved ${dirtySet.size} changed cells (${updates.length} plan records)`);
+      message.success(`${t('capacityLab.saved')} ${dirtySet.size} ${t('capacityLab.changedCells')} (${updates.length} ${t('capacityLab.planRecords')})`);
       await loadData();
     } catch (e: any) {
-      message.error(e.message || 'Failed to save');
+      message.error(e.message || t('capacityLab.failedToSave'));
     }
   };
 
@@ -233,7 +235,7 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ userId, proje
     setCoreRows(savedCoreRef.current.map((r) => ({ ...r })));
     setBuRows(savedBuRef.current.map((r) => ({ ...r })));
     setDirtySet(new Set());
-    message.info('Changes discarded');
+    message.info(t('capacityLab.changesDiscarded'));
   };
 
   // ---------- Cell class name builder ----------
@@ -262,7 +264,7 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ userId, proje
       key: 'core',
       label: (
         <Space>
-          Core Capacity
+          {t('capacityLab.core')}
           {coreDirtyCount > 0 && <Tag color="orange">{coreDirtyCount}</Tag>}
         </Space>
       ),
@@ -282,7 +284,7 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ userId, proje
       key: 'bu',
       label: (
         <Space>
-          BU Capacity
+          {t('capacityLab.bu')}
           {buDirtyCount > 0 && <Tag color="orange">{buDirtyCount}</Tag>}
         </Space>
       ),
@@ -301,13 +303,13 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ userId, proje
   ];
 
   // ---------- Render ----------
-  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading capacity data...</div>;
+  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>{t('capacityLab.loading')}</div>;
   if (error) return <Alert message={error} type="error" showIcon style={{ margin: 16 }} />;
   if (factories.length === 0) {
     return (
       <Alert
-        message="No factories configured"
-        description="Please set up factories in Parameters first."
+        message={t('capacityLab.noFactories')}
+        description={t('capacityLab.setupFactories')}
         type="warning"
         showIcon
         style={{ margin: 16 }}
@@ -322,7 +324,7 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ userId, proje
         <Row gutter={[12, 8]} align="middle">
           <Col>
             <Tag color="orange">
-              <ExperimentOutlined /> Experiment
+              <ExperimentOutlined /> {t('capacityLab.experiment')}
             </Tag>
           </Col>
           <Col>
@@ -332,26 +334,26 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ userId, proje
               onClick={handleSaveAll}
               disabled={dirtySet.size === 0}
             >
-              Save All ({dirtySet.size})
+              {t('capacityLab.saveAll')} ({dirtySet.size})
             </Button>
           </Col>
           <Col>
             <Button icon={<UndoOutlined />} onClick={handleDiscard} disabled={dirtySet.size === 0}>
-              Discard
+              {t('capacityLab.discard')}
             </Button>
           </Col>
           <Col flex="auto" />
           <Col>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              {factories.length} factories &middot; {DEFAULT_MONTHS.length} months (2026-01 ~ 2030-12) &middot; Working days: {workingDays}/mo
+              {factories.length} {t('capacityLab.factories')} &middot; {DEFAULT_MONTHS.length} {t('capacityLab.months')} (2026-01 ~ 2030-12) &middot; {t('capacityLab.workingDays')}: {workingDays}/mo
             </Text>
           </Col>
         </Row>
       </Card>
 
       <Alert
-        message="Capacity Lab — Spreadsheet Experiment"
-        description="Edit cells directly. Only changed cells are saved (highlighted in orange)."
+        message={t('capacityLab.experimentTag')}
+        description={t('capacityLab.experimentDesc')}
         type="info"
         showIcon
         style={{ marginBottom: 8, fontSize: 12 }}
@@ -359,7 +361,7 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ userId, proje
 
       {dirtySet.size > 0 && (
         <Alert
-          message={`${dirtySet.size} dirty cells: ${coreDirtyCount} Core, ${buDirtyCount} BU`}
+          message={`${dirtySet.size} ${t('capacityLab.dirtyCells')} ${coreDirtyCount} ${t('capacityLab.coreLabel')}, ${buDirtyCount} ${t('common.bu')}`}
           type="warning"
           showIcon
           style={{ marginBottom: 8, fontSize: 12 }}

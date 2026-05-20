@@ -9,11 +9,14 @@ import {
   message,
   Alert,
   Popconfirm,
+  Radio,
 } from 'antd';
 import { SaveOutlined, UndoOutlined } from '@ant-design/icons';
 import { getParameters, saveParameters } from '../services/parameterService';
 import type { ProjectParameters, SizeCategory, LayerBucket } from '../types';
 import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_WORKING_DAYS } from '../core/defaults';
+import { useI18n } from '../i18n';
+import { DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
 
 interface ParametersPageProps {
   userId: string;
@@ -24,11 +27,13 @@ const SIZES: SizeCategory[] = ['small', 'medium', 'large', 'xlarge'];
 const BUCKETS: LayerBucket[] = ['4-8L', '10-14L', '16-20L', '20L+'];
 
 const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) => {
+  const { t } = useI18n();
   const [params, setParams] = useState<ProjectParameters | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form] = Form.useForm();
+  const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(DEFAULT_CURRENCY_SETTINGS);
 
   const loadParams = async () => {
     setLoading(true);
@@ -44,6 +49,16 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
         marginWidthMm: data.panelParams.marginWidthMm,
         toleranceMm: data.panelParams.toleranceMm,
       });
+      const cs = data.currencySettings;
+      if (cs) {
+        setCurrencySettings({
+          baseCurrency: 'USD',
+          displayCurrency: cs.displayCurrency,
+          exchangeRateMode: cs.exchangeRateMode,
+          constantUsdToTwdRate: cs.constantUsdToTwdRate,
+          yearlyUsdToTwdRates: cs.yearlyUsdToTwdRates,
+        });
+      }
     } catch (e: any) {
       setError(e.message || 'Failed to load parameters');
     } finally {
@@ -70,6 +85,7 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
           marginWidthMm: panelValues.marginWidthMm,
           toleranceMm: panelValues.toleranceMm,
         },
+        currencySettings,
       };
       await saveParameters(userId, projectId, updated);
       message.success('Parameters saved');
@@ -131,21 +147,56 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
     return row;
   });
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div>{t('common.loading')}</div>;
+
+  const yearlyRateColumns = [
+    {
+      title: t('parameters.year'),
+      dataIndex: 'year',
+      key: 'year',
+      width: 100,
+    },
+    {
+      title: t('parameters.rate'),
+      dataIndex: 'rate',
+      key: 'rate',
+      render: (value: number, record: { year: string }) => (
+        <InputNumber
+          min={0}
+          step={0.1}
+          precision={2}
+          value={value}
+          onChange={(v) => {
+            if (v !== null) {
+              setCurrencySettings((prev) => ({
+                ...prev,
+                yearlyUsdToTwdRates: { ...prev.yearlyUsdToTwdRates, [record.year]: v },
+              }));
+            }
+          }}
+          style={{ width: 100 }}
+        />
+      ),
+    },
+  ];
+
+  const yearlyRateData = Object.entries(currencySettings.yearlyUsdToTwdRates)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([year, rate]) => ({ year, rate }));
 
   return (
     <div>
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
       <Space style={{ marginBottom: 16 }}>
         <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving}>
-          Save Parameters
+          {t('parameters.save')}
         </Button>
-        <Popconfirm title="Restore all defaults?" onConfirm={handleRestoreDefaults}>
-          <Button icon={<UndoOutlined />}>Restore Defaults</Button>
+        <Popconfirm title={t('parameters.restore')} onConfirm={handleRestoreDefaults}>
+          <Button icon={<UndoOutlined />}>{t('parameters.restore')}</Button>
         </Popconfirm>
       </Space>
 
-      <Card title="Yield Matrix" style={{ marginBottom: 16 }}>
+      <Card title={t('parameters.yieldMatrix')} style={{ marginBottom: 16 }}>
         <Table
           columns={yieldColumns}
           dataSource={yieldData}
@@ -155,26 +206,82 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
         />
       </Card>
 
-      <Card title="General & Panel Parameters">
+      <Card title={t('parameters.panelParams')} style={{ marginBottom: 16 }}>
         <Form form={form} layout="inline">
-          <Form.Item name="defaultWorkingDays" label="Working Days/month">
+          <Form.Item name="defaultWorkingDays" label={t('parameters.workingDays')}>
             <InputNumber min={1} max={31} />
           </Form.Item>
-          <Form.Item name="panelLengthMm" label="Panel Length (mm)">
+          <Form.Item name="panelLengthMm" label={t('parameters.panelLength')}>
             <InputNumber min={0} step={0.1} precision={1} />
           </Form.Item>
-          <Form.Item name="panelWidthMm" label="Panel Width (mm)">
+          <Form.Item name="panelWidthMm" label={t('parameters.panelWidth')}>
             <InputNumber min={0} step={0.1} precision={1} />
           </Form.Item>
-          <Form.Item name="marginLengthMm" label="Margin Length (mm)">
+          <Form.Item name="marginLengthMm" label={t('parameters.marginLength')}>
             <InputNumber min={0} step={0.1} precision={1} />
           </Form.Item>
-          <Form.Item name="marginWidthMm" label="Margin Width (mm)">
+          <Form.Item name="marginWidthMm" label={t('parameters.marginWidth')}>
             <InputNumber min={0} step={0.1} precision={1} />
           </Form.Item>
-          <Form.Item name="toleranceMm" label="Tolerance (mm)">
+          <Form.Item name="toleranceMm" label={t('parameters.tolerance')}>
             <InputNumber min={0} step={0.01} precision={2} />
           </Form.Item>
+        </Form>
+      </Card>
+
+      <Card title={t('parameters.currencySettings')} style={{ marginBottom: 16 }}>
+        <Form layout="inline">
+          <Form.Item label={t('parameters.baseCurrency')}>
+            <span style={{ lineHeight: '32px' }}>USD</span>
+          </Form.Item>
+          <Form.Item label={t('parameters.displayCurrency')}>
+            <Radio.Group
+              value={currencySettings.displayCurrency}
+              onChange={(e) =>
+                setCurrencySettings((prev) => ({ ...prev, displayCurrency: e.target.value }))
+              }
+            >
+              <Radio.Button value="USD">USD</Radio.Button>
+              <Radio.Button value="TWD">TWD</Radio.Button>
+            </Radio.Group>
+          </Form.Item>
+          <Form.Item label={t('parameters.exchangeRateMode')}>
+            <Radio.Group
+              value={currencySettings.exchangeRateMode}
+              onChange={(e) =>
+                setCurrencySettings((prev) => ({ ...prev, exchangeRateMode: e.target.value }))
+              }
+            >
+              <Radio.Button value="constant">{t('parameters.constantRate')}</Radio.Button>
+              <Radio.Button value="yearly">{t('parameters.yearlyRate')}</Radio.Button>
+            </Radio.Group>
+          </Form.Item>
+          {currencySettings.exchangeRateMode === 'constant' && (
+            <Form.Item label={t('parameters.usdToTwd')}>
+              <InputNumber
+                min={0}
+                step={0.1}
+                precision={2}
+                value={currencySettings.constantUsdToTwdRate}
+                onChange={(v) =>
+                  setCurrencySettings((prev) => ({
+                    ...prev,
+                    constantUsdToTwdRate: v ?? prev.constantUsdToTwdRate,
+                  }))
+                }
+              />
+            </Form.Item>
+          )}
+          {currencySettings.exchangeRateMode === 'yearly' && (
+            <Table
+              columns={yearlyRateColumns}
+              dataSource={yearlyRateData}
+              rowKey="year"
+              size="small"
+              pagination={false}
+              style={{ marginTop: 8 }}
+            />
+          )}
         </Form>
       </Card>
     </div>

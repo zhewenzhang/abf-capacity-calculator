@@ -13,10 +13,13 @@ import {
   Segmented,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { useI18n } from '../i18n';
+import { getParameters } from '../services/parameterService';
+import { formatCurrency, DEFAULT_CURRENCY_SETTINGS, currencySymbol } from '../core/currency';
+import type { CurrencySettings } from '../core/currency';
 import { getSKUs } from '../services/skuService';
 import { getForecasts } from '../services/forecastService';
 import { getCapacityPlans } from '../services/capacityService';
-import { getParameters } from '../services/parameterService';
 import {
   buildAnalyticsModel,
   buildShortageExposure,
@@ -35,11 +38,13 @@ interface CalculationResultsPageProps {
 type ResultsView = 'sales' | 'product' | 'capacity' | 'raw';
 
 const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId, projectId }) => {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [skus, setSkus] = useState<SKU[]>([]);
   const [model, setModel] = useState<AnalyticsModel | null>(null);
   const [view, setView] = useState<ResultsView>('sales');
+  const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(DEFAULT_CURRENCY_SETTINGS);
 
   useEffect(() => {
     const loadData = async () => {
@@ -68,6 +73,11 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
 
         const m = buildAnalyticsModel(skuData, forecasts, capacityPlans, params);
         setModel(m);
+
+        // Load currency settings from parameters
+        if (params.currencySettings) {
+          setCurrencySettings(params.currencySettings as CurrencySettings);
+        }
       } catch (e: any) {
         setError(e.message || 'Failed to run calculation');
       } finally {
@@ -99,7 +109,10 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
 
   // --- Format helpers ---
   const fmtNum = (v: number) => v > 0 ? v.toLocaleString() : '-';
-  const fmtRev = (v: number) => v > 0 ? `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '-';
+  const fmtRev = (v: number) => {
+    if (v <= 0) return '-';
+    return formatCurrency(v, currencySettings);
+  };
 
   // ============================
   // SALES VIEW TABS
@@ -107,7 +120,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
   const salesItems = [
     {
       key: 'rev-by-customer',
-      label: 'Revenue by Customer',
+      label: t('results.revByCustomer'),
       children: model ? (
         <TimeMatrixTable
           rows={model.revenueByCustomer}
@@ -119,7 +132,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
     },
     {
       key: 'fcst-by-customer',
-      label: 'Forecast PCS by Customer',
+      label: t('results.fcstByCustomer'),
       children: model ? (
         <TimeMatrixTable
           rows={model.forecastByCustomer}
@@ -131,7 +144,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
     },
     {
       key: 'rev-by-sku',
-      label: 'Revenue by SKU',
+      label: t('results.revBySku'),
       children: model ? (
         <TimeMatrixTable
           rows={model.revenueBySku}
@@ -143,7 +156,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
     },
     {
       key: 'shortage-exposure',
-      label: 'Shortage Exposure by Customer',
+      label: t('results.shortageExposure'),
       children: shortageExposure.length > 0 ? (
         <TimeMatrixTable
           rows={shortageExposure.map(e => ({ label: e.customer, values: e.values }))}
@@ -152,7 +165,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
           rowLabel="Customer"
         />
       ) : (
-        <Text type="secondary">No shortage months detected.</Text>
+        <Text type="secondary">{t('results.noShortage')}</Text>
       ),
     },
   ];
@@ -163,7 +176,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
   const productItems = [
     {
       key: 'rev-by-size',
-      label: 'Revenue by Size',
+      label: t('results.revBySize'),
       children: model ? (
         <TimeMatrixTable
           rows={model.revenueBySize}
@@ -175,7 +188,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
     },
     {
       key: 'core-by-size',
-      label: 'Core Demand by Size',
+      label: t('results.coreBySize'),
       children: model ? (
         <TimeMatrixTable
           rows={model.coreDemandBySize}
@@ -187,7 +200,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
     },
     {
       key: 'bu-by-size',
-      label: 'BU Demand by Size',
+      label: t('results.buBySize'),
       children: model ? (
         <TimeMatrixTable
           rows={model.buDemandBySize}
@@ -199,7 +212,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
     },
     {
       key: 'core-by-app',
-      label: 'Core Demand by Application',
+      label: t('results.coreByApp'),
       children: model ? (
         <TimeMatrixTable
           rows={model.coreDemandByApplication}
@@ -211,7 +224,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
     },
     {
       key: 'bu-by-app',
-      label: 'BU Demand by Application',
+      label: t('results.buByApp'),
       children: model ? (
         <TimeMatrixTable
           rows={model.buDemandByApplication}
@@ -223,7 +236,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
     },
     {
       key: 'rev-by-grade',
-      label: 'Revenue by Product Grade',
+      label: t('results.revByGrade'),
       children: model ? (
         <TimeMatrixTable
           rows={model.revenueByProductGrade}
@@ -235,7 +248,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
     },
     {
       key: 'core-by-grade',
-      label: 'Core Demand by Product Grade',
+      label: t('results.coreByGrade'),
       children: model ? (
         <TimeMatrixTable
           rows={model.coreDemandByProductGrade}
@@ -247,7 +260,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
     },
     {
       key: 'core-by-layer',
-      label: 'Core Demand by Layer Bucket',
+      label: t('results.coreByLayer'),
       children: model ? (
         <TimeMatrixTable
           rows={model.coreDemandByLayerBucket}
@@ -259,7 +272,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
     },
     {
       key: 'bu-by-layer',
-      label: 'BU Demand by Layer Bucket',
+      label: t('results.buByLayer'),
       children: model ? (
         <TimeMatrixTable
           rows={model.buDemandByLayerBucket}
@@ -276,17 +289,17 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
   // ============================
   // Yearly health table
   const yearlyHealthColumns: ColumnsType<any> = [
-    { title: 'Year', dataIndex: 'year', key: 'year', width: 70, fixed: 'left', render: (v: string, r: any) => <Tag color={r.severity === 'red' ? 'red' : r.severity === 'orange' ? 'orange' : 'green'}>{v}</Tag> },
-    { title: 'Revenue', dataIndex: 'revenue', key: 'revenue', width: 120, render: (v: number) => fmtRev(v) },
-    { title: 'Forecast PCS', dataIndex: 'forecastPcs', key: 'forecastPcs', width: 110, render: (v: number) => fmtNum(v) },
-    { title: 'Core Demand', dataIndex: 'coreDemand', key: 'coreDemand', width: 100, render: (v: number) => fmtNum(v) },
-    { title: 'Core Capacity', dataIndex: 'coreCapacity', key: 'coreCapacity', width: 110, render: (v: number) => fmtNum(v) },
-    { title: 'Core Util.', dataIndex: 'coreUtil', key: 'coreUtil', width: 90, render: (v: number | null, r: any) => renderUtil(v, r.coreDemand) },
-    { title: 'BU Demand', dataIndex: 'buDemand', key: 'buDemand', width: 100, render: (v: number) => fmtNum(v) },
-    { title: 'BU Capacity', dataIndex: 'buCapacity', key: 'buCapacity', width: 110, render: (v: number) => fmtNum(v) },
-    { title: 'BU Util.', dataIndex: 'buUtil', key: 'buUtil', width: 90, render: (v: number | null, r: any) => renderUtil(v, r.buDemand) },
-    { title: 'Shortage Months', dataIndex: 'shortageMonths', key: 'shortageMonths', width: 120, render: (v: string[]) => v.length > 0 ? <Text type="danger">{v.length} months</Text> : '0' },
-    { title: 'Bottleneck', dataIndex: 'bottleneck', key: 'bottleneck', width: 90, render: (v: string) => v === 'None' ? <Tag color="green">None</Tag> : v === 'Core' ? <Tag color="orange">Core</Tag> : <Tag color="red">BU</Tag> },
+    { title: t('results.year'), dataIndex: 'year', key: 'year', width: 70, fixed: 'left', render: (v: string, r: any) => <Tag color={r.severity === 'red' ? 'red' : r.severity === 'orange' ? 'orange' : 'green'}>{v}</Tag> },
+    { title: t('results.revenue'), dataIndex: 'revenue', key: 'revenue', width: 120, render: (v: number) => fmtRev(v) },
+    { title: t('results.forecastPcs'), dataIndex: 'forecastPcs', key: 'forecastPcs', width: 110, render: (v: number) => fmtNum(v) },
+    { title: t('results.coreDemand'), dataIndex: 'coreDemand', key: 'coreDemand', width: 100, render: (v: number) => fmtNum(v) },
+    { title: t('results.coreCapacity'), dataIndex: 'coreCapacity', key: 'coreCapacity', width: 110, render: (v: number) => fmtNum(v) },
+    { title: t('results.coreUtil'), dataIndex: 'coreUtil', key: 'coreUtil', width: 90, render: (v: number | null, r: any) => renderUtil(v, r.coreDemand) },
+    { title: t('results.buDemand'), dataIndex: 'buDemand', key: 'buDemand', width: 100, render: (v: number) => fmtNum(v) },
+    { title: t('results.buCapacity'), dataIndex: 'buCapacity', key: 'buCapacity', width: 110, render: (v: number) => fmtNum(v) },
+    { title: t('results.buUtil'), dataIndex: 'buUtil', key: 'buUtil', width: 90, render: (v: number | null, r: any) => renderUtil(v, r.buDemand) },
+    { title: t('results.shortageMonthsLabel'), dataIndex: 'shortageMonths', key: 'shortageMonths', width: 120, render: (v: string[]) => v.length > 0 ? <Text type="danger">{v.length} {t('dashboard.months')}</Text> : '0' },
+    { title: t('results.bottleneck'), dataIndex: 'bottleneck', key: 'bottleneck', width: 90, render: (v: string) => v === 'None' ? <Tag color="green">{t('common.none')}</Tag> : v === 'Core' ? <Tag color="orange">{t('common.core')}</Tag> : <Tag color="red">{t('common.bu')}</Tag> },
   ];
 
   // Monthly Core/BU matrix
@@ -297,11 +310,11 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
     const shortageKey = metric === 'core' ? 'coreShortage' : 'buShortage';
 
     return [
-      { title: 'Month', dataIndex: 'month', key: 'month', width: 90, fixed: 'left' as const },
-      { title: 'Demand', dataIndex: demandKey, key: demandKey, width: 100, render: (v: number) => fmtNum(v) },
-      { title: 'Capacity', dataIndex: capacityKey, key: capacityKey, width: 100, render: (v: number) => fmtNum(v) },
+      { title: t('results.month'), dataIndex: 'month', key: 'month', width: 90, fixed: 'left' as const },
+      { title: t('results.demand'), dataIndex: demandKey, key: demandKey, width: 100, render: (v: number) => fmtNum(v) },
+      { title: t('results.capacity'), dataIndex: capacityKey, key: capacityKey, width: 100, render: (v: number) => fmtNum(v) },
       {
-        title: 'Utilization',
+        title: t('results.utilization'),
         dataIndex: utilKey,
         key: utilKey,
         width: 100,
@@ -311,7 +324,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
         },
       },
       {
-        title: 'Shortage',
+        title: t('results.shortage'),
         dataIndex: shortageKey,
         key: shortageKey,
         width: 100,
@@ -323,7 +336,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
   const capacityItems = [
     {
       key: 'yearly-health',
-      label: 'Yearly Health',
+      label: t('results.yearlyHealth'),
       children: model ? (
         <Table
           columns={yearlyHealthColumns}
@@ -337,7 +350,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
     },
     {
       key: 'monthly-core',
-      label: 'Monthly Core',
+      label: t('results.monthlyCore'),
       children: model ? (
         <Table
           columns={monthlyColumns('core')}
@@ -351,7 +364,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
     },
     {
       key: 'monthly-bu',
-      label: 'Monthly BU',
+      label: t('results.monthlyBu'),
       children: model ? (
         <Table
           columns={monthlyColumns('bu')}
@@ -365,14 +378,14 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
     },
     {
       key: 'bottleneck-calendar',
-      label: 'Bottleneck Calendar',
+      label: t('results.bottleneckCalendar'),
       children: model ? (
         <Table
           columns={[
-            { title: 'Month', dataIndex: 'month', key: 'month', width: 90, fixed: 'left' as const },
-            { title: 'Bottleneck', dataIndex: 'bottleneck', key: 'bottleneck', width: 100, render: (v: string) => v === 'None' ? <Tag color="green">None</Tag> : v === 'Core' ? <Tag color="orange">Core</Tag> : <Tag color="red">BU</Tag> },
-            { title: 'Core Shortage', dataIndex: 'coreShortage', key: 'coreShortage', width: 110, render: (v: number) => v > 0 ? <Text type="danger">{v.toLocaleString()}</Text> : '-' },
-            { title: 'BU Shortage', dataIndex: 'buShortage', key: 'buShortage', width: 110, render: (v: number) => v > 0 ? <Text type="danger">{v.toLocaleString()}</Text> : '-' },
+            { title: t('results.month'), dataIndex: 'month', key: 'month', width: 90, fixed: 'left' as const },
+            { title: t('results.bottleneck'), dataIndex: 'bottleneck', key: 'bottleneck', width: 100, render: (v: string) => v === 'None' ? <Tag color="green">{t('common.none')}</Tag> : v === 'Core' ? <Tag color="orange">{t('common.core')}</Tag> : <Tag color="red">{t('common.bu')}</Tag> },
+            { title: t('results.coreShortage'), dataIndex: 'coreShortage', key: 'coreShortage', width: 110, render: (v: number) => v > 0 ? <Text type="danger">{v.toLocaleString()}</Text> : '-' },
+            { title: t('results.buShortage'), dataIndex: 'buShortage', key: 'buShortage', width: 110, render: (v: number) => v > 0 ? <Text type="danger">{v.toLocaleString()}</Text> : '-' },
           ]}
           dataSource={model.monthlySummaries}
           rowKey="month"
@@ -388,37 +401,37 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
   // RAW DETAIL TAB
   // ============================
   const skuColumns: ColumnsType<SkuCalculationResult> = [
-    { title: 'SKU', dataIndex: 'skuCode', key: 'skuCode', width: 110, fixed: 'left' as const },
-    { title: 'Month', dataIndex: 'month', key: 'month', width: 90 },
-    { title: 'Forecast PCS', dataIndex: 'forecastPcs', key: 'forecastPcs', render: (v: number) => v.toLocaleString() },
-    { title: 'Yield', dataIndex: 'yieldRate', key: 'yieldRate', render: (v: number) => `${(v * 100).toFixed(1)}%` },
-    { title: 'Input PCS', dataIndex: 'requiredInputPcs', key: 'requiredInputPcs', render: (v: number) => v.toLocaleString() },
-    { title: 'PCS/Panel', dataIndex: 'pcsPerPanel', key: 'pcsPerPanel' },
-    { title: 'Panels', dataIndex: 'requiredPanels', key: 'requiredPanels', render: (v: number) => v.toLocaleString() },
-    { title: 'Core Steps', dataIndex: 'coreSteps', key: 'coreSteps' },
-    { title: 'BU Steps', dataIndex: 'buSteps', key: 'buSteps' },
-    { title: 'Core Demand', dataIndex: 'corePanelDemand', key: 'corePanelDemand', render: (v: number) => v.toLocaleString() },
-    { title: 'BU Demand', dataIndex: 'buPanelDemand', key: 'buPanelDemand', render: (v: number) => v.toLocaleString() },
-    { title: 'Revenue', dataIndex: 'revenue', key: 'revenue', render: (v: number) => `$${v.toFixed(2)}` },
+    { title: t('results.sku'), dataIndex: 'skuCode', key: 'skuCode', width: 110, fixed: 'left' as const },
+    { title: t('results.month'), dataIndex: 'month', key: 'month', width: 90 },
+    { title: t('results.forecastPcs'), dataIndex: 'forecastPcs', key: 'forecastPcs', render: (v: number) => v.toLocaleString() },
+    { title: t('results.yield'), dataIndex: 'yieldRate', key: 'yieldRate', render: (v: number) => `${(v * 100).toFixed(1)}%` },
+    { title: t('results.inputPcs'), dataIndex: 'requiredInputPcs', key: 'requiredInputPcs', render: (v: number) => v.toLocaleString() },
+    { title: t('results.pcsPerPanel'), dataIndex: 'pcsPerPanel', key: 'pcsPerPanel' },
+    { title: t('results.panels'), dataIndex: 'requiredPanels', key: 'requiredPanels', render: (v: number) => v.toLocaleString() },
+    { title: t('results.coreSteps'), dataIndex: 'coreSteps', key: 'coreSteps' },
+    { title: t('results.buSteps'), dataIndex: 'buSteps', key: 'buSteps' },
+    { title: t('results.coreDemand'), dataIndex: 'corePanelDemand', key: 'corePanelDemand', render: (v: number) => v.toLocaleString() },
+    { title: t('results.buDemand'), dataIndex: 'buPanelDemand', key: 'buPanelDemand', render: (v: number) => v.toLocaleString() },
+    { title: t('results.revenue'), dataIndex: 'revenue', key: 'revenue', render: (v: number) => formatCurrency(v, currencySettings) },
   ];
 
   const summaryColumns: ColumnsType<MonthlyCapacitySummary> = [
-    { title: 'Month', dataIndex: 'month', key: 'month', width: 90, fixed: 'left' as const },
-    { title: 'Core Demand', dataIndex: 'totalCorePanelDemand', key: 'totalCorePanelDemand', render: (v: number) => v.toLocaleString() },
-    { title: 'Core Capacity', dataIndex: 'coreCapacity', key: 'coreCapacity', render: (v: number) => v.toLocaleString() },
-    { title: 'Core Util.', dataIndex: 'coreUtilization', key: 'coreUtilization', render: (v: number | null) => v === null ? <Tag color="red">Over</Tag> : `${(v * 100).toFixed(1)}%` },
-    { title: 'BU Demand', dataIndex: 'totalBuPanelDemand', key: 'totalBuPanelDemand', render: (v: number) => v.toLocaleString() },
-    { title: 'BU Capacity', dataIndex: 'buCapacity', key: 'buCapacity', render: (v: number) => v.toLocaleString() },
-    { title: 'BU Util.', dataIndex: 'buUtilization', key: 'buUtilization', render: (v: number | null) => v === null ? <Tag color="red">Over</Tag> : `${(v * 100).toFixed(1)}%` },
-    { title: 'Core Shortage', dataIndex: 'coreShortage', key: 'coreShortage', render: (v: number) => v > 0 ? <Text type="danger">{v.toLocaleString()}</Text> : '-' },
-    { title: 'BU Shortage', dataIndex: 'buShortage', key: 'buShortage', render: (v: number) => v > 0 ? <Text type="danger">{v.toLocaleString()}</Text> : '-' },
-    { title: 'Bottleneck', dataIndex: 'bottleneck', key: 'bottleneck', render: (v: string) => v === 'None' ? <Tag color="green">None</Tag> : v === 'Core' ? <Tag color="orange">Core</Tag> : <Tag color="red">BU</Tag> },
+    { title: t('results.month'), dataIndex: 'month', key: 'month', width: 90, fixed: 'left' as const },
+    { title: t('results.coreDemand'), dataIndex: 'totalCorePanelDemand', key: 'totalCorePanelDemand', render: (v: number) => v.toLocaleString() },
+    { title: t('results.coreCapacity'), dataIndex: 'coreCapacity', key: 'coreCapacity', render: (v: number) => v.toLocaleString() },
+    { title: t('results.coreUtil'), dataIndex: 'coreUtilization', key: 'coreUtilization', render: (v: number | null) => v === null ? <Tag color="red">{t('results.over')}</Tag> : `${(v * 100).toFixed(1)}%` },
+    { title: t('results.buDemand'), dataIndex: 'totalBuPanelDemand', key: 'totalBuPanelDemand', render: (v: number) => v.toLocaleString() },
+    { title: t('results.buCapacity'), dataIndex: 'buCapacity', key: 'buCapacity', render: (v: number) => v.toLocaleString() },
+    { title: t('results.buUtil'), dataIndex: 'buUtilization', key: 'buUtilization', render: (v: number | null) => v === null ? <Tag color="red">{t('results.over')}</Tag> : `${(v * 100).toFixed(1)}%` },
+    { title: t('results.coreShortage'), dataIndex: 'coreShortage', key: 'coreShortage', render: (v: number) => v > 0 ? <Text type="danger">{v.toLocaleString()}</Text> : '-' },
+    { title: t('results.buShortage'), dataIndex: 'buShortage', key: 'buShortage', render: (v: number) => v > 0 ? <Text type="danger">{v.toLocaleString()}</Text> : '-' },
+    { title: t('results.bottleneck'), dataIndex: 'bottleneck', key: 'bottleneck', render: (v: string) => v === 'None' ? <Tag color="green">{t('common.none')}</Tag> : v === 'Core' ? <Tag color="orange">{t('common.core')}</Tag> : <Tag color="red">{t('common.bu')}</Tag> },
   ];
 
   const rawItems = [
     {
       key: 'sku-detail',
-      label: 'SKU Detail',
+      label: t('results.skuDetail'),
       children: model ? (
         <Table
           columns={skuColumns}
@@ -432,7 +445,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
     },
     {
       key: 'capacity-summary',
-      label: 'Capacity Summary',
+      label: t('results.capacitySummary'),
       children: model ? (
         <Table
           columns={summaryColumns}
@@ -460,23 +473,23 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
           <Row gutter={16} style={{ marginBottom: 16 }}>
             <Col span={6}>
               <Card>
-                <Statistic title="Total Revenue" value={model.totalRevenue} precision={2} prefix="$" />
+                <Statistic title={t('results.totalRevenue')} value={model.totalRevenue} precision={2} prefix={currencySymbol(currencySettings)} />
               </Card>
             </Col>
             <Col span={6}>
               <Card>
-                <Statistic title="Total Forecast PCS" value={model.totalForecastPcs} precision={0} />
+                <Statistic title={t('results.totalForecastPcs')} value={model.totalForecastPcs} precision={0} />
               </Card>
             </Col>
             <Col span={6}>
               <Card>
-                <Statistic title="Calculation Rows" value={model.skuResults.length} />
+                <Statistic title={t('results.calculationRows')} value={model.skuResults.length} />
               </Card>
             </Col>
             <Col span={6}>
               <Card>
                 <Statistic
-                  title="Shortage Months"
+                  title={t('results.shortageMonthCount')}
                   value={model.shortageMonthCount}
                   valueStyle={{ color: model.shortageMonthCount > 0 ? '#cf1322' : '#3f8600' }}
                 />
@@ -489,10 +502,10 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
             value={view}
             onChange={(v) => setView(v as ResultsView)}
             options={[
-              { label: '📊 Sales View', value: 'sales' },
-              { label: '🏭 Product Planning', value: 'product' },
-              { label: '⚡ Capacity Analysis', value: 'capacity' },
-              { label: '📋 Raw Detail', value: 'raw' },
+              { label: t('results.salesView'), value: 'sales' },
+              { label: t('results.productView'), value: 'product' },
+              { label: t('results.capacityView'), value: 'capacity' },
+              { label: t('results.rawDetail'), value: 'raw' },
             ]}
             style={{ marginBottom: 16 }}
           />

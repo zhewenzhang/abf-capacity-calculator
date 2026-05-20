@@ -35,6 +35,7 @@ import { saveVersion, getVersions, restoreVersion } from '../services/skuVersion
 import type { SKU, SizeCategory } from '../types';
 import { validateSKU } from '../core/validation';
 import { DEFAULT_YIELD_MATRIX } from '../core/defaults';
+import { useI18n } from '../i18n';
 
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -86,6 +87,7 @@ function formatDateTime(date: any): string {
 }
 
 const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
+  const { t } = useI18n();
   const [skus, setSkus] = useState<SKU[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -390,35 +392,35 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
 
   // --- Table columns ---
   const columns: ColumnsType<SKU> = [
-    { title: 'SKU Code', dataIndex: 'skuCode', key: 'skuCode', width: 120, sorter: (a, b) => a.skuCode.localeCompare(b.skuCode) },
-    { title: 'Customer', dataIndex: 'customer', key: 'customer', width: 100 },
-    { title: 'Device', dataIndex: 'deviceName', key: 'deviceName', width: 100 },
+    { title: t('products.skuCode'), dataIndex: 'skuCode', key: 'skuCode', width: 120, sorter: (a, b) => a.skuCode.localeCompare(b.skuCode) },
+    { title: t('products.customer'), dataIndex: 'customer', key: 'customer', width: 100 },
+    { title: t('products.deviceName'), dataIndex: 'deviceName', key: 'deviceName', width: 100 },
     { title: 'OSAT', dataIndex: 'osat', key: 'osat', width: 70 },
-    { title: 'App', dataIndex: 'application', key: 'application', width: 80 },
-    { title: 'Grade', dataIndex: 'productGrade', key: 'productGrade', width: 60 },
-    { title: 'Size', dataIndex: 'sizeCategory', key: 'sizeCategory', width: 70, render: (v: string) => v?.charAt(0).toUpperCase() + v?.slice(1) },
-    { title: 'Chip (mm)', key: 'chip', width: 100, render: (_: any, r: SKU) => `${r.chipLengthMm} × ${r.chipWidthMm}` },
-    { title: 'Layers', dataIndex: 'layerCount', key: 'layerCount', width: 60, align: 'center' as const },
+    { title: t('products.application'), dataIndex: 'application', key: 'application', width: 80 },
+    { title: t('products.productGrade'), dataIndex: 'productGrade', key: 'productGrade', width: 60 },
+    { title: t('products.sizeCategory'), dataIndex: 'sizeCategory', key: 'sizeCategory', width: 70, render: (v: string) => v?.charAt(0).toUpperCase() + v?.slice(1) },
+    { title: t('products.chipLength').replace(' (mm)', ''), key: 'chip', width: 100, render: (_: any, r: SKU) => `${r.chipLengthMm} × ${r.chipWidthMm}` },
+    { title: t('products.layerCount'), dataIndex: 'layerCount', key: 'layerCount', width: 60, align: 'center' as const },
     {
-      title: 'UPP', key: 'upp', width: 60, align: 'center' as const,
+      title: t('products.upp'), key: 'upp', width: 60, align: 'center' as const,
       render: (_: any, r: SKU) => {
         const upp = r.upp ?? calculateUPP(r.chipLengthMm, r.chipWidthMm);
         return <Tooltip title="Auto-calculated from chip dimensions"><Tag color="blue">{upp}</Tag></Tooltip>;
       },
     },
     {
-      title: 'Yield', key: 'yield', width: 60, align: 'center' as const,
+      title: t('products.yieldRate'), key: 'yield', width: 60, align: 'center' as const,
       render: (_: any, r: SKU) => {
         const y = r.yieldEstimate ?? getYieldEstimate(r.sizeCategory, r.layerCount);
         return `${Math.round(y * 100)}%`;
       },
     },
-    { title: 'Price', dataIndex: 'unitPrice', key: 'unitPrice', width: 80, render: (v: number) => `$${v?.toFixed(1)}` },
-    { title: 'Core', dataIndex: 'coreType', key: 'coreType', width: 90, render: (v: string) => v || '-' },
-    { title: 'Core Thick', key: 'coreThick', width: 80, render: (_: any, r: SKU) => r.coreThicknessMm ? `${r.coreThicknessMm}mm` : '-' },
-    { title: 'ABF', dataIndex: 'abfType', key: 'abfType', width: 80, render: (v: string) => v || '-' },
+    { title: t('products.unitPrice'), dataIndex: 'unitPrice', key: 'unitPrice', width: 80, render: (v: number) => `$${v?.toFixed(1)}` },
+    { title: t('products.coreType'), dataIndex: 'coreType', key: 'coreType', width: 90, render: (v: string) => v || '-' },
+    { title: t('products.coreThickness').replace(' (mm)', ''), key: 'coreThick', width: 80, render: (_: any, r: SKU) => r.coreThicknessMm ? `${r.coreThicknessMm}mm` : '-' },
+    { title: t('products.abfType'), dataIndex: 'abfType', key: 'abfType', width: 80, render: (v: string) => v || '-' },
     {
-      title: 'Updated', key: 'updatedAt', width: 90,
+      title: t('common.edit') + ' / ' + t('products.delete'), key: 'updatedAt', width: 90,
       render: (_: any, r: SKU) => (
         <Tooltip title={formatDateTime(r.updatedAt || r.createdAt)}>
           {formatDate(r.updatedAt || r.createdAt)}
@@ -426,18 +428,18 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
       ),
     },
     {
-      title: 'Actions', key: 'actions', width: 100, fixed: 'right' as const,
+      title: t('common.actions'), key: 'actions', width: 100, fixed: 'right' as const,
       render: (_: any, record: SKU) => {
         const editing = isEditing(record);
         return editing ? (
           <Space>
-            <Button size="small" type="primary" icon={<SaveOutlined />} disabled>Save</Button>
-            <Button size="small" icon={<CloseOutlined />} onClick={handleEditCancel}>Cancel</Button>
+            <Button size="small" type="primary" icon={<SaveOutlined />} disabled>{t('products.save')}</Button>
+            <Button size="small" icon={<CloseOutlined />} onClick={handleEditCancel}>{t('products.cancel')}</Button>
           </Space>
         ) : (
           <Space>
             <Button size="small" type="link" onClick={() => handleEditStart(record)}><EditOutlined /></Button>
-            <Popconfirm title="Delete this SKU?" onConfirm={() => handleDelete(record.id)}>
+            <Popconfirm title={t('products.deleteConfirm')} onConfirm={() => handleDelete(record.id)}>
               <Button size="small" type="link" danger><DeleteOutlined /></Button>
             </Popconfirm>
           </Space>
@@ -455,41 +457,41 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
         <Row gutter={[12, 8]} align="middle" wrap>
           <Col>
             <Button type="primary" icon={<PlusOutlined />} onClick={handleAddStart} disabled={addMode || editingKey !== null}>
-              Add SKU
+              {t('products.addSku')}
             </Button>
           </Col>
           <Col>
             <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
-              Download Template
+              {t('products.downloadTemplate')}
             </Button>
           </Col>
           <Col>
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleImport} style={{ display: 'none' }} />
-            <Button icon={<UploadOutlined />} onClick={() => fileInputRef.current?.click()}>Import Excel/CSV</Button>
+            <Button icon={<UploadOutlined />} onClick={() => fileInputRef.current?.click()}>{t('products.import')}</Button>
           </Col>
           <Col>
-            <RangePicker 
-              size="small" 
+            <RangePicker
+              size="small"
               onChange={(_, dateStrings: string[]) => {
                 if (dateStrings[0] && dateStrings[1]) setDateRange([dateStrings[0], dateStrings[1]]);
                 else setDateRange(null);
-              }} 
-              placeholder={['From', 'To']} 
+              }}
+              placeholder={['From', 'To']}
             />
           </Col>
           <Col flex="auto" />
           <Col>
             <Space>
-              <Input 
-                size="small" 
-                value={versionName} 
-                onChange={(e) => setVersionName(e.target.value)} 
-                placeholder="Version name" 
-                style={{ width: 140 }} 
-                onPressEnter={handleSaveVersion} 
+              <Input
+                size="small"
+                value={versionName}
+                onChange={(e) => setVersionName(e.target.value)}
+                placeholder={t('products.template')}
+                style={{ width: 140 }}
+                onPressEnter={handleSaveVersion}
               />
-              <Button size="small" icon={<SaveOutlined />} onClick={handleSaveVersion}>Save Version</Button>
-              <Button size="small" icon={<HistoryOutlined />} onClick={() => document.getElementById('sku-versions-section')?.scrollIntoView({ behavior: 'smooth' })}>Versions</Button>
+              <Button size="small" icon={<SaveOutlined />} onClick={handleSaveVersion}>{t('products.save')}</Button>
+              <Button size="small" icon={<HistoryOutlined />} onClick={() => document.getElementById('sku-versions-section')?.scrollIntoView({ behavior: 'smooth' })}>{t('common.template')}</Button>
             </Space>
           </Col>
         </Row>
@@ -500,24 +502,24 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
         <Card size="small" style={{ marginBottom: 8, background: '#f0f5ff', borderColor: '#91d5ff' }}>
           <Form form={addForm} layout="inline">
             <Row gutter={8} style={{ width: '100%' }}>
-              <Col span={2}><Form.Item name="skuCode" style={{ margin: 0 }} rules={[{ required: true }]}><Input size="small" placeholder="SKU Code" style={{ width: '100%' }} /></Form.Item></Col>
-              <Col span={2}><Form.Item name="customer" style={{ margin: 0 }} rules={[{ required: true }]}><Input size="small" placeholder="Customer" style={{ width: '100%' }} /></Form.Item></Col>
-              <Col span={2}><Form.Item name="deviceName" style={{ margin: 0 }}><Input size="small" placeholder="Device" style={{ width: '100%' }} /></Form.Item></Col>
+              <Col span={2}><Form.Item name="skuCode" style={{ margin: 0 }} rules={[{ required: true }]}><Input size="small" placeholder={t('products.skuCode')} style={{ width: '100%' }} /></Form.Item></Col>
+              <Col span={2}><Form.Item name="customer" style={{ margin: 0 }} rules={[{ required: true }]}><Input size="small" placeholder={t('products.customer')} style={{ width: '100%' }} /></Form.Item></Col>
+              <Col span={2}><Form.Item name="deviceName" style={{ margin: 0 }}><Input size="small" placeholder={t('products.deviceName')} style={{ width: '100%' }} /></Form.Item></Col>
               <Col span={1.5}><Form.Item name="osat" style={{ margin: 0 }}><Input size="small" placeholder="OSAT" style={{ width: '100%' }} /></Form.Item></Col>
-              <Col span={1.5}><Form.Item name="application" style={{ margin: 0 }}><Select size="small" placeholder="App" style={{ width: '100%' }} options={APP_OPTIONS} /></Form.Item></Col>
-              <Col span={1}><Form.Item name="productGrade" style={{ margin: 0 }}><Input size="small" placeholder="Grade" style={{ width: '100%' }} /></Form.Item></Col>
+              <Col span={1.5}><Form.Item name="application" style={{ margin: 0 }}><Select size="small" placeholder={t('products.application')} style={{ width: '100%' }} options={APP_OPTIONS} /></Form.Item></Col>
+              <Col span={1}><Form.Item name="productGrade" style={{ margin: 0 }}><Input size="small" placeholder={t('products.productGrade')} style={{ width: '100%' }} /></Form.Item></Col>
               <Col span={1.5}><Form.Item name="sizeCategory" style={{ margin: 0 }} rules={[{ required: true }]}><Select size="small" style={{ width: '100%' }} options={SIZE_OPTIONS} /></Form.Item></Col>
               <Col span={1}><Form.Item name="chipLengthMm" style={{ margin: 0 }} rules={[{ required: true }]}><InputNumber size="small" min={0.01} step={0.1} placeholder="L" style={{ width: '100%' }} /></Form.Item></Col>
               <Col span={1}><Form.Item name="chipWidthMm" style={{ margin: 0 }} rules={[{ required: true }]}><InputNumber size="small" min={0.01} step={0.1} placeholder="W" style={{ width: '100%' }} /></Form.Item></Col>
-              <Col span={1}><Form.Item name="layerCount" style={{ margin: 0 }} rules={[{ required: true }]}><InputNumber size="small" min={2} step={2} placeholder="Layers" style={{ width: '100%' }} /></Form.Item></Col>
-              <Col span={1}><Form.Item name="unitPrice" style={{ margin: 0 }} rules={[{ required: true }]}><InputNumber size="small" min={0} step={0.01} precision={4} placeholder="Price" style={{ width: '100%' }} /></Form.Item></Col>
+              <Col span={1}><Form.Item name="layerCount" style={{ margin: 0 }} rules={[{ required: true }]}><InputNumber size="small" min={2} step={2} placeholder={t('products.layerCount')} style={{ width: '100%' }} /></Form.Item></Col>
+              <Col span={1}><Form.Item name="unitPrice" style={{ margin: 0 }} rules={[{ required: true }]}><InputNumber size="small" min={0} step={0.01} precision={4} placeholder={t('products.unitPrice')} style={{ width: '100%' }} /></Form.Item></Col>
               <Col span={1}>
                 <Form.Item noStyle shouldUpdate={(prev, cur) => prev.chipLengthMm !== cur.chipLengthMm || prev.chipWidthMm !== cur.chipWidthMm}>
                   {({ getFieldValue }) => {
                     const l = getFieldValue('chipLengthMm');
                     const w = getFieldValue('chipWidthMm');
                     const upp = (l && w) ? calculateUPP(l, w) : '-';
-                    return <Tag color="blue" style={{ marginTop: 4 }}>UPP: {upp}</Tag>;
+                    return <Tag color="blue" style={{ marginTop: 4 }}>{t('products.upp')}: {upp}</Tag>;
                   }}
                 </Form.Item>
               </Col>
@@ -527,14 +529,14 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
                     const sc = getFieldValue('sizeCategory');
                     const lc = getFieldValue('layerCount');
                     const y = (sc && lc) ? getYieldEstimate(sc, lc) : '-';
-                    return typeof y === 'number' ? <Tag color="green" style={{ marginTop: 4 }}>Yield: {(y * 100).toFixed(1)}%</Tag> : null;
+                    return typeof y === 'number' ? <Tag color="green" style={{ marginTop: 4 }}>{t('products.yieldRate')}: {(y * 100).toFixed(1)}%</Tag> : null;
                   }}
                 </Form.Item>
               </Col>
               <Col span={1.5}>
                 <Space>
-                  <Button size="small" type="primary" icon={<SaveOutlined />} onClick={handleAddSave}>Save</Button>
-                  <Button size="small" icon={<CloseOutlined />} onClick={handleAddCancel}>Cancel</Button>
+                  <Button size="small" type="primary" icon={<SaveOutlined />} onClick={handleAddSave}>{t('products.save')}</Button>
+                  <Button size="small" icon={<CloseOutlined />} onClick={handleAddCancel}>{t('products.cancel')}</Button>
                 </Space>
               </Col>
             </Row>
@@ -549,7 +551,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
         rowKey="id"
         size="small"
         loading={loading}
-        pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `Total ${total} items` }}
+        pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `${total} ${t('products.title')}` }}
         scroll={{ x: 'max-content' }}
         className="editable-table"
         rowClassName={(record) => isEditing(record) ? 'editing-row' : ''}
@@ -557,32 +559,32 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
           expandedRowKeys: editingKey ? [editingKey] : [],
           expandIcon: () => null,
           expandedRowRender: (sku) => (
-            <EditFormRow sku={sku} onSave={handleEditSave} onCancel={handleEditCancel} />
+            <EditFormRow sku={sku} onSave={handleEditSave} onCancel={handleEditCancel} t={t} />
           ),
         }}
       />
 
       {/* Version History */}
       <div id="sku-versions-section" style={{ marginTop: 16 }}>
-        <Card title="SKU Version History" extra={<HistoryOutlined />}>
+        <Card title={t('common.template') + ' - ' + t('products.title')} extra={<HistoryOutlined />}>
           {versionsLoading ? (
-            <Text type="secondary">Loading...</Text>
+            <Text type="secondary">{t('common.loading')}</Text>
           ) : versions.length === 0 ? (
-            <Text type="secondary">No versions saved yet</Text>
+            <Text type="secondary">{t('common.noData')}</Text>
           ) : (
             <Table size="small" dataSource={versions} rowKey="id" pagination={{ pageSize: 10 }} columns={[
-              { title: 'Version', dataIndex: 'versionName', key: 'versionName', render: (v: string) => <Text strong>{v}</Text> },
-              { title: 'SKUs', key: 'count', render: (_: any, r: any) => r.skus?.length || 0 },
-              { title: 'Date', dataIndex: 'createdAt', key: 'createdAt', render: (d: any) => formatDateTime(d) },
+              { title: t('products.template'), dataIndex: 'versionName', key: 'versionName', render: (v: string) => <Text strong>{v}</Text> },
+              { title: t('products.title'), key: 'count', render: (_: any, r: any) => r.skus?.length || 0 },
+              { title: t('forecasts.year'), dataIndex: 'createdAt', key: 'createdAt', render: (d: any) => formatDateTime(d) },
               {
-                title: 'Actions', key: 'actions',
+                title: t('common.actions'), key: 'actions',
                 render: (_: any, record: { id: string; versionName: string }) => (
                   <Space>
-                    <Popconfirm title={`Restore "${record.versionName}"?`} onConfirm={() => handleRestoreVersion(record.id)}>
-                      <Button size="small" type="primary">Restore</Button>
+                    <Popconfirm title={`${t('common.confirm')} "${record.versionName}"?`} onConfirm={() => handleRestoreVersion(record.id)}>
+                      <Button size="small" type="primary">{t('products.template')}</Button>
                     </Popconfirm>
-                    <Popconfirm title="Delete?" onConfirm={() => handleDeleteVersion(record.id)}>
-                      <Button size="small" danger>Delete</Button>
+                    <Popconfirm title={t('products.deleteConfirm')} onConfirm={() => handleDeleteVersion(record.id)}>
+                      <Button size="small" danger>{t('common.delete')}</Button>
                     </Popconfirm>
                   </Space>
                 ),
@@ -593,23 +595,23 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
       </div>
 
       {/* Import hint */}
-      <Card size="small" style={{ marginTop: 16 }} title="📋 Import/Export Guide">
+      <Card size="small" style={{ marginTop: 16 }} title={`📋 ${t('products.import')}/${t('common.export')} ${t('common.template')}`}>
         <Space direction="vertical" size={8}>
           <div>
-            <Text strong>Download Template: </Text>
-            <Text type="secondary">Click "Download Template" to get a pre-formatted Excel file with sample data</Text>
+            <Text strong>{t('products.downloadTemplate')}: </Text>
+            <Text type="secondary">{t('products.template')} - {t('common.template')}</Text>
           </div>
           <div>
-            <Text strong>Import Format: </Text>
+            <Text strong>{t('products.import')} {t('common.template')}: </Text>
             <Text type="secondary">Excel/CSV — SKU Code, Customer, Device, OSAT, Application, Grade, Size (small/medium/large/xlarge), Chip Length, Chip Width, Layers, Price</Text>
           </div>
           <div>
-            <Text strong>Auto-calculated: </Text>
-            <Text type="secondary">UPP & Yield are automatically calculated from chip dimensions and size category</Text>
+            <Text strong>{t('products.upp')} & {t('products.yieldRate')}: </Text>
+            <Text type="secondary">{t('products.upp')} & {t('products.yieldRate')} - {t('products.title')}</Text>
           </div>
           <div>
-            <Text strong>Inline Editing: </Text>
-            <Text type="secondary">Click the edit icon to modify a row directly. Changes are saved inline without expanding.</Text>
+            <Text strong>{t('products.edit')}: </Text>
+            <Text type="secondary">{t('products.edit')} - {t('products.save')}</Text>
           </div>
         </Space>
       </Card>
@@ -624,7 +626,8 @@ const EditFormRow: React.FC<{
   sku: SKU;
   onSave: (sku: SKU, form: any) => void;
   onCancel: () => void;
-}> = ({ sku, onSave, onCancel }) => {
+  t: (key: string) => string;
+}> = ({ sku, onSave, onCancel, t }) => {
   const [form] = Form.useForm();
 
   return (
@@ -632,34 +635,34 @@ const EditFormRow: React.FC<{
       <Form form={form} layout="vertical" initialValues={sku}>
         <Row gutter={16}>
           {/* Row 1: Basic Info */}
-          <Col span={3}><Form.Item name="skuCode" label="SKU Code" rules={[{ required: true, message: 'Required' }]}><Input /></Form.Item></Col>
-          <Col span={3}><Form.Item name="customer" label="Customer" rules={[{ required: true, message: 'Required' }]}><Input /></Form.Item></Col>
-          <Col span={3}><Form.Item name="deviceName" label="Device"><Input /></Form.Item></Col>
+          <Col span={3}><Form.Item name="skuCode" label={t('products.skuCode')} rules={[{ required: true, message: t('common.required') }]}><Input /></Form.Item></Col>
+          <Col span={3}><Form.Item name="customer" label={t('products.customer')} rules={[{ required: true, message: t('common.required') }]}><Input /></Form.Item></Col>
+          <Col span={3}><Form.Item name="deviceName" label={t('products.deviceName')}><Input /></Form.Item></Col>
           <Col span={2}><Form.Item name="osat" label="OSAT"><Input /></Form.Item></Col>
-          <Col span={3}><Form.Item name="application" label="Application"><Select options={APP_OPTIONS} /></Form.Item></Col>
-          <Col span={2}><Form.Item name="productGrade" label="Grade"><Input /></Form.Item></Col>
-          <Col span={3}><Form.Item name="sizeCategory" label="Size" rules={[{ required: true, message: 'Required' }]}><Select options={SIZE_OPTIONS} /></Form.Item></Col>
+          <Col span={3}><Form.Item name="application" label={t('products.application')}><Select options={APP_OPTIONS} /></Form.Item></Col>
+          <Col span={2}><Form.Item name="productGrade" label={t('products.productGrade')}><Input /></Form.Item></Col>
+          <Col span={3}><Form.Item name="sizeCategory" label={t('products.sizeCategory')} rules={[{ required: true, message: t('common.required') }]}><Select options={SIZE_OPTIONS} /></Form.Item></Col>
           <Col span={5}></Col>
         </Row>
         <Row gutter={16}>
           {/* Row 2: Dimensions */}
-          <Col span={3}><Form.Item name="chipLengthMm" label="Chip Length (mm)" rules={[{ required: true, message: 'Required' }]}><InputNumber min={0.01} step={0.1} style={{ width: '100%' }} /></Form.Item></Col>
-          <Col span={3}><Form.Item name="chipWidthMm" label="Chip Width (mm)" rules={[{ required: true, message: 'Required' }]}><InputNumber min={0.01} step={0.1} style={{ width: '100%' }} /></Form.Item></Col>
-          <Col span={3}><Form.Item name="layerCount" label="Layers" rules={[{ required: true, message: 'Required' }]}><InputNumber min={2} step={2} style={{ width: '100%' }} /></Form.Item></Col>
-          <Col span={3}><Form.Item name="yieldEstimate" label="Yield Rate"><InputNumber min={0} max={1} step={0.01} precision={3} style={{ width: '100%' }} addonAfter="%" /></Form.Item></Col>
-          <Col span={3}><Form.Item name="unitPrice" label="Unit Price ($)" rules={[{ required: true, message: 'Required' }]}><InputNumber min={0} step={0.01} precision={1} style={{ width: '100%' }} /></Form.Item></Col>
+          <Col span={3}><Form.Item name="chipLengthMm" label={t('products.chipLength')} rules={[{ required: true, message: t('common.required') }]}><InputNumber min={0.01} step={0.1} style={{ width: '100%' }} /></Form.Item></Col>
+          <Col span={3}><Form.Item name="chipWidthMm" label={t('products.chipWidth')} rules={[{ required: true, message: t('common.required') }]}><InputNumber min={0.01} step={0.1} style={{ width: '100%' }} /></Form.Item></Col>
+          <Col span={3}><Form.Item name="layerCount" label={t('products.layerCount')} rules={[{ required: true, message: t('common.required') }]}><InputNumber min={2} step={2} style={{ width: '100%' }} /></Form.Item></Col>
+          <Col span={3}><Form.Item name="yieldEstimate" label={t('products.yieldRate')}><InputNumber min={0} max={1} step={0.01} precision={3} style={{ width: '100%' }} addonAfter="%" /></Form.Item></Col>
+          <Col span={3}><Form.Item name="unitPrice" label={t('products.unitPrice')} rules={[{ required: true, message: t('common.required') }]}><InputNumber min={0} step={0.01} precision={1} style={{ width: '100%' }} /></Form.Item></Col>
           <Col span={9}></Col>
         </Row>
         <Row gutter={16}>
           {/* Row 3: Material Info */}
-          <Col span={4}><Form.Item name="coreType" label="Core Type"><Select options={CORE_TYPE_OPTIONS} allowClear /></Form.Item></Col>
-          <Col span={3}><Form.Item name="coreThicknessMm" label="Core Thickness (mm)"><InputNumber min={0} step={0.1} precision={1} style={{ width: '100%' }} /></Form.Item></Col>
-          <Col span={4}><Form.Item name="abfType" label="ABF Type"><Select options={ABF_TYPE_OPTIONS} allowClear /></Form.Item></Col>
+          <Col span={4}><Form.Item name="coreType" label={t('products.coreType')}><Select options={CORE_TYPE_OPTIONS} allowClear /></Form.Item></Col>
+          <Col span={3}><Form.Item name="coreThicknessMm" label={t('products.coreThickness')}><InputNumber min={0} step={0.1} precision={1} style={{ width: '100%' }} /></Form.Item></Col>
+          <Col span={4}><Form.Item name="abfType" label={t('products.abfType')}><Select options={ABF_TYPE_OPTIONS} allowClear /></Form.Item></Col>
           <Col span={13} style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
             <Space size="middle">
-              <Tag color="blue">UPP & Yield auto-calculated</Tag>
-              <Button type="primary" icon={<SaveOutlined />} onClick={() => onSave(sku, form)}>Save</Button>
-              <Button icon={<CloseOutlined />} onClick={onCancel}>Cancel</Button>
+              <Tag color="blue">{t('products.upp')} & {t('products.yieldRate')} - {t('products.save')}</Tag>
+              <Button type="primary" icon={<SaveOutlined />} onClick={() => onSave(sku, form)}>{t('products.save')}</Button>
+              <Button icon={<CloseOutlined />} onClick={onCancel}>{t('products.cancel')}</Button>
             </Space>
           </Col>
         </Row>

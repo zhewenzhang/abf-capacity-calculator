@@ -31,6 +31,7 @@ import * as XLSX from 'xlsx';
 import { getForecasts, batchSaveForecasts, deleteForecast } from '../services/forecastService';
 import { getSKUs } from '../services/skuService';
 import type { Forecast, SKU } from '../types';
+import { useI18n } from '../i18n';
 
 const { Text } = Typography;
 
@@ -106,6 +107,7 @@ function monthsToYears(months: string[]): string[] {
 }
 
 const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
+  const { t } = useI18n();
   const [skus, setSkus] = useState<SKU[]>([]);
   const [forecasts, setForecasts] = useState<Forecast[]>([]);
   const [loading, setLoading] = useState(false);
@@ -200,7 +202,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
   const handleSaveAll = async () => {
     const changed = Object.entries(editingCells);
     if (changed.length === 0) {
-      message.info('No changes to save');
+      message.info(t('forecasts.noChanges'));
       return;
     }
 
@@ -243,7 +245,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
   const handleDiscardEdits = () => {
     setEditingCells({});
     setPeriodEditEnabled(false);
-    message.info('Edits discarded');
+    message.info(t('forecasts.editsDiscarded'));
   };
 
   // --- Period edit: distribute even-split across months ---
@@ -279,7 +281,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
   // --- Batch Operations ---
   const handleBatchSet = async () => {
     if (selectedRowKeys.length === 0) {
-      message.warning('Please select SKUs first');
+      message.warning(t('forecasts.selectSkuFirst'));
       return;
     }
     try {
@@ -322,7 +324,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
 
   const handleBatchMultiply = async () => {
     if (selectedRowKeys.length === 0) {
-      message.warning('Please select SKUs first');
+      message.warning(t('forecasts.selectSkuFirst'));
       return;
     }
     try {
@@ -442,7 +444,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
   // Clear selected SKUs' forecasts
   const handleBatchClear = async () => {
     if (selectedRowKeys.length === 0) {
-      message.warning('Please select SKUs first');
+      message.warning(t('forecasts.selectSkuFirst'));
       return;
     }
     setSaving(true);
@@ -709,10 +711,10 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
         <Row gutter={[12, 8]} align="middle">
           <Col>
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleImport} style={{ display: 'none' }} />
-            <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>Template</Button>
+            <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>{t('forecasts.template')}</Button>
           </Col>
           <Col>
-            <Button icon={<UploadOutlined />} onClick={() => fileInputRef.current?.click()}>Import</Button>
+            <Button icon={<UploadOutlined />} onClick={() => fileInputRef.current?.click()}>{t('forecasts.import')}</Button>
           </Col>
           <Col>
             <Button
@@ -722,12 +724,12 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
               disabled={!hasChanges}
               loading={saving}
             >
-              Save ({Object.keys(editingCells).length})
+              {t('forecasts.save')} ({Object.keys(editingCells).length})
             </Button>
           </Col>
           {hasChanges && (
             <Col>
-              <Button onClick={handleDiscardEdits}>Discard</Button>
+              <Button onClick={handleDiscardEdits}>{t('forecasts.discard')}</Button>
             </Col>
           )}
           <Col flex="auto" />
@@ -739,19 +741,19 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
                 type={viewMode === 'month' ? 'primary' : 'default'}
                 onClick={() => { setViewMode('month'); setPeriodEditEnabled(false); }}
               >
-                Month
+                {t('forecasts.month')}
               </Button>
               <Button
                 type={viewMode === 'quarter' ? 'primary' : 'default'}
                 onClick={() => { setViewMode('quarter'); setPeriodEditEnabled(false); }}
               >
-                Quarter
+                {t('forecasts.quarter')}
               </Button>
               <Button
                 type={viewMode === 'year' ? 'primary' : 'default'}
                 onClick={() => { setViewMode('year'); setPeriodEditEnabled(false); }}
               >
-                Year
+                {t('forecasts.year')}
               </Button>
             </Space.Compact>
           </Col>
@@ -763,11 +765,11 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
                 size="small"
                 checked={periodEditEnabled}
                 onChange={setPeriodEditEnabled}
-                checkedChildren="Edit"
-                unCheckedChildren="View"
+                checkedChildren={t('forecasts.edit')}
+                unCheckedChildren={t('forecasts.view')}
               />
               <Text type="secondary" style={{ fontSize: 12 }}>
-                {periodEditEnabled ? 'Editing' : 'Read-only'}
+                {periodEditEnabled ? t('forecasts.editing') : t('forecasts.readOnly')}
               </Text>
             </Space>
           </Col>
@@ -786,34 +788,34 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
               <Button
                 icon={<EditOutlined />}
                 onClick={() => {
-                  if (selectedRowKeys.length === 0) { message.warning('Select SKUs first'); return; }
+                  if (selectedRowKeys.length === 0) { message.warning(t('forecasts.selectSkuFirst')); return; }
                   setBatchMode('set');
                   setBatchModalOpen(true);
                 }}
                 disabled={selectedRowKeys.length === 0}
               >
-                Batch Set
+                {t('forecasts.batchSet')}
               </Button>
               <Button
                 icon={<ThunderboltOutlined />}
                 onClick={() => {
-                  if (selectedRowKeys.length === 0) { message.warning('Select SKUs first'); return; }
+                  if (selectedRowKeys.length === 0) { message.warning(t('forecasts.selectSkuFirst')); return; }
                   setBatchMode('multiply');
                   setBatchModalOpen(true);
                 }}
                 disabled={selectedRowKeys.length === 0}
               >
-                Multiply
+                {t('forecasts.multiply')}
               </Button>
               <Button
                 icon={<SyncOutlined />}
                 onClick={handleBatchExtend}
                 loading={saving}
               >
-                Fill Forward
+                {t('forecasts.fillForward')}
               </Button>
-              <Popconfirm title="Clear all forecasts for selected SKUs?" onConfirm={handleBatchClear}>
-                <Button icon={<ClearOutlined />} danger disabled={selectedRowKeys.length === 0}>Clear</Button>
+              <Popconfirm title={t('forecasts.clearConfirm')} onConfirm={handleBatchClear}>
+                <Button icon={<ClearOutlined />} danger disabled={selectedRowKeys.length === 0}>{t('forecasts.clear')}</Button>
               </Popconfirm>
             </Space>
           </Col>
@@ -823,7 +825,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
       {/* Info bar */}
       {selectedRowKeys.length > 0 && (
         <Alert
-          message={`${selectedRowKeys.length} SKU(s) selected`}
+          message={`${selectedRowKeys.length} ${t('forecasts.selectedCount')}`}
           type="info"
           showIcon
           style={{ marginBottom: 8 }}
@@ -834,8 +836,8 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
         <Alert
           message={
             periodEditEnabled
-              ? `${viewMode === 'quarter' ? 'Quarter' : 'Year'} edit mode: changes are evenly split across months. Click Save to persist.`
-              : `${viewMode === 'quarter' ? 'Quarter' : 'Year'} view: values are aggregated from monthly forecasts.`
+              ? `${t(`forecasts.${viewMode}`)} ${t('forecasts.editMode')}`
+              : `${t(`forecasts.${viewMode}`)} ${t('forecasts.viewMode')}`
           }
           type="info"
           showIcon
@@ -861,28 +863,28 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
 
       {/* Batch Modal */}
       <Modal
-        title={batchMode === 'set' ? 'Batch Set Forecast' : 'Batch Multiply Forecast'}
+        title={batchMode === 'set' ? t('forecasts.batchSetTitle') : t('forecasts.batchMultiplyTitle')}
         open={batchModalOpen}
         onOk={batchMode === 'set' ? handleBatchSet : handleBatchMultiply}
         onCancel={() => { setBatchModalOpen(false); batchForm.resetFields(); }}
         confirmLoading={saving}
       >
         <Form form={batchForm} layout="vertical">
-          <Text type="secondary">{selectedRowKeys.length} SKU(s) selected</Text>
-          <Form.Item name="targetMonths" label="Target Months (default: all)">
+          <Text type="secondary">{selectedRowKeys.length} {t('forecasts.selectedCount')}</Text>
+          <Form.Item name="targetMonths" label={t('forecasts.targetMonths')}>
             <Select
               mode="multiple"
               options={ALL_MONTHS.map(m => ({ label: m, value: m }))}
-              placeholder="All months (2026-01 to 2040-12)"
+              placeholder={t('forecasts.allMonthsPlaceholder')}
             />
           </Form.Item>
           {batchMode === 'set' && (
-            <Form.Item name="targetValue" label="Target Value (K PCS)" rules={[{ required: true }]}>
+            <Form.Item name="targetValue" label={t('forecasts.targetValue')} rules={[{ required: true }]}>
               <InputNumber min={0} step={0.1} precision={1} style={{ width: '100%' }} addonAfter="K" />
             </Form.Item>
           )}
           {batchMode === 'multiply' && (
-            <Form.Item name="multiplier" label="Multiplier" rules={[{ required: true }]}>
+            <Form.Item name="multiplier" label={t('forecasts.multiplier')} rules={[{ required: true }]}>
               <InputNumber min={0} step={0.1} style={{ width: '100%' }} />
             </Form.Item>
           )}

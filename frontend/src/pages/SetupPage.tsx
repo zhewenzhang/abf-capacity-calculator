@@ -1,40 +1,39 @@
 import React from 'react';
 import { Result, Typography, Alert } from 'antd';
 import { WarningOutlined } from '@ant-design/icons';
+import { useI18n } from '../i18n';
 
 const { Paragraph, Text } = Typography;
 
 const SetupPage: React.FC = () => {
+  const { t } = useI18n();
+
   return (
     <div style={{ maxWidth: 800, margin: '80px auto', padding: 24 }}>
       <Result
         icon={<WarningOutlined />}
-        title="Firebase Configuration Required"
-        subTitle="This app requires Firebase credentials to run. Please set up your Firebase project."
+        title={t('setup.title')}
+        subTitle={t('setup.subTitle')}
       />
       <Alert
         type="info"
-        message="Setup Steps"
+        message={t('setup.steps')}
         description={
           <div>
             <Paragraph>
-              <Text strong>1.</Text> Create a Firebase project at{' '}
-              <a href="https://console.firebase.google.com" target="_blank">
-                console.firebase.google.com
-              </a>
+              <Text strong>{t('setup.step1')}</Text>
             </Paragraph>
             <Paragraph>
-              <Text strong>2.</Text> Enable Authentication with Google sign-in
+              <Text strong>{t('setup.step2')}</Text>
             </Paragraph>
             <Paragraph>
-              <Text strong>3.</Text> Enable Firestore Database
+              <Text strong>{t('setup.step3')}</Text>
             </Paragraph>
             <Paragraph>
-              <Text strong>4.</Text> Enable Firebase Hosting
+              <Text strong>{t('setup.step4')}</Text>
             </Paragraph>
             <Paragraph>
-              <Text strong>5.</Text> Copy your web app config and create a{' '}
-              <Text code>.env.local</Text> file:
+              <Text strong>{t('setup.step5')}</Text>
             </Paragraph>
             <pre style={{ background: '#f5f5f5', padding: 16, borderRadius: 4 }}>
               {`VITE_FIREBASE_API_KEY=your_api_key
@@ -45,7 +44,7 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 VITE_FIREBASE_APP_ID=your_app_id`}
             </pre>
             <Paragraph>
-              <Text strong>6.</Text> Run <Text code>npm install</Text> then <Text code>npm run dev</Text>
+              <Text strong>{t('setup.step6')}</Text>
             </Paragraph>
           </div>
         }

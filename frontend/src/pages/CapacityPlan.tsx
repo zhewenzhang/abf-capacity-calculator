@@ -45,6 +45,7 @@ import { getParameters, saveParameters } from '../services/parameterService';
 import { saveVersion, getVersions, deleteVersion, restoreVersion } from '../services/versionService';
 import { generateDefaultCapacityPlans, generateMonths } from '../core/defaults';
 import type { CapacityPlan, FactoryDef, ProjectParameters } from '../types';
+import { useI18n } from '../i18n';
 
 const { Text } = Typography;
 
@@ -78,6 +79,7 @@ function getLastMonthOfYear(year: number): string {
 }
 
 const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }) => {
+  const { t } = useI18n();
   const [plans, setPlans] = useState<CapacityPlan[]>([]);
   const [workingDays, setWorkingDays] = useState(28);
   const [loading, setLoading] = useState(false);
@@ -225,7 +227,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
 
   const handleSaveFactoryName = () => {
     if (!editingFactoryId || !editingFactoryName.trim()) {
-      message.warning('Factory name cannot be empty');
+      message.warning(t('capacity.factoryNameEmpty'));
       return;
     }
     const updated = factories.map((f) =>
@@ -234,19 +236,19 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
     setFactories(updated);
     setEditingFactoryId(null);
     setEditingFactoryName('');
-    message.success('Factory name updated');
+    message.success(t('capacity.factoryUpdated'));
   };
 
   const handleAddFactory = () => {
     const id = `fab-${Date.now()}`;
     const name = `Fab ${String.fromCharCode(65 + factories.length)}`;
     setFactories([...factories, { id, name }]);
-    message.success(`Added ${name}`);
+    message.success(`${t('capacity.factoryAdded')} ${name}`);
   };
 
   const handleRemoveFactory = (factoryId: string) => {
     if (factories.length <= 1) {
-      message.warning('Must have at least one factory');
+      message.warning(t('capacity.mustHaveOneFactory'));
       return;
     }
     setFactories(factories.filter((f) => f.id !== factoryId));
@@ -257,7 +259,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
       }
       return next;
     });
-    message.success('Factory removed');
+    message.success(t('capacity.factoryRemoved'));
   };
 
   // --- Batch update ---
@@ -293,11 +295,11 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
     const targetMonths = getBatchMonths();
     const targetFactories = getBatchFactories();
     if (targetMonths.length === 0) {
-      message.warning('No months in selected range');
+      message.warning(t('capacity.noMonthsInRange'));
       return;
     }
     if (batchAction === 'set' && batchCore === null && batchBu === null) {
-      message.warning('Enter at least Core or BU value');
+      message.warning(t('capacity.enterValue'));
       return;
     }
     setGridData((prev) => {
@@ -320,10 +322,10 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
     const timeLabel = batchMode === 'year' ? `${batchYear}` : `${batchYear} Q${batchQuarter}`;
     const factoryLabel =
       batchFactories && batchFactories.length > 0
-        ? `${batchFactories.length} factories`
-        : 'all factories';
-    const actionLabel = batchAction === 'clear' ? 'Cleared' : 'Updated';
-    message.success(`${actionLabel}: ${targetMonths.length} months × ${factoryLabel} in ${timeLabel}`);
+        ? `${batchFactories.length} ${t('capacity.factoriesLabel')}`
+        : t('capacity.allFactoriesLabel');
+    const actionLabel = batchAction === 'clear' ? t('capacity.cleared') : t('capacity.updated');
+    message.success(`${actionLabel}: ${targetMonths.length} ${t('capacity.months')} × ${factoryLabel} in ${timeLabel}`);
   };
 
   const handleGenerateDefaults = () => {
@@ -344,7 +346,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
       }
       return next;
     });
-    message.success('Loaded default capacity for 2026-2040');
+    message.success(t('capacity.loadedDefault'));
   };
 
   const handleSaveAll = async () => {
@@ -364,10 +366,10 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
         factories: factories,
       } as unknown as ProjectParameters);
       await batchSaveCapacityPlans(userId, projectId, updates, workingDays);
-      message.success(`Saved ${updates.length} rows + ${factories.length} factories`);
+      message.success(`${t('capacity.savedRows')} ${updates.length} ${t('capacity.rowsFactories')} ${factories.length} ${t('capacity.factoriesLabel')}`);
       loadPlans();
     } catch (e: any) {
-      message.error(e.message || 'Failed to save');
+      message.error(e.message || t('capacity.failedToSave'));
     } finally {
       setSaving(false);
     }
@@ -377,7 +379,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
     const lastMonth = months[months.length - 1];
     const [y, m] = lastMonth.split('-').map(Number);
     const newMonth = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
-    message.success(`Added ${newMonth} — edit cells and click Save`);
+    message.success(`${t('capacity.addedMonth')} ${newMonth} ${t('capacity.editSave')}`);
   };
 
   const handleRemoveMonth = (month: string) => {
@@ -407,13 +409,13 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
       }
       return next;
     });
-    message.success(`Filled ${fillFrom.length} months from ${month}`);
+    message.success(`${t('capacity.filledMonths')} ${fillFrom.length} ${t('capacity.monthsFrom')} ${month}`);
   };
 
   // --- Build grid columns ---
   const gridColumns: ColumnsType<{ key: string; label: string; isTotal: boolean; factoryId: string }> = [
     {
-      title: 'Factory',
+      title: t('capacity.factory'),
       dataIndex: 'label',
       key: 'label',
       width: 200,
@@ -422,7 +424,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
         if (record.isTotal) {
           return (
             <Text strong style={{ color: '#1890ff', fontSize: 13 }}>
-              📊 Total
+              📊 {t('capacity.total')}
             </Text>
           );
         }
@@ -447,7 +449,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
           <Space size={4}>
             <Text>{text}</Text>
             <Button size="small" type="text" icon={<EditOutlined />} onClick={() => handleRenameFactory(record.factoryId)} />
-            <Popconfirm title="Remove this factory?" onConfirm={() => handleRemoveFactory(record.factoryId)}>
+            <Popconfirm title={t('capacity.removeFactory')} onConfirm={() => handleRemoveFactory(record.factoryId)}>
               <Button size="small" type="text" danger icon={<DeleteOutlined />} />
             </Popconfirm>
           </Space>
@@ -466,7 +468,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
           <Space size={0} style={{ marginTop: 2 }}>
             {viewMode === 'month' && (
               <Popconfirm
-                title={`Fill ${label} values to all months after?`}
+                title={t('capacity.fillValues').replace('{label}', label)}
                 onConfirm={() => handleFillForward(month)}
               >
                 <Button size="small" type="text" style={{ fontSize: 10, padding: '0 2px' }}>
@@ -475,7 +477,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
               </Popconfirm>
             )}
             {viewMode === 'month' && (
-              <Popconfirm title={`Remove ${month}?`} onConfirm={() => handleRemoveMonth(month)}>
+              <Popconfirm title={t('capacity.removeMonth').replace('{month}', month)} onConfirm={() => handleRemoveMonth(month)}>
                 <Button size="small" type="text" danger icon={<MinusOutlined />} style={{ fontSize: 10, padding: '0 2px' }} />
               </Popconfirm>
             )}
@@ -627,7 +629,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
       <Card size="small" style={{ marginBottom: 16 }}>
         <Row gutter={[12, 8]} align="middle" wrap>
           <Col>
-            <Text strong>View:</Text>
+            <Text strong>{t('capacity.view')}:</Text>
           </Col>
           <Col>
             <Radio.Group
@@ -637,21 +639,21 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
               optionType="button"
               buttonStyle="solid"
             >
-              <Radio.Button value="month"><TableOutlined /> Month</Radio.Button>
-              <Radio.Button value="quarter">Quarter</Radio.Button>
-              <Radio.Button value="year">Year</Radio.Button>
+              <Radio.Button value="month"><TableOutlined /> {t('capacity.month')}</Radio.Button>
+              <Radio.Button value="quarter">{t('capacity.quarter')}</Radio.Button>
+              <Radio.Button value="year">{t('capacity.year')}</Radio.Button>
             </Radio.Group>
           </Col>
           <Col flex="auto" />
           <Col>
             <Space>
-              <Button icon={<PlusOutlined />} onClick={handleAddFactory}>Add Factory</Button>
+              <Button icon={<PlusOutlined />} onClick={handleAddFactory}>{t('capacity.addFactory')}</Button>
               <Button icon={<PlusOutlined />} onClick={handleAddMonth} disabled={viewMode !== 'month'}>
-                Add Month
+                {t('capacity.addMonth')}
               </Button>
-              <Popconfirm title="Save all changes?" onConfirm={handleSaveAll}>
+              <Popconfirm title={t('capacity.saveChanges')} onConfirm={handleSaveAll}>
                 <Button type="primary" icon={<SaveOutlined />} loading={saving}>
-                  Save All ({months.length} months × {factories.length} factories)
+                  {t('capacity.saveAll')} ({months.length} {t('capacity.months')} × {factories.length} {t('capacity.factoriesLabel')})
                 </Button>
               </Popconfirm>
             </Space>
@@ -666,10 +668,10 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
           items={[
             {
               key: 'batch',
-              label: 'Batch Set / Modify',
+              label: t('capacity.batchSetModify'),
               children: (
                 <Row gutter={[12, 8]} align="middle" wrap>
-                  <Col><Text strong>Time:</Text></Col>
+                  <Col><Text strong>{t('capacity.time')}:</Text></Col>
                   <Col>
                     <Select
                       size="small"
@@ -677,8 +679,8 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
                       onChange={(v) => { setBatchMode(v); if (v === 'year') setBatchQuarter(null); }}
                       style={{ width: 100 }}
                       options={[
-                        { label: 'Year', value: 'year' },
-                        { label: 'Quarter', value: 'quarter' },
+                        { label: t('capacity.year'), value: 'year' },
+                        { label: t('capacity.quarter'), value: 'quarter' },
                       ]}
                     />
                   </Col>
@@ -708,7 +710,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
                       />
                     </Col>
                   )}
-                  <Col><Text strong>Factories:</Text></Col>
+                  <Col><Text strong>{t('capacity.factories')}:</Text></Col>
                   <Col>
                     <Select
                       size="small"
@@ -716,7 +718,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
                       value={batchFactories || undefined}
                       onChange={(v) => setBatchFactories(v.length > 0 ? v : null)}
                       style={{ minWidth: 160 }}
-                      placeholder="All factories"
+                      placeholder={t('capacity.allFactories')}
                       options={factoryOptions}
                       allowClear
                     />
@@ -728,8 +730,8 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
                       onChange={(v) => setBatchAction(v)}
                       style={{ width: 100 }}
                       options={[
-                        { label: '✏️ Set', value: 'set' },
-                        { label: '🗑️ Clear', value: 'clear' },
+                        { label: '✏️ ' + t('capacity.set'), value: 'set' },
+                        { label: '🗑️ ' + t('capacity.clear'), value: 'clear' },
                       ]}
                     />
                   </Col>
@@ -752,7 +754,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
                   </Col>
                   <Col>
                     <Button size="small" type="primary" onClick={handleBatchApply}>
-                      {batchAction === 'clear' ? 'Clear Selected' : 'Apply'}
+                      {batchAction === 'clear' ? t('capacity.clearSelected') : t('capacity.apply')}
                     </Button>
                   </Col>
                 </Row>
@@ -760,11 +762,11 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
             },
             {
               key: 'defaults',
-              label: 'Defaults',
+              label: t('capacity.defaults'),
               children: (
                 <Space>
                   <Button icon={<SyncOutlined />} onClick={handleGenerateDefaults}>
-                    Load 2026-2040 Defaults (6000 Core base, +1800 Core/yr, +10000 BU/yr)
+                    {t('capacity.loadDefaults')}
                   </Button>
                 </Space>
               ),
@@ -774,7 +776,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
       </Card>
 
       {/* Capacity Grid */}
-      <Card title="Capacity Plan (panels/day)">
+      <Card title={t('capacity.planGrid')}>
         <Table
           columns={gridColumns}
           dataSource={gridRows}
@@ -788,25 +790,25 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
         />
         <Divider style={{ margin: '12px 0 8px' }} />
         <Space wrap>
-          <Tag color="blue">C = Core</Tag>
-          <Tag color="green">B = BU</Tag>
+          <Tag color="blue">C = {t('common.core')}</Tag>
+          <Tag color="green">B = {t('common.bu')}</Tag>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            Working Days: <Text strong>{workingDays}</Text>/month (Parameters)
+            {t('capacity.workingDays')}: <Text strong>{workingDays}</Text>/month (Parameters)
           </Text>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            💡 Click ✏️ to rename | Edit cells directly
+            💡 {t('capacity.clickEditRename')}
           </Text>
         </Space>
       </Card>
 
       {/* Capacity Trend Charts */}
-      <Card title="Capacity Trend" style={{ marginTop: 16 }} extra={<BarChartOutlined />}>
+      <Card title={t('capacity.trend')} style={{ marginTop: 16 }} extra={<BarChartOutlined />}>
         <Tabs
           size="small"
           items={[
             {
               key: 'core',
-              label: '🔵 Core Panel/Day',
+              label: '🔵 ' + t('capacity.corePanelDay'),
               children: (
                 <ResponsiveContainer width="100%" height={350}>
                   <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
@@ -832,7 +834,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
             },
             {
               key: 'bu',
-              label: '🟢 BU Panel/Day',
+              label: '🟢 ' + t('capacity.buPanelDay'),
               children: (
                 <ResponsiveContainer width="100%" height={350}>
                   <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
@@ -858,7 +860,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
             },
             {
               key: 'capacity',
-              label: '📊 Monthly Capacity',
+              label: '📊 ' + t('capacity.monthlyCapacity'),
               children: (
                 <ResponsiveContainer width="100%" height={350}>
                   <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
@@ -883,9 +885,9 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
       </Card>
 
       {/* Version Management */}
-      <Card title="Version History" style={{ marginTop: 16 }}>
+      <Card title={t('capacity.versionHistory')} style={{ marginTop: 16 }}>
         <Row gutter={8} align="middle" style={{ marginBottom: 12 }}>
-          <Col><Text strong>Save current as:</Text></Col>
+          <Col><Text strong>{t('capacity.saveCurrentAs')}</Text></Col>
           <Col>
             <Input
               size="small"
@@ -898,14 +900,14 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
           </Col>
           <Col>
             <Button size="small" type="primary" onClick={handleSaveVersion}>
-              Save Version
+              {t('capacity.saveVersion')}
             </Button>
           </Col>
         </Row>
         {versionsLoading ? (
-          <Text type="secondary">Loading...</Text>
+          <Text type="secondary">{t('capacity.loading')}</Text>
         ) : versions.length === 0 ? (
-          <Text type="secondary">No versions saved yet</Text>
+          <Text type="secondary">{t('capacity.noVersions')}</Text>
         ) : (
           <Table
             size="small"
@@ -914,13 +916,13 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
             pagination={{ pageSize: 10 }}
             columns={[
               {
-                title: 'Version',
+                title: t('capacity.version'),
                 dataIndex: 'versionName',
                 key: 'versionName',
                 render: (v: string) => <Text strong>{v}</Text>,
               },
               {
-                title: 'Date',
+                title: t('capacity.date'),
                 dataIndex: 'createdAt',
                 key: 'createdAt',
                 render: (d: any) => {
@@ -931,15 +933,15 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
                 },
               },
               {
-                title: 'Actions',
+                title: t('common.actions'),
                 key: 'actions',
                 render: (_: any, record: { id: string; versionName: string }) => (
                   <Space>
-                    <Popconfirm title={`Restore "${record.versionName}"? This will replace your current data.`} onConfirm={() => handleRestoreVersion(record.id)}>
-                      <Button size="small" type="primary">Restore</Button>
+                    <Popconfirm title={t('capacity.restoreConfirm').replace('{versionName}', record.versionName)} onConfirm={() => handleRestoreVersion(record.id)}>
+                      <Button size="small" type="primary">{t('capacity.restore')}</Button>
                     </Popconfirm>
-                    <Popconfirm title="Delete this version?" onConfirm={() => handleDeleteVersion(record.id)}>
-                      <Button size="small" danger>Delete</Button>
+                    <Popconfirm title={t('capacity.deleteConfirm')} onConfirm={() => handleDeleteVersion(record.id)}>
+                      <Button size="small" danger>{t('common.delete')}</Button>
                     </Popconfirm>
                   </Space>
                 ),

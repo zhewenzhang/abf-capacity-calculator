@@ -16,6 +16,9 @@ import { buildAnalyticsModel, getDashboardHighlights, type AnalyticsModel, type 
 import { loadDemoData } from '../services/demoDataService';
 import { Link } from 'react-router-dom';
 import TimeMatrixTable from '../components/analytics/TimeMatrixTable';
+import { useI18n } from '../i18n';
+import { formatCurrency, formatCurrencyShort, DEFAULT_CURRENCY_SETTINGS } from '../core/currency';
+import type { CurrencySettings } from '../core/currency';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Text } = Typography;
@@ -26,18 +29,20 @@ interface DashboardPageProps {
 }
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [loadingDemo, setLoadingDemo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalSkus, setTotalSkus] = useState(0);
   const [model, setModel] = useState<AnalyticsModel | null>(null);
   const [highlights, setHighlights] = useState<DashboardHighlights | null>(null);
+  const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(DEFAULT_CURRENCY_SETTINGS);
 
   const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [skus, forecasts, capacityPlans, params] = await Promise.all([
+      const [skus, forecasts, capacityPlans, paramsData] = await Promise.all([
         getSKUs(userId, projectId),
         getForecasts(userId, projectId),
         getCapacityPlans(userId, projectId),
@@ -46,8 +51,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
 
       setTotalSkus(skus.length);
 
+      const cs = paramsData.currencySettings;
+      if (cs) {
+        setCurrencySettings({
+          baseCurrency: 'USD',
+          displayCurrency: cs.displayCurrency,
+          exchangeRateMode: cs.exchangeRateMode,
+          constantUsdToTwdRate: cs.constantUsdToTwdRate,
+          yearlyUsdToTwdRates: cs.yearlyUsdToTwdRates,
+        });
+      }
+
       if (skus.length > 0 && forecasts.length > 0) {
-        const m = buildAnalyticsModel(skus, forecasts, capacityPlans, params);
+        const m = buildAnalyticsModel(skus, forecasts, capacityPlans, paramsData);
         setModel(m);
         setHighlights(getDashboardHighlights(m));
       }
@@ -86,7 +102,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
   // --- Yearly health table ---
   const yearlyHealthColumns: ColumnsType<YearlyHealth> = [
     {
-      title: 'Year',
+      title: t('results.year'),
       dataIndex: 'year',
       key: 'year',
       width: 70,
@@ -95,52 +111,52 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
         <Tag color={r.severity === 'red' ? 'red' : r.severity === 'orange' ? 'orange' : 'green'}>{v}</Tag>
       ),
     },
-    { title: 'Revenue', dataIndex: 'revenue', key: 'revenue', width: 120, render: (v: number) => `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}` },
-    { title: 'Forecast PCS', dataIndex: 'forecastPcs', key: 'forecastPcs', width: 110, render: (v: number) => v.toLocaleString() },
-    { title: 'Core Demand', dataIndex: 'coreDemand', key: 'coreDemand', width: 100, render: (v: number) => v.toLocaleString() },
-    { title: 'Core Capacity', dataIndex: 'coreCapacity', key: 'coreCapacity', width: 110, render: (v: number) => v.toLocaleString() },
+    { title: t('results.revenue'), dataIndex: 'revenue', key: 'revenue', width: 120, render: (v: number) => formatCurrency(v, currencySettings) },
+    { title: t('results.forecastPcs'), dataIndex: 'forecastPcs', key: 'forecastPcs', width: 110, render: (v: number) => v.toLocaleString() },
+    { title: t('results.coreDemand'), dataIndex: 'coreDemand', key: 'coreDemand', width: 100, render: (v: number) => v.toLocaleString() },
+    { title: t('results.coreCapacity'), dataIndex: 'coreCapacity', key: 'coreCapacity', width: 110, render: (v: number) => v.toLocaleString() },
     {
-      title: 'Core Util.',
+      title: t('results.coreUtil'),
       dataIndex: 'coreUtil',
       key: 'coreUtil',
       width: 90,
       render: (v: number | null, r: YearlyHealth) => {
-        if (v === null && r.coreDemand > 0) return <Tag color="red">Over</Tag>;
+        if (v === null && r.coreDemand > 0) return <Tag color="red">{t('dashboard.over')}</Tag>;
         if (v === null) return '-';
         const pct = v * 100;
         return <Tag color={pct > 100 ? 'red' : pct > 85 ? 'orange' : 'green'}>{pct.toFixed(1)}%</Tag>;
       },
     },
-    { title: 'BU Demand', dataIndex: 'buDemand', key: 'buDemand', width: 100, render: (v: number) => v.toLocaleString() },
-    { title: 'BU Capacity', dataIndex: 'buCapacity', key: 'buCapacity', width: 110, render: (v: number) => v.toLocaleString() },
+    { title: t('results.buDemand'), dataIndex: 'buDemand', key: 'buDemand', width: 100, render: (v: number) => v.toLocaleString() },
+    { title: t('results.buCapacity'), dataIndex: 'buCapacity', key: 'buCapacity', width: 110, render: (v: number) => v.toLocaleString() },
     {
-      title: 'BU Util.',
+      title: t('results.buUtil'),
       dataIndex: 'buUtil',
       key: 'buUtil',
       width: 90,
       render: (v: number | null, r: YearlyHealth) => {
-        if (v === null && r.buDemand > 0) return <Tag color="red">Over</Tag>;
+        if (v === null && r.buDemand > 0) return <Tag color="red">{t('dashboard.over')}</Tag>;
         if (v === null) return '-';
         const pct = v * 100;
         return <Tag color={pct > 100 ? 'red' : pct > 85 ? 'orange' : 'green'}>{pct.toFixed(1)}%</Tag>;
       },
     },
     {
-      title: 'Shortage Months',
+      title: t('results.shortageMonthsLabel'),
       dataIndex: 'shortageMonths',
       key: 'shortageMonths',
       width: 120,
-      render: (v: string[]) => v.length > 0 ? <Text type="danger">{v.length} months</Text> : <Text type="success">0</Text>,
+      render: (v: string[]) => v.length > 0 ? <Text type="danger">{v.length} {t('dashboard.months')}</Text> : <Text type="success">0</Text>,
     },
     {
-      title: 'Bottleneck',
+      title: t('results.bottleneck'),
       dataIndex: 'bottleneck',
       key: 'bottleneck',
       width: 90,
       render: (v: string) => {
-        if (v === 'None') return <Tag color="green">None</Tag>;
-        if (v === 'Core') return <Tag color="orange">Core</Tag>;
-        return <Tag color="red">BU</Tag>;
+        if (v === 'None') return <Tag color="green">{t('results.bottleneck')}</Tag>;
+        if (v === 'Core') return <Tag color="orange">{t('results.coreUtil')}</Tag>;
+        return <Tag color="red">{t('results.buUtil')}</Tag>;
       },
     },
   ];
@@ -155,17 +171,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
       {totalSkus === 0 && (
         <Card style={{ marginBottom: 16, background: '#e6f7ff', border: '1px solid #91d5ff' }}>
           <Space direction="vertical" size={8} style={{ width: '100%' }}>
-            <Typography.Text strong>Welcome! You have no data yet.</Typography.Text>
+            <Typography.Text strong>{t('dashboard.welcomeTitle')}</Typography.Text>
             <Typography.Text>
-              Click below to load 5 demo SKUs (TSMC, Intel, AMD, NVIDIA, Qualcomm), 6 months of forecasts, and 2026–2028 capacity plans.
+              {t('dashboard.welcomeDesc')}
             </Typography.Text>
             <Popconfirm
-              title="Load Demo Data"
-              description="This will create 5 SKUs, 30 forecasts, and 36 capacity plan rows. Continue?"
+              title={t('dashboard.loadDemoTitle')}
+              description={t('dashboard.loadDemoDesc')}
               onConfirm={handleLoadDemo}
             >
               <Button type="primary" icon={<ThunderboltOutlined />} loading={loadingDemo}>
-                Load Demo Data
+                {t('dashboard.loadDemo')}
               </Button>
             </Popconfirm>
           </Space>
@@ -176,42 +192,42 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
       <Row gutter={[16, 16]}>
         <Col span={4}>
           <Card className="stat-card">
-            <Statistic title="Total SKUs" value={totalSkus} />
+            <Statistic title={t('dashboard.totalSkus')} value={totalSkus} />
           </Card>
         </Col>
         <Col span={4}>
           <Card className="stat-card">
-            <Statistic title="Total Revenue" value={model?.totalRevenue ?? 0} precision={0} prefix="$" />
+            <Statistic title={t('dashboard.totalRevenue')} value={model?.totalRevenue ?? 0} precision={0} prefix={formatCurrencyShort(1, currencySettings).replace('1', '')} />
           </Card>
         </Col>
         <Col span={4}>
           <Card className="stat-card">
             <Statistic
-              title="Revenue Trend"
+              title={t('dashboard.revenueTrend')}
               value={highlights?.revenueTrend === 'up' ? '↑' : highlights?.revenueTrend === 'down' ? '↓' : '→'}
               valueStyle={{
                 color: highlights?.revenueTrend === 'up' ? '#3f8600' : highlights?.revenueTrend === 'down' ? '#cf1322' : '#666',
               }}
             />
             {highlights?.peakRevenueYear && (
-              <Text type="secondary">Peak: {highlights.peakRevenueYear}</Text>
+              <Text type="secondary">{t('dashboard.peak')}: {highlights.peakRevenueYear}</Text>
             )}
           </Card>
         </Col>
         <Col span={4}>
           <Card className="stat-card">
             <Statistic
-              title="Worst Year"
+              title={t('dashboard.worstYear')}
               value={highlights?.worstYear ?? '—'}
               valueStyle={{ color: highlights?.worstYear ? '#cf1322' : '#3f8600' }}
             />
-            {highlights?.worstYear && <Text type="danger">Capacity constrained</Text>}
+            {highlights?.worstYear && <Text type="danger">{t('dashboard.capacityConstrained')}</Text>}
           </Card>
         </Col>
         <Col span={4}>
           <Card className="stat-card">
             <Statistic
-              title="Max Core Util."
+              title={t('dashboard.maxCoreUtil')}
               value={model?.maxCoreUtil === null ? 100 : (model?.maxCoreUtil ?? 0) * 100}
               precision={1}
               suffix="%"
@@ -223,19 +239,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
         <Col span={4}>
           <Card className="stat-card">
             <Statistic
-              title="Shortage Months"
+              title={t('dashboard.shortageMonths')}
               value={model?.shortageMonthCount ?? 0}
               suffix={`/ ${model?.monthlySummaries.length ?? 0}`}
               valueStyle={{ color: (model?.shortageMonthCount ?? 0) > 0 ? '#cf1322' : '#3f8600' }}
             />
-            {model?.worstMonth && <Text type="danger">Worst: {model.worstMonth}</Text>}
+            {model?.worstMonth && <Text type="danger">{t('dashboard.peak')}: {model.worstMonth}</Text>}
           </Card>
         </Col>
       </Row>
 
       {/* Yearly Capacity Health */}
       {model && model.yearlyHealth.length > 0 && (
-        <Card title="Yearly Capacity Health" style={{ marginTop: 16 }}>
+        <Card title={t('dashboard.yearlyHealth')} style={{ marginTop: 16 }}>
           <Table
             columns={yearlyHealthColumns}
             dataSource={model.yearlyHealth}
@@ -250,7 +266,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
 
       {/* Revenue Trend Chart */}
       {model && model.monthlyRevenue.length > 0 && (
-        <Card title="Revenue Trend" extra={<LineChartOutlined />} style={{ marginTop: 16 }}>
+        <Card title={t('dashboard.revenueTrendTitle')} extra={<LineChartOutlined />} style={{ marginTop: 16 }}>
           {revenueChartData.length > 0 ? (
             <Line
               data={revenueChartData}
@@ -259,23 +275,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
               height={250}
               autoFit
               xAxis={{ label: { autoRotate: true } }}
-              yAxis={{ label: { formatter: (v: any) => `$${Number(v).toLocaleString()}` } }}
+              yAxis={{ label: { formatter: (v: any) => formatCurrencyShort(Number(v), currencySettings) } }}
             />
           ) : (
-            <Text type="secondary">No revenue data</Text>
+            <Text type="secondary">{t('dashboard.noRevenueData')}</Text>
           )}
         </Card>
       )}
 
       {/* Utilization Trend Chart */}
       {model && model.monthlyUtilization.length > 0 && (
-        <Card title="Core & BU Utilization Trend" extra={<LineChartOutlined />} style={{ marginTop: 16 }}>
+        <Card title={t('dashboard.utilTrendTitle')} extra={<LineChartOutlined />} style={{ marginTop: 16 }}>
           <Line
             data={(() => {
               const data: any[] = [];
               model.monthlyUtilization.forEach(u => {
-                if (u.coreUtil !== null) data.push({ month: u.month, type: 'Core Util.', value: u.coreUtil * 100 });
-                if (u.buUtil !== null) data.push({ month: u.month, type: 'BU Util.', value: u.buUtil * 100 });
+                if (u.coreUtil !== null) data.push({ month: u.month, type: t('results.coreUtil'), value: u.coreUtil * 100 });
+                if (u.buUtil !== null) data.push({ month: u.month, type: t('results.buUtil'), value: u.buUtil * 100 });
               });
               return data;
             })()}
@@ -295,16 +311,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
       {model && (
         <Row gutter={16} style={{ marginTop: 16 }}>
           <Col span={8}>
-            <Card title="Revenue by Customer" extra={<Link to="/results">View Detail →</Link>} size="small">
+            <Card title={t('dashboard.revByCustomer')} extra={<Link to="/results">{t('dashboard.viewDetail')}</Link>} size="small">
               <TimeMatrixTable
                 rows={model.revenueByCustomer.slice(0, 5)}
                 timeColumns={model.yearlyHealth.map(y => y.year)}
-                formatValue={(v) => `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                formatValue={(v) => formatCurrency(v, currencySettings)}
               />
             </Card>
           </Col>
           <Col span={8}>
-            <Card title="Core Demand by Size" extra={<Link to="/results">View Detail →</Link>} size="small">
+            <Card title={t('dashboard.coreBySize')} extra={<Link to="/results">{t('dashboard.viewDetail')}</Link>} size="small">
               <TimeMatrixTable
                 rows={model.coreDemandBySize}
                 timeColumns={model.yearlyHealth.map(y => y.year)}
@@ -313,11 +329,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
             </Card>
           </Col>
           <Col span={8}>
-            <Card title="Revenue by Application" extra={<Link to="/results">View Detail →</Link>} size="small">
+            <Card title={t('dashboard.revByApp')} extra={<Link to="/results">{t('dashboard.viewDetail')}</Link>} size="small">
               <TimeMatrixTable
                 rows={model.revenueByApplication}
                 timeColumns={model.yearlyHealth.map(y => y.year)}
-                formatValue={(v) => `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                formatValue={(v) => formatCurrency(v, currencySettings)}
               />
             </Card>
           </Col>
@@ -326,21 +342,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
 
       {/* Key Insights */}
       {highlights && (
-        <Card title="Key Insights" style={{ marginTop: 16 }} size="small">
+        <Card title={t('dashboard.keyInsights')} style={{ marginTop: 16 }} size="small">
           <Space direction="vertical" size={8} style={{ width: '100%' }}>
             {highlights.bottleneckDriver !== 'None' && (
               <Text>
-                🔧 <Tag color={highlights.bottleneckDriver === 'Core' ? 'orange' : 'red'}>{highlights.bottleneckDriver}</Tag> is the primary bottleneck driver.
+                <Tag color={highlights.bottleneckDriver === 'Core' ? 'orange' : 'red'}>{highlights.bottleneckDriver}</Tag> {t('dashboard.bottleneckDriver')}
               </Text>
             )}
             {highlights.topCustomer && (
-              <Text>💰 <strong>{highlights.topCustomer}</strong> is the top revenue customer.</Text>
+              <Text>💰 <strong>{highlights.topCustomer}</strong> {t('dashboard.topCustomer')}</Text>
             )}
             {highlights.topSizeCategory && (
-              <Text>📐 <strong>{highlights.topSizeCategory}</strong> size category dominates revenue.</Text>
+              <Text>📐 <strong>{highlights.topSizeCategory}</strong> {t('dashboard.topSize')}</Text>
             )}
             {highlights.worstYear && (
-              <Text type="danger">⚠️ <strong>{highlights.worstYear}</strong> is the most constrained year — review capacity plans.</Text>
+              <Text type="danger">⚠️ <strong>{highlights.worstYear}</strong> {t('dashboard.constrainedYear')}</Text>
             )}
           </Space>
         </Card>

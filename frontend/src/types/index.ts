@@ -81,6 +81,13 @@ export interface ProjectParameters {
   panelParams: PanelParams;
   defaultWorkingDays?: number;
   factories?: FactoryDef[];
+  currencySettings?: {
+    baseCurrency: 'USD';
+    displayCurrency: 'USD' | 'TWD';
+    exchangeRateMode: 'constant' | 'yearly';
+    constantUsdToTwdRate: number;
+    yearlyUsdToTwdRates: Record<string, number>;
+  };
   updatedAt?: Date;
 }
 

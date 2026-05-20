@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { ConfigProvider, Layout, Menu, Spin, Button, Typography, Space } from 'antd';
+import { ConfigProvider, Layout, Menu, Spin, Button, Typography, Space, Radio } from 'antd';
 import {
   DashboardOutlined,
   InboxOutlined,
@@ -10,6 +10,8 @@ import {
   CloudOutlined,
   CalculatorOutlined,
   ExperimentOutlined,
+  GlobalOutlined,
+  DollarOutlined,
 } from '@ant-design/icons';
 import type { User } from 'firebase/auth';
 import { isConfigured } from './firebase/config';
@@ -23,86 +25,152 @@ import CapacitySpreadsheetPage from './pages/CapacitySpreadsheet';
 import ParametersPage from './pages/Parameters';
 import CalculationResultsPage from './pages/CalculationResults';
 import SetupPage from './pages/SetupPage';
+import { I18nProvider, useI18n, type Language } from './i18n';
+import { AppPrefsProvider, useAppPrefs } from './context/AppPreferencesContext';
+import type { DisplayCurrency } from './core/currency';
 
 const { Sider, Content } = Layout;
 const { Title } = Typography;
 
-const APP_VERSION = 'v1.7.0';
+const APP_VERSION = 'v1.8.0';
 
+// --- Sidebar with i18n ---
+const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }> = ({ current, onMenuClick }) => {
+  const { t } = useI18n();
+
+  const menuItems = [
+    { key: 'dashboard', icon: <DashboardOutlined />, label: t('menu.dashboard') },
+    { key: 'products', icon: <InboxOutlined />, label: t('menu.products') },
+    { key: 'forecasts', icon: <BarChartOutlined />, label: t('menu.forecasts') },
+    { key: 'capacity', icon: <CloudOutlined />, label: t('menu.capacity') },
+    { key: 'capacity-lab', icon: <ExperimentOutlined />, label: t('menu.capacityLab') },
+    { key: 'parameters', icon: <SettingOutlined />, label: t('menu.parameters') },
+    { key: 'results', icon: <CalculatorOutlined />, label: t('menu.results') },
+  ];
+
+  return (
+    <Sider
+      breakpoint="lg"
+      collapsedWidth="80"
+      width={200}
+      style={{
+        overflow: 'hidden',
+        height: '100vh',
+        position: 'sticky',
+        top: 0,
+        left: 0,
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <div style={{ padding: '16px 12px', textAlign: 'center' }}>
+        <Title level={4} style={{ color: '#fff', margin: 0, fontSize: 18 }}>
+          ABF Calc
+        </Title>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[current]}
+          items={menuItems}
+          onClick={({ key }) => onMenuClick(key)}
+          style={{ borderRight: 'none' }}
+        />
+      </div>
+      <div style={{ padding: '12px 16px', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+        <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>{APP_VERSION}</span>
+      </div>
+    </Sider>
+  );
+};
+
+// --- Header with language and currency switches ---
+const AppHeader: React.FC<{
+  user: User;
+  onLogout: () => void;
+  pageTitle: string;
+}> = ({ user, onLogout, pageTitle }) => {
+  const { t, lang, setLang } = useI18n();
+  const { prefs, setCurrency } = useAppPrefs();
+
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+      <Title level={3} style={{ margin: 0 }}>{pageTitle}</Title>
+      <Space wrap>
+        {/* Language switch */}
+        <Space size={4}>
+          <GlobalOutlined />
+          <Radio.Group
+            value={lang}
+            onChange={(e) => setLang(e.target.value as Language)}
+            size="small"
+            buttonStyle="solid"
+          >
+            <Radio.Button value="en">EN</Radio.Button>
+            <Radio.Button value="zh-TW">繁中</Radio.Button>
+          </Radio.Group>
+        </Space>
+
+        {/* Currency switch */}
+        <Space size={4}>
+          <DollarOutlined />
+          <Radio.Group
+            value={prefs.displayCurrency}
+            onChange={(e) => setCurrency(e.target.value as DisplayCurrency)}
+            size="small"
+            buttonStyle="solid"
+          >
+            <Radio.Button value="USD">USD</Radio.Button>
+            <Radio.Button value="TWD">TWD</Radio.Button>
+          </Radio.Group>
+        </Space>
+
+        {/* User info */}
+        <span style={{ fontSize: 13, color: '#666' }}>{user.email}</span>
+        <Button icon={<LogoutOutlined />} size="small" onClick={onLogout}>
+          {t('header.logout')}
+        </Button>
+      </Space>
+    </div>
+  );
+};
+
+// --- Main App Content ---
 const AppContent: React.FC<{ user: User }> = ({ user }) => {
   const navigate = useNavigate();
   const [current, setCurrent] = useState('dashboard');
+  const { t } = useI18n();
 
-  const menuItems = [
-    { key: 'dashboard', icon: <DashboardOutlined />, label: 'Dashboard' },
-    { key: 'products', icon: <InboxOutlined />, label: 'Products' },
-    { key: 'forecasts', icon: <BarChartOutlined />, label: 'Forecasts' },
-    { key: 'capacity', icon: <CloudOutlined />, label: 'Capacity Plan' },
-    { key: 'capacity-lab', icon: <ExperimentOutlined />, label: 'Capacity Lab' },
-    { key: 'parameters', icon: <SettingOutlined />, label: 'Parameters' },
-    { key: 'results', icon: <CalculatorOutlined />, label: 'Results' },
-  ];
+  const pageTitles: Record<string, string> = useMemo(() => ({
+    dashboard: t('dashboard.title'),
+    products: t('products.title'),
+    forecasts: t('forecasts.title'),
+    capacity: t('capacity.title'),
+    'capacity-lab': t('capacityLab.title'),
+    parameters: t('parameters.title'),
+    results: t('results.title'),
+  }), [t]);
 
-  const handleMenuClick = ({ key }: { key: string }) => {
+  const handleMenuClick = useCallback((key: string) => {
     setCurrent(key);
     navigate(`/${key}`);
-  };
+  }, [navigate]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await signOutUser();
-  };
+  }, []);
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider
-        breakpoint="lg"
-        collapsedWidth="80"
-        width={200}
-        style={{
-          overflow: 'hidden',
-          height: '100vh',
-          position: 'sticky',
-          top: 0,
-          left: 0,
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <div style={{ padding: '16px 12px', textAlign: 'center' }}>
-          <Title level={4} style={{ color: '#fff', margin: 0, fontSize: 18 }}>
-            ABF Calc
-          </Title>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          <Menu
-            theme="dark"
-            mode="inline"
-            selectedKeys={[current]}
-            items={menuItems}
-            onClick={handleMenuClick}
-            style={{ borderRight: 'none' }}
-          />
-        </div>
-        <div style={{ padding: '12px 16px', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-          <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>{APP_VERSION}</span>
-        </div>
-      </Sider>
+      <AppSider current={current} onMenuClick={handleMenuClick} />
       <Layout>
-        <Content
-          className="site-layout-content"
-          style={{ margin: '0 16px' }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-            <Title level={3} style={{ margin: 0 }}>
-              {menuItems.find((i) => i.key === current)?.label}
-            </Title>
-            <Space>
-              <span>{user.email}</span>
-              <Button icon={<LogoutOutlined />} onClick={handleLogout}>
-                Logout
-              </Button>
-            </Space>
-          </div>
+        <Content className="site-layout-content" style={{ margin: '0 16px' }}>
+          <AppHeader
+            user={user}
+            onLogout={handleLogout}
+            pageTitle={pageTitles[current] || current}
+          />
           <Routes>
             <Route path="/dashboard" element={<DashboardPage userId={user.uid} projectId="default" />} />
             <Route path="/products" element={<ProductsPage userId={user.uid} projectId="default" />} />
@@ -156,7 +224,11 @@ const AuthRouter: React.FC = () => {
 const App: React.FC = () => {
   return (
     <ConfigProvider>
-      <AuthRouter />
+      <AppPrefsProvider>
+        <I18nProvider>
+          <AuthRouter />
+        </I18nProvider>
+      </AppPrefsProvider>
     </ConfigProvider>
   );
 };

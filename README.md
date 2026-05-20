@@ -23,10 +23,12 @@ A browser-based ABF (Ajinomoto Build-up Film) substrate capacity planning tool b
    - **Working Days**: Configurable default (28 days/month) in Parameters
 4. **Yield & Panel Parameters** — Edit yield rate matrix and panel layout parameters.
 5. **Calculation Engine** — Deterministic TypeScript calculation of panel demand, utilization, shortages, and revenue.
-6. **Dashboard** — Real-time metrics: total SKUs, forecast PCS, revenue, max utilization, shortage months.
-7. **Results** — Detailed SKU-month breakdown and monthly capacity summary with bottleneck identification.
+6. **Dashboard** — Real-time metrics: total SKUs, forecast PCS, revenue, max utilization, shortage months. Revenue display in USD or TWD with trend charts.
+7. **Results** — Detailed SKU-month breakdown and monthly capacity summary with bottleneck identification. Organized into Sales / Product Planning / Capacity / Raw tabs.
 8. **Capacity Trend Charts** — Three chart tabs: Core Panel/Day, BU Panel/Day, Monthly Capacity
 9. **Version History** — Save, restore, and delete named snapshots of the entire capacity plan
+10. **Currency Conversion** — USD/TWD display switching with constant or yearly exchange rate settings in Parameters.
+11. **Bilingual UI** — English / Traditional Chinese (繁中) with language switch in the header.
 
 ## Firebase Setup
 
@@ -203,6 +205,7 @@ frontend/src/
 
 ## Version History
 
+- **2026-05-21 v1.8.0**: Added USD/TWD currency display switching, exchange rate settings (constant/yearly), Traditional Chinese/English bilingual UI support, language switch (EN/繁中) in header, currency switch (USD/TWD) in header, and UI label consistency cleanup across all pages.
 - **2026-05-21 v1.7.0**: Dashboard and Results analytics redesign — yearly capacity health table with red/orange/green severity, revenue and Core/BU utilization trend charts, matrix analysis tables (Revenue by Customer/Size/Application, Core/BU Demand by Size/Application/ProductGrade/LayerBucket), Dashboard answers "which year has problems / revenue trend / bottleneck", Results organized into Sales View / Product Planning View / Capacity Analysis View / Raw Detail tabs, reusable analytics.ts helper layer and TimeMatrixTable component.
 - **2026-05-20 v1.2.6**: Products page — inline edit with expanded form (3-row layout with labels), download/import template with Yield Rate + Core Type + Core Thickness + ABF Type fields, fixed chip dimension column name mismatch (NaN fix), price display 1 decimal, yield display as integer percentage, sidebar optimized with sticky layout + scrollable menu + version footer.
 - **2026-05-19**: Initial rebuild — Firebase-backed React + TypeScript + Ant Design frontend replacing broken Python backend. Excel-style capacity grid with factory management, batch operations, Fill Forward, view modes (Month/Quarter/Year), capacity trend charts, version save/restore, demo data loader.
