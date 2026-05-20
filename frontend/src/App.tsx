@@ -25,6 +25,8 @@ import SetupPage from './pages/SetupPage';
 const { Sider, Content } = Layout;
 const { Title } = Typography;
 
+const APP_VERSION = 'v1.2.6';
+
 const AppContent: React.FC<{ user: User }> = ({ user }) => {
   const navigate = useNavigate();
   const [current, setCurrent] = useState('dashboard');
@@ -49,19 +51,38 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider breakpoint="lg" collapsedWidth="80">
-        <div style={{ padding: '16px', textAlign: 'center' }}>
-          <Title level={4} style={{ color: '#fff', margin: 0 }}>
+      <Sider
+        breakpoint="lg"
+        collapsedWidth="80"
+        width={200}
+        style={{
+          overflow: 'hidden',
+          height: '100vh',
+          position: 'sticky',
+          top: 0,
+          left: 0,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div style={{ padding: '16px 12px', textAlign: 'center' }}>
+          <Title level={4} style={{ color: '#fff', margin: 0, fontSize: 18 }}>
             ABF Calc
           </Title>
         </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[current]}
-          items={menuItems}
-          onClick={handleMenuClick}
-        />
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          <Menu
+            theme="dark"
+            mode="inline"
+            selectedKeys={[current]}
+            items={menuItems}
+            onClick={handleMenuClick}
+            style={{ borderRight: 'none' }}
+          />
+        </div>
+        <div style={{ padding: '12px 16px', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+          <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>{APP_VERSION}</span>
+        </div>
       </Sider>
       <Layout>
         <Content

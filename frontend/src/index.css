@@ -19,3 +19,42 @@ body {
 .shortage-row {
   background-color: #fff2f0 !important;
 }
+
+/* Editable Table Styles */
+.editable-table .ant-table-tbody > tr {
+  transition: all 0.2s;
+}
+
+.editable-table .ant-table-tbody > tr:hover {
+  background: #f5f5f5;
+}
+
+.editable-table .ant-form-item {
+  margin-bottom: 0;
+}
+
+.editable-table .ant-input-sm,
+.editable-table .ant-input-number-sm,
+.editable-table .ant-select-sm {
+  font-size: 13px;
+}
+
+.editable-table .ant-table-cell {
+  padding: 8px 4px !important;
+}
+
+/* Make editing cells more visible */
+.editable-table .ant-table-tbody > tr.editing-row {
+  background: #f0f5ff !important;
+  box-shadow: 0 0 0 2px #91d5ff;
+}
+
+.editing-row td {
+  background: #f0f5ff !important;
+}
+
+/* Improve button spacing in action cells */
+.editable-table .ant-space-item {
+  display: flex;
+  align-items: center;
+}

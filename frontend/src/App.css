@@ -182,3 +182,34 @@
     border-right-color: var(--border);
   }
 }
+
+/* Editable Table Styles */
+.editable-table {
+  .ant-table-tbody > tr.editing-row {
+    background: #f0f5ff !important;
+    border: 2px solid #91d5ff;
+  }
+
+  .ant-table-tbody > tr:hover {
+    background: #f5f5f5;
+  }
+
+  .ant-form-item {
+    margin-bottom: 0;
+  }
+
+  .ant-input-sm,
+  .ant-input-number-sm,
+  .ant-select-sm {
+    font-size: 13px;
+  }
+
+  .ant-table-cell {
+    padding: 8px 4px !important;
+  }
+}
+
+/* Highlight editing row */
+tr.editing-row td {
+  background: #f0f5ff !important;
+}

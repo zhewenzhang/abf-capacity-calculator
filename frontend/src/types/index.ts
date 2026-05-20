@@ -20,6 +20,9 @@ export interface SKU {
   unitPrice: number;
   upp?: number;           // units per panel, auto-calculated
   yieldEstimate?: number; // estimated yield rate from matrix
+  coreType?: string;      // Core material type: E705G/E795G/E705GLH/E795GLH
+  coreThicknessMm?: number; // Core thickness in mm
+  abfType?: string;       // ABF material type: GL102/GL107/GXT31/GZ41
   createdAt?: Date;
   updatedAt?: Date;
 }
