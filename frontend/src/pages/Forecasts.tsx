@@ -670,24 +670,24 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
 
   const columns: ColumnsType<SKU> = [
     {
-      title: 'SKU Code',
+      title: t('forecasts.skuCode'),
       dataIndex: 'skuCode',
       key: 'skuCode',
       width: 110,
       fixed: 'left' as const,
       sorter: (a, b) => a.skuCode.localeCompare(b.skuCode),
     },
-    { title: 'Customer', dataIndex: 'customer', key: 'customer', width: 100, fixed: 'left' as const },
-    { title: 'Device', dataIndex: 'deviceName', key: 'deviceName', width: 100, fixed: 'left' as const },
+    { title: t('forecasts.customer'), dataIndex: 'customer', key: 'customer', width: 100, fixed: 'left' as const },
+    { title: t('forecasts.device'), dataIndex: 'deviceName', key: 'deviceName', width: 100, fixed: 'left' as const },
     {
-      title: 'Layer',
+      title: t('forecasts.layer'),
       key: 'layer',
       width: 50,
       align: 'center' as const,
       render: (_: any, r: SKU) => r.layerCount,
     },
     {
-      title: 'UPP',
+      title: t('forecasts.upp'),
       key: 'upp',
       width: 60,
       align: 'center' as const,

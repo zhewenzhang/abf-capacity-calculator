@@ -14,8 +14,9 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useI18n } from '../i18n';
+import { useAppPrefs } from '../context/AppPreferencesContext';
 import { getParameters } from '../services/parameterService';
-import { formatCurrency, DEFAULT_CURRENCY_SETTINGS, currencySymbol } from '../core/currency';
+import { formatCurrency, DEFAULT_CURRENCY_SETTINGS } from '../core/currency';
 import type { CurrencySettings } from '../core/currency';
 import { getSKUs } from '../services/skuService';
 import { getForecasts } from '../services/forecastService';
@@ -39,6 +40,7 @@ type ResultsView = 'sales' | 'product' | 'capacity' | 'raw';
 
 const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId, projectId }) => {
   const { t } = useI18n();
+  const { prefs } = useAppPrefs();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [skus, setSkus] = useState<SKU[]>([]);
@@ -74,9 +76,10 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
         const m = buildAnalyticsModel(skuData, forecasts, capacityPlans, params);
         setModel(m);
 
-        // Load currency settings from parameters
+        // Load currency settings from parameters, merge with user prefs
         if (params.currencySettings) {
-          setCurrencySettings(params.currencySettings as CurrencySettings);
+          const cs = params.currencySettings as CurrencySettings;
+          setCurrencySettings({ ...cs, displayCurrency: prefs.displayCurrency });
         }
       } catch (e: any) {
         setError(e.message || 'Failed to run calculation');
@@ -86,6 +89,11 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
     };
     loadData();
   }, [userId, projectId]);
+
+  // Sync display currency when user preference changes
+  useEffect(() => {
+    setCurrencySettings(prev => ({ ...prev, displayCurrency: prefs.displayCurrency }));
+  }, [prefs.displayCurrency]);
 
   // --- Shortage exposure ---
   const shortageExposure = useMemo(() => {
@@ -109,9 +117,9 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
 
   // --- Format helpers ---
   const fmtNum = (v: number) => v > 0 ? v.toLocaleString() : '-';
-  const fmtRev = (v: number) => {
+  const fmtRev = (v: number, year?: string) => {
     if (v <= 0) return '-';
-    return formatCurrency(v, currencySettings);
+    return formatCurrency(v, currencySettings, year);
   };
 
   // ============================
@@ -290,7 +298,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
   // Yearly health table
   const yearlyHealthColumns: ColumnsType<any> = [
     { title: t('results.year'), dataIndex: 'year', key: 'year', width: 70, fixed: 'left', render: (v: string, r: any) => <Tag color={r.severity === 'red' ? 'red' : r.severity === 'orange' ? 'orange' : 'green'}>{v}</Tag> },
-    { title: t('results.revenue'), dataIndex: 'revenue', key: 'revenue', width: 120, render: (v: number) => fmtRev(v) },
+    { title: t('results.revenue'), dataIndex: 'revenue', key: 'revenue', width: 120, render: (v: number, r: any) => fmtRev(v, r.year) },
     { title: t('results.forecastPcs'), dataIndex: 'forecastPcs', key: 'forecastPcs', width: 110, render: (v: number) => fmtNum(v) },
     { title: t('results.coreDemand'), dataIndex: 'coreDemand', key: 'coreDemand', width: 100, render: (v: number) => fmtNum(v) },
     { title: t('results.coreCapacity'), dataIndex: 'coreCapacity', key: 'coreCapacity', width: 110, render: (v: number) => fmtNum(v) },
@@ -473,7 +481,12 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
           <Row gutter={16} style={{ marginBottom: 16 }}>
             <Col span={6}>
               <Card>
-                <Statistic title={t('results.totalRevenue')} value={model.totalRevenue} precision={2} prefix={currencySymbol(currencySettings)} />
+                <Statistic
+                  title={t('results.totalRevenue')}
+                  value={model.totalRevenue}
+                  precision={currencySettings.displayCurrency === 'USD' ? 2 : 0}
+                  prefix={currencySettings.displayCurrency === 'USD' ? '$' : 'NT$'}
+                />
               </Card>
             </Col>
             <Col span={6}>

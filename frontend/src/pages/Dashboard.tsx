@@ -17,6 +17,7 @@ import { loadDemoData } from '../services/demoDataService';
 import { Link } from 'react-router-dom';
 import TimeMatrixTable from '../components/analytics/TimeMatrixTable';
 import { useI18n } from '../i18n';
+import { useAppPrefs } from '../context/AppPreferencesContext';
 import { formatCurrency, formatCurrencyShort, DEFAULT_CURRENCY_SETTINGS } from '../core/currency';
 import type { CurrencySettings } from '../core/currency';
 import type { ColumnsType } from 'antd/es/table';
@@ -30,6 +31,7 @@ interface DashboardPageProps {
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
   const { t } = useI18n();
+  const { prefs } = useAppPrefs();
   const [loading, setLoading] = useState(true);
   const [loadingDemo, setLoadingDemo] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,16 +53,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
 
       setTotalSkus(skus.length);
 
+      // Merge: displayCurrency from app prefs, rates from parameters
       const cs = paramsData.currencySettings;
-      if (cs) {
-        setCurrencySettings({
-          baseCurrency: 'USD',
-          displayCurrency: cs.displayCurrency,
-          exchangeRateMode: cs.exchangeRateMode,
-          constantUsdToTwdRate: cs.constantUsdToTwdRate,
-          yearlyUsdToTwdRates: cs.yearlyUsdToTwdRates,
-        });
-      }
+      const baseSettings: CurrencySettings = cs ? {
+        baseCurrency: 'USD',
+        displayCurrency: cs.displayCurrency,
+        exchangeRateMode: cs.exchangeRateMode,
+        constantUsdToTwdRate: cs.constantUsdToTwdRate,
+        yearlyUsdToTwdRates: cs.yearlyUsdToTwdRates,
+      } : DEFAULT_CURRENCY_SETTINGS;
+
+      // Override display currency from user preference
+      setCurrencySettings({ ...baseSettings, displayCurrency: prefs.displayCurrency });
 
       if (skus.length > 0 && forecasts.length > 0) {
         const m = buildAnalyticsModel(skus, forecasts, capacityPlans, paramsData);
@@ -75,6 +79,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
   };
 
   useEffect(() => { loadData(); }, [userId, projectId]);
+
+  // Sync display currency when user preference changes
+  useEffect(() => {
+    setCurrencySettings(prev => ({ ...prev, displayCurrency: prefs.displayCurrency }));
+  }, [prefs.displayCurrency]);
 
   const handleLoadDemo = async () => {
     setLoadingDemo(true);
@@ -111,7 +120,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
         <Tag color={r.severity === 'red' ? 'red' : r.severity === 'orange' ? 'orange' : 'green'}>{v}</Tag>
       ),
     },
-    { title: t('results.revenue'), dataIndex: 'revenue', key: 'revenue', width: 120, render: (v: number) => formatCurrency(v, currencySettings) },
+    { title: t('results.revenue'), dataIndex: 'revenue', key: 'revenue', width: 120, render: (v: number, r: YearlyHealth) => formatCurrency(v, currencySettings, r.year) },
     { title: t('results.forecastPcs'), dataIndex: 'forecastPcs', key: 'forecastPcs', width: 110, render: (v: number) => v.toLocaleString() },
     { title: t('results.coreDemand'), dataIndex: 'coreDemand', key: 'coreDemand', width: 100, render: (v: number) => v.toLocaleString() },
     { title: t('results.coreCapacity'), dataIndex: 'coreCapacity', key: 'coreCapacity', width: 110, render: (v: number) => v.toLocaleString() },
@@ -197,7 +206,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
         </Col>
         <Col span={4}>
           <Card className="stat-card">
-            <Statistic title={t('dashboard.totalRevenue')} value={model?.totalRevenue ?? 0} precision={0} prefix={formatCurrencyShort(1, currencySettings).replace('1', '')} />
+            <Statistic
+              title={t('dashboard.totalRevenue')}
+              value={model?.totalRevenue ?? 0}
+              precision={currencySettings.displayCurrency === 'USD' ? 2 : 0}
+              prefix={currencySettings.displayCurrency === 'USD' ? '$' : 'NT$'}
+            />
           </Card>
         </Col>
         <Col span={4}>
@@ -275,7 +289,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
               height={250}
               autoFit
               xAxis={{ label: { autoRotate: true } }}
-              yAxis={{ label: { formatter: (v: any) => formatCurrencyShort(Number(v), currencySettings) } }}
+              yAxis={{ label: { formatter: (v: any) => formatCurrencyShort(Number(v), currencySettings, (revenueChartData.length > 0 ? revenueChartData[0]?.month?.substring(0, 4) : undefined)) } }}
             />
           ) : (
             <Text type="secondary">{t('dashboard.noRevenueData')}</Text>
@@ -315,7 +329,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
               <TimeMatrixTable
                 rows={model.revenueByCustomer.slice(0, 5)}
                 timeColumns={model.yearlyHealth.map(y => y.year)}
-                formatValue={(v) => formatCurrency(v, currencySettings)}
+                formatValue={(v) => formatCurrency(v, currencySettings, model.yearlyHealth[0]?.year)}
               />
             </Card>
           </Col>
@@ -333,7 +347,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
               <TimeMatrixTable
                 rows={model.revenueByApplication}
                 timeColumns={model.yearlyHealth.map(y => y.year)}
-                formatValue={(v) => formatCurrency(v, currencySettings)}
+                formatValue={(v) => formatCurrency(v, currencySettings, model.yearlyHealth[0]?.year)}
               />
             </Card>
           </Col>

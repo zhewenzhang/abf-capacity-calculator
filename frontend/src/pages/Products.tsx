@@ -395,7 +395,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
     { title: t('products.skuCode'), dataIndex: 'skuCode', key: 'skuCode', width: 120, sorter: (a, b) => a.skuCode.localeCompare(b.skuCode) },
     { title: t('products.customer'), dataIndex: 'customer', key: 'customer', width: 100 },
     { title: t('products.deviceName'), dataIndex: 'deviceName', key: 'deviceName', width: 100 },
-    { title: 'OSAT', dataIndex: 'osat', key: 'osat', width: 70 },
+    { title: t('products.osat'), dataIndex: 'osat', key: 'osat', width: 70 },
     { title: t('products.application'), dataIndex: 'application', key: 'application', width: 80 },
     { title: t('products.productGrade'), dataIndex: 'productGrade', key: 'productGrade', width: 60 },
     { title: t('products.sizeCategory'), dataIndex: 'sizeCategory', key: 'sizeCategory', width: 70, render: (v: string) => v?.charAt(0).toUpperCase() + v?.slice(1) },

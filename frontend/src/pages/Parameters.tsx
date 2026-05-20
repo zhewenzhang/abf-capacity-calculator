@@ -16,6 +16,7 @@ import { getParameters, saveParameters } from '../services/parameterService';
 import type { ProjectParameters, SizeCategory, LayerBucket } from '../types';
 import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_WORKING_DAYS } from '../core/defaults';
 import { useI18n } from '../i18n';
+import { useAppPrefs } from '../context/AppPreferencesContext';
 import { DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
 
 interface ParametersPageProps {
@@ -28,6 +29,7 @@ const BUCKETS: LayerBucket[] = ['4-8L', '10-14L', '16-20L', '20L+'];
 
 const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) => {
   const { t } = useI18n();
+  const { prefs, setCurrency } = useAppPrefs();
   const [params, setParams] = useState<ProjectParameters | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -53,7 +55,7 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
       if (cs) {
         setCurrencySettings({
           baseCurrency: 'USD',
-          displayCurrency: cs.displayCurrency,
+          displayCurrency: prefs.displayCurrency, // Use user preference
           exchangeRateMode: cs.exchangeRateMode,
           constantUsdToTwdRate: cs.constantUsdToTwdRate,
           yearlyUsdToTwdRates: cs.yearlyUsdToTwdRates,
@@ -237,9 +239,11 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
           <Form.Item label={t('parameters.displayCurrency')}>
             <Radio.Group
               value={currencySettings.displayCurrency}
-              onChange={(e) =>
-                setCurrencySettings((prev) => ({ ...prev, displayCurrency: e.target.value }))
-              }
+              onChange={(e) => {
+                const newCurrency = e.target.value as 'USD' | 'TWD';
+                setCurrencySettings((prev) => ({ ...prev, displayCurrency: newCurrency }));
+                setCurrency(newCurrency); // Sync with app preferences
+              }}
             >
               <Radio.Button value="USD">USD</Radio.Button>
               <Radio.Button value="TWD">TWD</Radio.Button>
