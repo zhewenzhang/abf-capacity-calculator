@@ -485,7 +485,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
                   title={t('results.totalRevenue')}
                   value={model.totalRevenue}
                   precision={currencySettings.displayCurrency === 'USD' ? 2 : 0}
-                  prefix={currencySettings.displayCurrency === 'USD' ? '$' : 'NT$'}
+                  prefix=""
                 />
               </Card>
             </Col>

@@ -210,7 +210,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
               title={t('dashboard.totalRevenue')}
               value={model?.totalRevenue ?? 0}
               precision={currencySettings.displayCurrency === 'USD' ? 2 : 0}
-              prefix={currencySettings.displayCurrency === 'USD' ? '$' : 'NT$'}
+              prefix=""
             />
           </Card>
         </Col>

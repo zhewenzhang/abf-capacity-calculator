@@ -44,16 +44,16 @@ export function convertCurrency(amountUsd: number, settings: CurrencySettings, y
   return amountUsd * getUsdToTwdRate(settings, year);
 }
 
-// Format currency for display (e.g., "$1,234" or "NT$1,234")
+// Format currency for display (e.g., "1,234.00" or "39,616")
 export function formatCurrency(amountUsd: number, settings: CurrencySettings, year?: string): string {
   const converted = convertCurrency(amountUsd, settings, year);
   if (settings.displayCurrency === 'USD') {
-    return `$${converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
-  return `NT$${converted.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  return converted.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
-// Format currency for compact display (e.g., "$1.2K" or "NT$38M")
+// Format currency for compact display (e.g., "1.2B" or "38M")
 export function formatCurrencyShort(amountUsd: number, settings: CurrencySettings, year?: string): string {
   const converted = convertCurrency(amountUsd, settings, year);
   const abs = Math.abs(converted);
@@ -75,8 +75,7 @@ export function formatCurrencyShort(amountUsd: number, settings: CurrencySetting
     unit = '';
   }
 
-  const symbol = settings.displayCurrency === 'USD' ? '$' : 'NT$';
-  return `${sign}${symbol}${display}${unit}`;
+  return `${sign}${display}${unit}`;
 }
 
 // Get the currency symbol for input labels

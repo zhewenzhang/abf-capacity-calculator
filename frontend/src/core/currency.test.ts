@@ -81,15 +81,16 @@ describe('convertCurrency', () => {
 });
 
 describe('formatCurrency', () => {
-  it('formats USD with $ and 2 decimals', () => {
+  it('formats USD with 2 decimals', () => {
     const settings: CurrencySettings = {
       ...DEFAULT_CURRENCY_SETTINGS,
       displayCurrency: 'USD',
     };
-    expect(formatCurrency(1234.567, settings)).toContain('$');
+    const result = formatCurrency(1234.567, settings);
+    expect(result).toBe('1,234.57');
   });
 
-  it('formats TWD with NT$ and no decimals', () => {
+  it('formats TWD with no decimals', () => {
     const settings: CurrencySettings = {
       ...DEFAULT_CURRENCY_SETTINGS,
       displayCurrency: 'TWD',
@@ -97,7 +98,7 @@ describe('formatCurrency', () => {
       constantUsdToTwdRate: 32,
     };
     const result = formatCurrency(1000, settings);
-    expect(result).toContain('NT$');
     expect(result).toContain('32,000');
+    expect(result).not.toContain('$');
   });
 });
