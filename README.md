@@ -217,6 +217,7 @@ frontend/src/
 
 ## Version History
 
+- **2026-05-22 v1.14.5**: Cloud Code handoff — repo hygiene (gitignore debug artifacts), fix CalculationResults stale state (clear model/bpTargets when data empty).
 - **2026-05-21 v1.14.4**: Repo cleanup and Dashboard stale state fix — cleaned deploy debug artifact, clarified version history, and reset Dashboard model/BP/highlight state when source data is missing.
 - **2026-05-21 v1.14.3**: Dashboard UI/UX polish — responsive KPI breakpoints (`xs/sm/md/lg/xl`), centered loading state with `role="status"`/`aria-live="polite"`, chart accessibility labels (`role="img"`/`aria-label`), KPI status icons with `title`/`aria-label`, Ant Design token colors replacing hardcoded values, typed BP Dashboard row builder (no `any`). Added 7 new i18n keys.
 - **2026-05-21 v1.14.2**: Fixed i18n review findings — added `capacityLab.experimentTag` to zhTW, replaced hardcoded `Products Lab` page title with `t('menu.productsLab')`, replaced hardcoded `ABF Calc` sidebar title with `t('app.abbrev')`, added `app.abbrev` to both en/zhTW dictionaries. Added i18n key parity test (`i18nKeys.test.ts`) ensuring en and zhTW have identical keys. Confirmed `t('a')`, `t('T')`, `t('-')`, `t('-Q')` grep matches were false positives (string split/JS API, not translation calls). Confirmed `t(\`forecasts.${viewMode}\`)` is safe (viewMode strictly typed).
