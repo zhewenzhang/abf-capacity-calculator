@@ -77,12 +77,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
       const bp = paramsData.bpTargets;
       if (bp?.yearlyRevenueTargetsMillionTwd) {
         setBpTargets({ ...bp.yearlyRevenueTargetsMillionTwd });
+      } else {
+        setBpTargets({});
       }
 
       if (skus.length > 0 && forecasts.length > 0) {
         const m = buildAnalyticsModel(skus, forecasts, capacityPlans, paramsData);
         setModel(m);
         setHighlights(getDashboardHighlights(m));
+      } else {
+        setModel(null);
+        setHighlights(null);
       }
     } catch (e: any) {
       setError(e.message || 'Failed to load dashboard data');
