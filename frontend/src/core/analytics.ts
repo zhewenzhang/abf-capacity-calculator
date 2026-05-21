@@ -46,7 +46,10 @@ export function yearMonths(y: string): string[] {
 
 function monthsToYears(months: string[]): string[] {
   const set = new Set<string>();
-  months.forEach(m => set.add(toYear(m)));
+  months.forEach(m => {
+    const y = toYear(m);
+    if (y && y !== 'NaN' && y !== 'undefined') set.add(y);
+  });
   return Array.from(set).sort();
 }
 
