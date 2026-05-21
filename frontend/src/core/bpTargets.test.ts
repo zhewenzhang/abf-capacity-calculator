@@ -15,51 +15,66 @@ const mockMonthlySummaries: MonthlyCapacitySummary[] = [
   { month: '2027-01', totalCorePanelDemand: 240, totalBuPanelDemand: 480, coreCapacity: 200, buCapacity: 300, coreUtilization: 1.2, buUtilization: 1.6, coreShortage: 40, buShortage: 180, bottleneck: 'BU' },
 ];
 
+const twdSettings = { ...DEFAULT_CURRENCY_SETTINGS, displayCurrency: 'TWD' as const, constantUsdToTwdRate: 32 };
+
 describe('buildBpAttainment', () => {
-  it('computes yearly attainment correctly', () => {
-    const result = buildBpAttainment(mockSkuResults, mockMonthlySummaries, { '2026': 100000, '2027': 200000 });
+  it('computes yearly attainment correctly (targets in TWD, revenue converted from USD)', () => {
+    // 2026: revenue 20000 USD * 32 = 640000 TWD, target 3,200,000 TWD
+    const result = buildBpAttainment(mockSkuResults, mockMonthlySummaries, { '2026': 3200000, '2027': 6400000 }, twdSettings);
     expect(result.yearly.length).toBe(2);
-    // 2026: target 100000, revenue 20000 (2 months x 10000)
-    expect(result.yearly[0].bpTarget).toBe(100000);
-    expect(result.yearly[0].forecastRevenue).toBe(20000);
+    // 2026: target 3,200,000 TWD, revenue 20000 USD * 32 = 640,000 TWD
+    expect(result.yearly[0].bpTarget).toBe(3200000);
+    expect(result.yearly[0].forecastRevenue).toBe(640000);
     expect(result.yearly[0].attainment).toBe(0.2);
-    expect(result.yearly[0].gap).toBe(-80000);
-    // 2027: target 200000, revenue 20000
-    expect(result.yearly[1].bpTarget).toBe(200000);
-    expect(result.yearly[1].forecastRevenue).toBe(20000);
+    expect(result.yearly[0].gap).toBe(-2560000);
+    // 2027: target 6,400,000 TWD, revenue 20000 USD * 32 = 640,000 TWD
+    expect(result.yearly[1].bpTarget).toBe(6400000);
+    expect(result.yearly[1].forecastRevenue).toBe(640000);
     expect(result.yearly[1].attainment).toBe(0.1);
-    expect(result.yearly[1].gap).toBe(-180000);
+    expect(result.yearly[1].gap).toBe(-5760000);
   });
 
   it('returns null attainment when target is missing', () => {
-    const result = buildBpAttainment(mockSkuResults, mockMonthlySummaries, {});
+    const result = buildBpAttainment(mockSkuResults, mockMonthlySummaries, {}, DEFAULT_CURRENCY_SETTINGS);
     expect(result.yearly[0].attainment).toBeNull();
   });
 
   it('returns null attainment when target is zero', () => {
-    const result = buildBpAttainment(mockSkuResults, mockMonthlySummaries, { '2026': 0, '2027': 0 });
+    const result = buildBpAttainment(mockSkuResults, mockMonthlySummaries, { '2026': 0, '2027': 0 }, DEFAULT_CURRENCY_SETTINGS);
     expect(result.yearly[0].attainment).toBeNull();
     expect(result.yearly[1].attainment).toBeNull();
   });
 
   it('allocates quarterly targets as annual/4', () => {
-    const result = buildBpAttainment(mockSkuResults, mockMonthlySummaries, { '2026': 120000 });
-    // Q1 2026 target = 120000 / 4 = 30000
-    expect(result.quarterly[0].bpTarget).toBe(30000);
+    const result = buildBpAttainment(mockSkuResults, mockMonthlySummaries, { '2026': 3840000 }, twdSettings);
+    // Q1 2026 target = 3,840,000 / 4 = 960,000 TWD
+    expect(result.quarterly[0].bpTarget).toBe(960000);
     expect(result.quarterly[0].period).toBe('2026-Q1');
   });
 
   it('allocates monthly targets as annual/12', () => {
-    const result = buildBpAttainment(mockSkuResults, mockMonthlySummaries, { '2026': 120000 });
-    // Jan 2026 target = 120000 / 12 = 10000
-    expect(result.monthly[0].bpTarget).toBe(10000);
+    const result = buildBpAttainment(mockSkuResults, mockMonthlySummaries, { '2026': 3840000 }, twdSettings);
+    // Jan 2026 target = 3,840,000 / 12 = 320,000 TWD
+    expect(result.monthly[0].bpTarget).toBe(320000);
     expect(result.monthly[0].period).toBe('2026-01');
   });
 
   it('handles gap calculation correctly', () => {
-    const result = buildBpAttainment(mockSkuResults, mockMonthlySummaries, { '2026': 15000 });
-    // 2026: target 15000, revenue 20000, gap = +5000
-    expect(result.yearly[0].gap).toBe(5000);
+    // target 480,000 TWD = 15000 USD * 32
+    const result = buildBpAttainment(mockSkuResults, mockMonthlySummaries, { '2026': 480000 }, twdSettings);
+    // 2026: target 480,000 TWD, revenue 640,000 TWD, gap = +160,000
+    expect(result.yearly[0].gap).toBe(160000);
+  });
+
+  it('uses correct yearly exchange rate when exchangeRateMode is yearly', () => {
+    const yearlySettings = { ...DEFAULT_CURRENCY_SETTINGS, displayCurrency: 'TWD' as const, exchangeRateMode: 'yearly' as const, yearlyUsdToTwdRates: { '2026': 30, '2027': 33 } };
+    const result = buildBpAttainment(mockSkuResults, mockMonthlySummaries, { '2026': 600000, '2027': 660000 }, yearlySettings);
+    // 2026: revenue 20000 USD * 30 = 600,000 TWD, target 600,000 TWD
+    expect(result.yearly[0].forecastRevenue).toBe(600000);
+    expect(result.yearly[0].attainment).toBe(1.0);
+    // 2027: revenue 20000 USD * 33 = 660,000 TWD, target 660,000 TWD
+    expect(result.yearly[1].forecastRevenue).toBe(660000);
+    expect(result.yearly[1].attainment).toBe(1.0);
   });
 });
 
@@ -82,9 +97,9 @@ describe('formatBpAmount', () => {
     expect(formatBpAmount(0, DEFAULT_CURRENCY_SETTINGS)).toBe('-');
   });
 
-  it('formats USD with 2 decimals', () => {
-    const result = formatBpAmount(1234.567, { ...DEFAULT_CURRENCY_SETTINGS, displayCurrency: 'USD' });
-    expect(result).toContain('1,234.57');
+  it('formats TWD as integer with commas', () => {
+    const result = formatBpAmount(1234567, twdSettings);
+    expect(result).toContain('1,234,567');
   });
 });
 

@@ -84,8 +84,8 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
           setCurrencySettings({ ...cs, displayCurrency: prefs.displayCurrency });
         }
         // Load BP targets
-        if (params.bpTargets?.yearlyRevenueTargetsUsd) {
-          setBpTargets({ ...params.bpTargets.yearlyRevenueTargetsUsd });
+        if (params.bpTargets?.yearlyRevenueTargetsTwd) {
+          setBpTargets({ ...params.bpTargets.yearlyRevenueTargetsTwd });
         }
       } catch (e: any) {
         setError(e.message || 'Failed to run calculation');
@@ -542,7 +542,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
 
           {/* BP Analysis View */}
           {view === 'bp' && model && Object.keys(bpTargets).length > 0 && (() => {
-            const bpData = buildBpAttainment(model.skuResults, model.monthlySummaries, bpTargets);
+            const bpData = buildBpAttainment(model.skuResults, model.monthlySummaries, bpTargets, currencySettings);
             const bpColumns: any[] = [
               { title: t('results.year'), dataIndex: 'period', key: 'period', width: 80, fixed: 'left' as const },
               {

@@ -348,8 +348,8 @@ export const en: Record<string, string> = {
 
   // BP Targets
   'parameters.bpTargets': 'Business Plan Targets',
-  'parameters.bpTargetsNote': 'Enter annual revenue targets in USD. TWD display uses currency settings. Monthly target input is reserved for a future version.',
-  'parameters.bpTargetPlaceholder': 'Target (USD)',
+  'parameters.bpTargetsNote': 'Enter annual revenue targets in TWD. Monthly target input is reserved for a future version.',
+  'parameters.bpTargetPlaceholder': 'Target (TWD)',
   'bp.target': 'BP Target',
   'bp.forecast': 'Forecast Revenue',
   'bp.attainment': 'Attainment',

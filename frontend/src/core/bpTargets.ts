@@ -2,19 +2,21 @@
  * BP Target attainment analysis helper.
  *
  * Computes forecast revenue vs BP target, attainment %, and gap.
+ * All values are in TWD. BP targets are stored in TWD.
+ * Forecast revenue (USD) is converted to TWD using currency settings.
  * Supports Year / Quarter / Month views.
  */
 
 import type { SkuCalculationResult, MonthlyCapacitySummary } from '../types';
 import type { CurrencySettings } from './currency';
-import { formatCurrency } from './currency';
+import { convertCurrency } from './currency';
 
 export interface BpTargetRecord {
   period: string; // year, quarter (2026-Q1), or month (2026-01)
-  bpTarget: number;
-  forecastRevenue: number;
+  bpTarget: number; // TWD
+  forecastRevenue: number; // TWD
   attainment: number | null; // null = no target or target is 0
-  gap: number;
+  gap: number; // TWD
 }
 
 export interface BpAttainmentResult {
@@ -26,22 +28,35 @@ export interface BpAttainmentResult {
 /**
  * Build BP attainment analysis from calculation results.
  *
- * @param skuResults - per-SKU monthly calculation results
+ * BP targets are stored in TWD.
+ * Forecast revenue (stored in USD) is converted to TWD for comparison.
+ *
+ * @param skuResults - per-SKU monthly calculation results (revenue in USD)
  * @param monthlySummaries - monthly capacity summaries (for month list)
- * @param bpTargets - yearly revenue targets in USD
- * @returns BpAttainmentResult with yearly, quarterly, monthly views
+ * @param bpTargetsTwd - yearly revenue targets in TWD
+ * @param currencySettings - currency settings for USD→TWD conversion
+ * @returns BpAttainmentResult with yearly, quarterly, monthly views (all TWD)
  */
 export function buildBpAttainment(
   skuResults: SkuCalculationResult[],
   monthlySummaries: MonthlyCapacitySummary[],
-  bpTargets: Record<string, number>
+  bpTargetsTwd: Record<string, number>,
+  currencySettings: CurrencySettings
 ): BpAttainmentResult {
-  // Aggregate revenue by month
-  const monthlyRevenue = new Map<string, number>();
+  // Aggregate revenue by month (in USD), then convert to TWD
+  const monthlyRevenueUsd = new Map<string, number>();
   for (const r of skuResults) {
-    const prev = monthlyRevenue.get(r.month) ?? 0;
-    monthlyRevenue.set(r.month, prev + r.revenue);
+    const prev = monthlyRevenueUsd.get(r.month) ?? 0;
+    monthlyRevenueUsd.set(r.month, prev + r.revenue);
   }
+
+  // Convert monthly USD revenue to TWD
+  const monthlyRevenueTwd = new Map<string, number>();
+  monthlyRevenueUsd.forEach((usd, month) => {
+    const year = month.substring(0, 4);
+    const twd = convertCurrency(usd, currencySettings, year);
+    monthlyRevenueTwd.set(month, twd);
+  });
 
   // Get all years from monthly summaries
   const yearsSet = new Set<string>();
@@ -52,11 +67,11 @@ export function buildBpAttainment(
 
   // Yearly
   const yearly: BpTargetRecord[] = years.map(year => {
-    const target = bpTargets[year] ?? 0;
+    const target = bpTargetsTwd[year] ?? 0;
     let revenue = 0;
     for (let mo = 1; mo <= 12; mo++) {
       const month = `${year}-${String(mo).padStart(2, '0')}`;
-      revenue += monthlyRevenue.get(month) ?? 0;
+      revenue += monthlyRevenueTwd.get(month) ?? 0;
     }
     return computeBpRecord(year, target, revenue);
   });
@@ -64,13 +79,13 @@ export function buildBpAttainment(
   // Quarterly
   const quarterly: BpTargetRecord[] = [];
   for (const year of years) {
-    const annualTarget = bpTargets[year] ?? 0;
+    const annualTarget = bpTargetsTwd[year] ?? 0;
     for (let q = 1; q <= 4; q++) {
       const startMonth = (q - 1) * 3 + 1;
       let revenue = 0;
       for (let mo = startMonth; mo < startMonth + 3; mo++) {
         const month = `${year}-${String(mo).padStart(2, '0')}`;
-        revenue += monthlyRevenue.get(month) ?? 0;
+        revenue += monthlyRevenueTwd.get(month) ?? 0;
       }
       quarterly.push(computeBpRecord(`${year}-Q${q}`, annualTarget / 4, revenue));
     }
@@ -79,9 +94,9 @@ export function buildBpAttainment(
   // Monthly
   const monthly: BpTargetRecord[] = monthlySummaries.map(summary => {
     const year = summary.month.substring(0, 4);
-    const annualTarget = bpTargets[year] ?? 0;
+    const annualTarget = bpTargetsTwd[year] ?? 0;
     const monthTarget = annualTarget / 12;
-    const revenue = monthlyRevenue.get(summary.month) ?? 0;
+    const revenue = monthlyRevenueTwd.get(summary.month) ?? 0;
     return computeBpRecord(summary.month, monthTarget, revenue);
   });
 
@@ -108,11 +123,12 @@ export function formatAttainment(value: number | null): string {
 }
 
 /**
- * Format BP target / revenue with currency settings.
+ * Format BP target / revenue for display.
+ * Values are already in TWD, so we format as plain TWD number.
  */
-export function formatBpAmount(value: number, settings: CurrencySettings, year?: string): string {
+export function formatBpAmount(value: number, _settings: CurrencySettings, _year?: string): string {
   if (value === 0) return '-';
-  return formatCurrency(value, settings, year);
+  return value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
 /**

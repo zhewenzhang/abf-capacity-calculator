@@ -67,8 +67,8 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
       }
       // Load BP targets
       const bp = data.bpTargets;
-      if (bp?.yearlyRevenueTargetsUsd) {
-        setBpTargets({ ...bp.yearlyRevenueTargetsUsd });
+      if (bp?.yearlyRevenueTargetsTwd) {
+        setBpTargets({ ...bp.yearlyRevenueTargetsTwd });
       }
     } catch (e: any) {
       setError(e.message || 'Failed to load parameters');
@@ -99,7 +99,7 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
         currencySettings,
         bpTargets: {
           mode: 'yearly' as const,
-          yearlyRevenueTargetsUsd: bpTargets,
+          yearlyRevenueTargetsTwd: bpTargets,
         },
       };
       await saveParameters(userId, projectId, updated);

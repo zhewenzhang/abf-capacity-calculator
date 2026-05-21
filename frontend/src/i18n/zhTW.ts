@@ -347,8 +347,8 @@ export const zhTW: Record<string, string> = {
 
   // BP Targets
   'parameters.bpTargets': '營業目標（BP）',
-  'parameters.bpTargetsNote': '輸入年度營業額目標（USD）。TWD 顯示使用貨幣設定。月度目標輸入保留給未來版本。',
-  'parameters.bpTargetPlaceholder': '目標金額（USD）',
+  'parameters.bpTargetsNote': '輸入年度營業額目標（TWD）。月度目標輸入保留給未來版本。',
+  'parameters.bpTargetPlaceholder': '目標金額（TWD）',
   'bp.target': 'BP 目標',
   'bp.forecast': '預測營收',
   'bp.attainment': '達成率',

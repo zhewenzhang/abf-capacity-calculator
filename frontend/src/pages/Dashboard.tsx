@@ -71,8 +71,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
 
       // Load BP targets
       const bp = paramsData.bpTargets;
-      if (bp?.yearlyRevenueTargetsUsd) {
-        setBpTargets({ ...bp.yearlyRevenueTargetsUsd });
+      if (bp?.yearlyRevenueTargetsTwd) {
+        setBpTargets({ ...bp.yearlyRevenueTargetsTwd });
       }
 
       if (skus.length > 0 && forecasts.length > 0) {
@@ -267,7 +267,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
 
       {/* BP Attainment Section */}
       {model && Object.keys(bpTargets).length > 0 && (() => {
-        const bpData = buildBpAttainment(model.skuResults, model.monthlySummaries, bpTargets);
+        const bpData = buildBpAttainment(model.skuResults, model.monthlySummaries, bpTargets, currencySettings);
         const bpYearlyColumns: any[] = [
           { title: t('bp.attainment'), dataIndex: 'period', key: 'period', width: 80, fixed: 'left' as const },
           {
