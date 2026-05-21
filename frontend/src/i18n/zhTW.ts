@@ -76,6 +76,11 @@ export const zhTW: Record<string, string> = {
   'dashboard.loadDemoDesc': '這將建立 5 個 SKU、30 筆預測和 36 列產能規劃資料。繼續？',
   'dashboard.noRevenueData': '無營收資料',
   'dashboard.months': '個月',
+  'dashboard.revenueTrendAria': '按月份顯示營收趨勢的折線圖',
+  'dashboard.utilTrendAria': '按月份顯示 Core 與 BU 稼動率趨勢的折線圖',
+  'dashboard.warningIcon': '警示',
+  'dashboard.increaseIcon': '上升',
+  'dashboard.decreaseIcon': '下降',
 
   // Results
   'results.title': '分析結果',

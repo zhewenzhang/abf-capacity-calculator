@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Row, Col, Table, Typography, Spin, Alert, Tag, Button, Popconfirm, Space } from 'antd';
+import { Card, Row, Col, Table, Typography, Spin, Alert, Tag, Button, Popconfirm, Space, theme } from 'antd';
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
@@ -22,9 +22,15 @@ import { useI18n } from '../i18n';
 import { useAppPrefs } from '../context/AppPreferencesContext';
 import { formatCurrency, formatCurrencyShort, DEFAULT_CURRENCY_SETTINGS } from '../core/currency';
 import type { CurrencySettings } from '../core/currency';
-import { buildBpAnalysis, computeBpKpi, formatAttainment, formatBpAmount } from '../core/bpTargets';
+import { buildBpAnalysis, computeBpKpi, formatAttainment, formatBpAmount, type BpPeriodRecord } from '../core/bpTargets';
 
 const { Text } = Typography;
+
+// Local types for BP Dashboard row builder
+type BpDashboardRow = {
+  metric: string;
+  [period: string]: React.ReactNode;
+};
 
 interface DashboardPageProps {
   userId: string;
@@ -34,6 +40,7 @@ interface DashboardPageProps {
 const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
   const { t } = useI18n();
   const { prefs } = useAppPrefs();
+  const { token } = theme.useToken();
   const [loading, setLoading] = useState(true);
   const [loadingDemo, setLoadingDemo] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +63,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
 
       setTotalSkus(skus.length);
 
-      // Merge: displayCurrency from app prefs, rates from parameters
       const cs = paramsData.currencySettings;
       const baseSettings: CurrencySettings = cs ? {
         baseCurrency: 'USD',
@@ -66,10 +72,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
         yearlyUsdToTwdRates: cs.yearlyUsdToTwdRates,
       } : DEFAULT_CURRENCY_SETTINGS;
 
-      // Override display currency from user preference
       setCurrencySettings({ ...baseSettings, displayCurrency: prefs.displayCurrency });
 
-      // Load BP targets
       const bp = paramsData.bpTargets;
       if (bp?.yearlyRevenueTargetsMillionTwd) {
         setBpTargets({ ...bp.yearlyRevenueTargetsMillionTwd });
@@ -89,7 +93,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
 
   useEffect(() => { loadData(); }, [userId, projectId]);
 
-  // Sync display currency when user preference changes
   useEffect(() => {
     setCurrencySettings(prev => ({ ...prev, displayCurrency: prefs.displayCurrency }));
   }, [prefs.displayCurrency]);
@@ -108,7 +111,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
     }
   };
 
-  // --- Revenue chart data ---
   const revenueChartData = useMemo(() => {
     if (!model) return [];
     return model.monthlyRevenue.map(r => ({
@@ -117,7 +119,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
     }));
   }, [model]);
 
-  // --- Yearly health as horizontal matrix (metrics as rows, years as columns) ---
   const yearlyHealthRows = useMemo((): TimeMatrixRow[] => {
     if (!model || model.yearlyHealth.length === 0) return [];
     return [
@@ -180,9 +181,31 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
     return model.yearlyHealth.map(y => y.year);
   }, [model]);
 
+  // --- Centered loading state with accessibility ---
   if (loading) {
-    return <Spin size="large" />;
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 320 }}
+      >
+        <Spin size="large" tip={t('common.loading')} />
+      </div>
+    );
   }
+
+  // --- Derived token colors for KPI status ---
+  const colorGood = token.colorSuccess;
+  const colorBad = token.colorError;
+  const colorWarn = token.colorWarning;
+  const colorNeutral = token.colorTextSecondary;
+
+  // Trend arrow color
+  const trendColor = highlights?.revenueTrend === 'up'
+    ? colorGood
+    : highlights?.revenueTrend === 'down'
+      ? colorBad
+      : colorNeutral;
 
   return (
     <div>
@@ -199,7 +222,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
               description={t('dashboard.loadDemoDesc')}
               onConfirm={handleLoadDemo}
             >
-              <Button type="primary" icon={<ThunderboltOutlined />} loading={loadingDemo}>
+              <Button type="primary" icon={<ThunderboltOutlined />} loading={loadingDemo} aria-label={t('dashboard.loadDemo')}>
                 {t('dashboard.loadDemo')}
               </Button>
             </Popconfirm>
@@ -209,56 +232,60 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
 
       {/* Executive KPI Cards */}
       <Row gutter={[16, 16]}>
-        <Col span={4}>
+        <Col xs={24} sm={12} md={8} lg={6} xl={4}>
           <MetricCard title={t('dashboard.totalSkus')} value={totalSkus} />
         </Col>
-        <Col span={4}>
+        <Col xs={24} sm={12} md={8} lg={6} xl={4}>
           <MetricCard
             title={t('dashboard.totalRevenue')}
             value={model?.totalRevenue ?? 0}
             precision={currencySettings.displayCurrency === 'USD' ? 2 : 0}
           />
         </Col>
-        <Col span={4}>
+        <Col xs={24} sm={12} md={8} lg={6} xl={4}>
           <MetricCard
             title={t('dashboard.revenueTrend')}
             value={highlights?.revenueTrend === 'up' ? '↑' : highlights?.revenueTrend === 'down' ? '↓' : '→'}
-            valueStyle={{
-              color: highlights?.revenueTrend === 'up' ? '#3f8600' : highlights?.revenueTrend === 'down' ? '#cf1322' : '#666',
-            }}
+            valueStyle={{ color: trendColor }}
             extra={highlights?.peakRevenueYear && <Text type="secondary">{t('dashboard.peak')}: {highlights.peakRevenueYear}</Text>}
           />
         </Col>
-        <Col span={4}>
+        <Col xs={24} sm={12} md={8} lg={6} xl={4}>
           <MetricCard
             title={t('dashboard.worstYear')}
             value={highlights?.worstYear ?? '—'}
-            valueStyle={{ color: highlights?.worstYear ? '#cf1322' : '#3f8600' }}
+            valueStyle={{ color: highlights?.worstYear ? colorBad : colorGood }}
             extra={highlights?.worstYear && <Text type="danger">{t('dashboard.capacityConstrained')}</Text>}
           />
         </Col>
-        <Col span={4}>
+        <Col xs={24} sm={12} md={8} lg={6} xl={4}>
           <MetricCard
             title={t('dashboard.maxCoreUtil')}
             value={model?.maxCoreUtil === null ? 100 : (model?.maxCoreUtil ?? 0) * 100}
             precision={1}
             suffix="%"
-            prefix={model?.maxCoreUtil === null ? <WarningOutlined /> : (model?.maxCoreUtil ?? 0) > 1 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
-            valueStyle={{ color: (model?.maxCoreUtil === null || (model?.maxCoreUtil ?? 0) > 1) ? '#cf1322' : '#3f8600' }}
+            prefix={
+              model?.maxCoreUtil === null
+                ? <WarningOutlined title={t('dashboard.warningIcon')} aria-label={t('dashboard.warningIcon')} />
+                : (model?.maxCoreUtil ?? 0) > 1
+                  ? <ArrowUpOutlined title={t('dashboard.increaseIcon')} aria-label={t('dashboard.increaseIcon')} />
+                  : <ArrowDownOutlined title={t('dashboard.decreaseIcon')} aria-label={t('dashboard.decreaseIcon')} />
+            }
+            valueStyle={{ color: (model?.maxCoreUtil === null || (model?.maxCoreUtil ?? 0) > 1) ? colorBad : colorGood }}
           />
         </Col>
-        <Col span={4}>
+        <Col xs={24} sm={12} md={8} lg={6} xl={4}>
           <MetricCard
             title={t('dashboard.shortageMonths')}
             value={model?.shortageMonthCount ?? 0}
             suffix={`/ ${model?.monthlySummaries.length ?? 0}`}
-            valueStyle={{ color: (model?.shortageMonthCount ?? 0) > 0 ? '#cf1322' : '#3f8600' }}
+            valueStyle={{ color: (model?.shortageMonthCount ?? 0) > 0 ? colorBad : colorGood }}
             extra={model?.worstMonth && <Text type="danger">{t('dashboard.peak')}: {model.worstMonth}</Text>}
           />
         </Col>
       </Row>
 
-      {/* Yearly Capacity Health (metrics as rows, years left-to-right as columns) */}
+      {/* Yearly Capacity Health */}
       {model && model.yearlyHealth.length > 0 && (
         <SectionCard title={t('dashboard.yearlyHealth')}>
           <YearlyHealthMatrix rows={yearlyHealthRows} years={yearlyHealthYears} currencySettings={currencySettings} />
@@ -270,10 +297,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
         const bpModel = buildBpAnalysis(model.skuResults, [], model.monthlySummaries, bpTargets, currencySettings);
         const kpi = computeBpKpi(bpModel.yearly);
 
-        // Transposed: rows = metrics, columns = years left-to-right
+        // Columns: periods left-to-right
         const columns = [
           { title: '', dataIndex: 'metric', key: 'metric', width: 120, fixed: 'left' as const },
-          ...bpModel.yearly.map(r => ({
+          ...bpModel.yearly.map((r: BpPeriodRecord) => ({
             title: r.period,
             dataIndex: r.period,
             key: r.period,
@@ -282,60 +309,69 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
           })),
         ];
 
-        const buildRow = (label: string, getValue: (r: any) => any) => {
-          const row: any = { metric: label };
-          bpModel.yearly.forEach(r => { row[r.period] = getValue(r); });
+        // Typed row builder
+        const buildRow = (
+          label: string,
+          getValue: (record: BpPeriodRecord) => React.ReactNode
+        ): BpDashboardRow => {
+          const row: BpDashboardRow = { metric: label };
+          bpModel.yearly.forEach((record: BpPeriodRecord) => {
+            row[record.period] = getValue(record);
+          });
           return row;
         };
 
-        const rows = [
-          buildRow(t('bp.target'), (r: any) => formatBpAmount(r.targetMillionTwd)),
-          buildRow(t('bp.forecast'), (r: any) => formatBpAmount(r.forecastMillionTwd)),
-          buildRow(t('bp.attainment'), (r: any) => {
+        const rows: BpDashboardRow[] = [
+          buildRow(t('bp.target'), (r: BpPeriodRecord) => formatBpAmount(r.targetMillionTwd)),
+          buildRow(t('bp.forecast'), (r: BpPeriodRecord) => formatBpAmount(r.forecastMillionTwd)),
+          buildRow(t('bp.attainment'), (r: BpPeriodRecord) => {
             if (r.attainment === null) return '-';
             const pct = r.attainment * 100;
             return <Tag color={pct >= 100 ? 'green' : pct >= 80 ? 'orange' : 'red'}>{formatAttainment(r.attainment)}</Tag>;
           }),
-          buildRow(t('bp.gap'), (r: any) => {
+          buildRow(t('bp.gap'), (r: BpPeriodRecord) => {
             if (r.gapMillionTwd === null) return '-';
-            const color = r.gapMillionTwd >= 0 ? 'success' : 'danger';
-            const text = r.gapMillionTwd > 0 ? `+${r.gapMillionTwd.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}` : r.gapMillionTwd.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-            return <Text type={color}>{text}</Text>;
+            const colorType = r.gapMillionTwd >= 0 ? 'success' : 'danger';
+            const text = r.gapMillionTwd > 0
+              ? `+${r.gapMillionTwd.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`
+              : r.gapMillionTwd.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+            return <Text type={colorType}>{text}</Text>;
           }),
         ];
 
         return (
           <SectionCard title={t('bp.attainmentTitle')}>
+            {/* BP KPI Cards — responsive breakpoints */}
             <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
-              <Col span={6}>
+              <Col xs={24} sm={12} lg={6}>
                 <MetricCard
                   title={t('bp.kpi.totalTarget')}
                   value={kpi.totalTargetMillionTwd ?? 0}
                   precision={1}
                 />
               </Col>
-              <Col span={6}>
+              <Col xs={24} sm={12} lg={6}>
                 <MetricCard
                   title={t('bp.kpi.totalForecast')}
                   value={kpi.totalForecastMillionTwd}
                   precision={1}
                 />
               </Col>
-              <Col span={6}>
+              <Col xs={24} sm={12} lg={6}>
                 <MetricCard
                   title={t('bp.kpi.overallAttainment')}
                   value={kpi.overallAttainment === null ? '-' : formatAttainment(kpi.overallAttainment)}
                   valueStyle={{
-                    color: kpi.overallAttainment === null ? undefined : kpi.overallAttainment >= 1 ? '#52c41a' : kpi.overallAttainment >= 0.8 ? '#faad14' : '#ff4d4f',
+                    color: kpi.overallAttainment === null ? undefined : kpi.overallAttainment >= 1 ? colorGood : kpi.overallAttainment >= 0.8 ? colorWarn : colorBad,
                   }}
                 />
               </Col>
-              <Col span={6}>
+              <Col xs={24} sm={12} lg={6}>
                 <MetricCard
                   title={t('bp.kpi.totalGap')}
                   value={kpi.totalGapMillionTwd === null ? '-' : (kpi.totalGapMillionTwd > 0 ? '+' : '') + kpi.totalGapMillionTwd.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                   valueStyle={{
-                    color: kpi.totalGapMillionTwd === null ? undefined : kpi.totalGapMillionTwd >= 0 ? '#52c41a' : '#ff4d4f',
+                    color: kpi.totalGapMillionTwd === null ? undefined : kpi.totalGapMillionTwd >= 0 ? colorGood : colorBad,
                   }}
                 />
               </Col>
@@ -353,53 +389,57 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
         );
       })()}
 
-      {/* Revenue Trend Chart */}
+      {/* Revenue Trend Chart — with ARIA label */}
       {model && model.monthlyRevenue.length > 0 && (
-        <SectionCard title={t('dashboard.revenueTrendTitle')} extra={<LineChartOutlined />}>
+        <SectionCard title={t('dashboard.revenueTrendTitle')} extra={<LineChartOutlined aria-hidden="true" />}>
           {revenueChartData.length > 0 ? (
-            <Line
-              data={revenueChartData}
-              xField="month"
-              yField="revenue"
-              height={250}
-              autoFit
-              xAxis={{ label: { autoRotate: true } }}
-              yAxis={{ label: { formatter: (v: any) => formatCurrencyShort(Number(v), currencySettings, (revenueChartData.length > 0 ? revenueChartData[0]?.month?.substring(0, 4) : undefined)) } }}
-            />
+            <div role="img" aria-label={t('dashboard.revenueTrendAria')}>
+              <Line
+                data={revenueChartData}
+                xField="month"
+                yField="revenue"
+                height={250}
+                autoFit
+                xAxis={{ label: { autoRotate: true } }}
+                yAxis={{ label: { formatter: (v: any) => formatCurrencyShort(Number(v), currencySettings, (revenueChartData.length > 0 ? revenueChartData[0]?.month?.substring(0, 4) : undefined)) } }}
+              />
+            </div>
           ) : (
             <Text type="secondary">{t('dashboard.noRevenueData')}</Text>
           )}
         </SectionCard>
       )}
 
-      {/* Utilization Trend Chart */}
+      {/* Utilization Trend Chart — with ARIA label */}
       {model && model.monthlyUtilization.length > 0 && (
-        <SectionCard title={t('dashboard.utilTrendTitle')} extra={<LineChartOutlined />}>
-          <Line
-            data={(() => {
-              const data: any[] = [];
-              model.monthlyUtilization.forEach(u => {
-                if (u.coreUtil !== null) data.push({ month: u.month, type: t('results.coreUtil'), value: u.coreUtil * 100 });
-                if (u.buUtil !== null) data.push({ month: u.month, type: t('results.buUtil'), value: u.buUtil * 100 });
-              });
-              return data;
-            })()}
-            xField="month"
-            yField="value"
-            seriesField="type"
-            height={250}
-            autoFit
-            xAxis={{ label: { autoRotate: true } }}
-            yAxis={{ label: { formatter: (v: any) => `${v}%` } }}
-            color={['#1677ff', '#ff4d4f']}
-          />
+        <SectionCard title={t('dashboard.utilTrendTitle')} extra={<LineChartOutlined aria-hidden="true" />}>
+          <div role="img" aria-label={t('dashboard.utilTrendAria')}>
+            <Line
+              data={(() => {
+                const data: Array<{ month: string; type: string; value: number }> = [];
+                model.monthlyUtilization.forEach(u => {
+                  if (u.coreUtil !== null) data.push({ month: u.month, type: t('results.coreUtil'), value: u.coreUtil * 100 });
+                  if (u.buUtil !== null) data.push({ month: u.month, type: t('results.buUtil'), value: u.buUtil * 100 });
+                });
+                return data;
+              })()}
+              xField="month"
+              yField="value"
+              seriesField="type"
+              height={250}
+              autoFit
+              xAxis={{ label: { autoRotate: true } }}
+              yAxis={{ label: { formatter: (v: any) => `${v}%` } }}
+              color={['#1677ff', '#ff4d4f']}
+            />
+          </div>
         </SectionCard>
       )}
 
-      {/* Top Driver Snapshots */}
+      {/* Top Driver Snapshots — responsive breakpoints */}
       {model && (
         <Row gutter={16} style={{ marginTop: 16 }}>
-          <Col span={8}>
+          <Col xs={24} lg={8}>
             <SectionCard title={t('dashboard.revByCustomer')} extra={<Link to="/results">{t('dashboard.viewDetail')}</Link>} size="small">
               <TimeMatrixTable
                 rows={model.revenueByCustomer.slice(0, 5)}
@@ -408,7 +448,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
               />
             </SectionCard>
           </Col>
-          <Col span={8}>
+          <Col xs={24} lg={8}>
             <SectionCard title={t('dashboard.coreBySize')} extra={<Link to="/results">{t('dashboard.viewDetail')}</Link>} size="small">
               <TimeMatrixTable
                 rows={model.coreDemandBySize}
@@ -417,7 +457,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
               />
             </SectionCard>
           </Col>
-          <Col span={8}>
+          <Col xs={24} lg={8}>
             <SectionCard title={t('dashboard.revByApp')} extra={<Link to="/results">{t('dashboard.viewDetail')}</Link>} size="small">
               <TimeMatrixTable
                 rows={model.revenueByApplication}
@@ -442,7 +482,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
               <Text>💰 <strong>{highlights.topCustomer}</strong> {t('dashboard.topCustomer')}</Text>
             )}
             {highlights.topSizeCategory && (
-              <Text>📐 <strong>{highlights.topSizeCategory}</strong> {t('dashboard.topSize')}</Text>
+              <Text> <strong>{highlights.topSizeCategory}</strong> {t('dashboard.topSize')}</Text>
             )}
             {highlights.worstYear && (
               <Text type="danger">⚠️ <strong>{highlights.worstYear}</strong> {t('dashboard.constrainedYear')}</Text>

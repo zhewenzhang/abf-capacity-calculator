@@ -38,7 +38,7 @@ import zhTW from 'antd/locale/zh_TW';
 const { Sider, Content } = Layout;
 const { Title } = Typography;
 
-const APP_VERSION = 'v1.14.2';
+const APP_VERSION = 'v1.14.3';
 
 // --- Sidebar with i18n ---
 const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }> = ({ current, onMenuClick }) => {

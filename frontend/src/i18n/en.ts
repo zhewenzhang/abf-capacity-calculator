@@ -76,6 +76,11 @@ export const en: Record<string, string> = {
   'dashboard.loadDemoDesc': 'This will create 5 SKUs, 30 forecasts, and 36 capacity plan rows. Continue?',
   'dashboard.noRevenueData': 'No revenue data',
   'dashboard.months': 'months',
+  'dashboard.revenueTrendAria': 'Revenue trend line chart by month',
+  'dashboard.utilTrendAria': 'Core and BU utilization line chart by month',
+  'dashboard.warningIcon': 'Warning',
+  'dashboard.increaseIcon': 'Increase',
+  'dashboard.decreaseIcon': 'Decrease',
 
   // Results
   'results.title': 'Results',
