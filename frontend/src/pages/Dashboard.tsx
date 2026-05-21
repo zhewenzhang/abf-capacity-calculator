@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Row, Col, Statistic, Table, Typography, Spin, Alert, Tag, Button, Popconfirm, Space } from 'antd';
+import { Card, Row, Col, Statistic, Typography, Spin, Alert, Tag, Button, Popconfirm, Space } from 'antd';
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
@@ -12,15 +12,15 @@ import { getSKUs } from '../services/skuService';
 import { getForecasts } from '../services/forecastService';
 import { getCapacityPlans } from '../services/capacityService';
 import { getParameters } from '../services/parameterService';
-import { buildAnalyticsModel, getDashboardHighlights, type AnalyticsModel, type DashboardHighlights, type YearlyHealth } from '../core/analytics';
+import { buildAnalyticsModel, getDashboardHighlights, type AnalyticsModel, type DashboardHighlights } from '../core/analytics';
 import { loadDemoData } from '../services/demoDataService';
 import { Link } from 'react-router-dom';
-import TimeMatrixTable from '../components/analytics/TimeMatrixTable';
+import TimeMatrixTable, { type TimeMatrixRow } from '../components/analytics/TimeMatrixTable';
+import { YearlyHealthMatrix } from '../components/analytics/YearlyHealthMatrix';
 import { useI18n } from '../i18n';
 import { useAppPrefs } from '../context/AppPreferencesContext';
 import { formatCurrency, formatCurrencyShort, DEFAULT_CURRENCY_SETTINGS } from '../core/currency';
 import type { CurrencySettings } from '../core/currency';
-import type { ColumnsType } from 'antd/es/table';
 
 const { Text } = Typography;
 
@@ -108,67 +108,68 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
     }));
   }, [model]);
 
-  // --- Yearly health table ---
-  const yearlyHealthColumns: ColumnsType<YearlyHealth> = [
-    {
-      title: t('results.year'),
-      dataIndex: 'year',
-      key: 'year',
-      width: 70,
-      fixed: 'left',
-      render: (v: string, r: YearlyHealth) => (
-        <Tag color={r.severity === 'red' ? 'red' : r.severity === 'orange' ? 'orange' : 'green'}>{v}</Tag>
-      ),
-    },
-    { title: t('results.revenue'), dataIndex: 'revenue', key: 'revenue', width: 120, render: (v: number, r: YearlyHealth) => formatCurrency(v, currencySettings, r.year) },
-    { title: t('results.forecastPcs'), dataIndex: 'forecastPcs', key: 'forecastPcs', width: 110, render: (v: number) => v.toLocaleString() },
-    { title: t('results.coreDemand'), dataIndex: 'coreDemand', key: 'coreDemand', width: 100, render: (v: number) => v.toLocaleString() },
-    { title: t('results.coreCapacity'), dataIndex: 'coreCapacity', key: 'coreCapacity', width: 110, render: (v: number) => v.toLocaleString() },
-    {
-      title: t('results.coreUtil'),
-      dataIndex: 'coreUtil',
-      key: 'coreUtil',
-      width: 90,
-      render: (v: number | null, r: YearlyHealth) => {
-        if (v === null && r.coreDemand > 0) return <Tag color="red">{t('dashboard.over')}</Tag>;
-        if (v === null) return '-';
-        const pct = v * 100;
-        return <Tag color={pct > 100 ? 'red' : pct > 85 ? 'orange' : 'green'}>{pct.toFixed(1)}%</Tag>;
+  // --- Yearly health as horizontal matrix (metrics as rows, years as columns) ---
+  const yearlyHealthRows = useMemo((): TimeMatrixRow[] => {
+    if (!model || model.yearlyHealth.length === 0) return [];
+    return [
+      {
+        label: t('results.revenue'),
+        metricType: 'revenue',
+        values: Object.fromEntries(model.yearlyHealth.map(y => [y.year, y.revenue])),
       },
-    },
-    { title: t('results.buDemand'), dataIndex: 'buDemand', key: 'buDemand', width: 100, render: (v: number) => v.toLocaleString() },
-    { title: t('results.buCapacity'), dataIndex: 'buCapacity', key: 'buCapacity', width: 110, render: (v: number) => v.toLocaleString() },
-    {
-      title: t('results.buUtil'),
-      dataIndex: 'buUtil',
-      key: 'buUtil',
-      width: 90,
-      render: (v: number | null, r: YearlyHealth) => {
-        if (v === null && r.buDemand > 0) return <Tag color="red">{t('dashboard.over')}</Tag>;
-        if (v === null) return '-';
-        const pct = v * 100;
-        return <Tag color={pct > 100 ? 'red' : pct > 85 ? 'orange' : 'green'}>{pct.toFixed(1)}%</Tag>;
+      {
+        label: t('results.forecastPcs'),
+        values: Object.fromEntries(model.yearlyHealth.map(y => [y.year, y.forecastPcs])),
       },
-    },
-    {
-      title: t('results.shortageMonthsLabel'),
-      dataIndex: 'shortageMonths',
-      key: 'shortageMonths',
-      width: 120,
-      render: (v: string[]) => v.length > 0 ? <Text type="danger">{v.length} {t('dashboard.months')}</Text> : <Text type="success">0</Text>,
-    },
-    {
-      title: t('results.bottleneck'),
-      dataIndex: 'bottleneck',
-      key: 'bottleneck',
-      width: 90,
-      render: (v: string) => {
-        if (v === 'None') return <Tag color="green">{t('results.bottleneck')}</Tag>;
-        if (v === 'Core') return <Tag color="orange">{t('results.coreUtil')}</Tag>;
-        return <Tag color="red">{t('results.buUtil')}</Tag>;
+      {
+        label: t('results.coreDemand'),
+        values: Object.fromEntries(model.yearlyHealth.map(y => [y.year, y.coreDemand])),
       },
-    },
-  ];
+      {
+        label: t('results.coreCapacity'),
+        values: Object.fromEntries(model.yearlyHealth.map(y => [y.year, y.coreCapacity])),
+      },
+      {
+        label: t('results.coreUtil'),
+        metricType: 'utilization',
+        values: Object.fromEntries(model.yearlyHealth.map(y => {
+          const val = y.coreCapacity > 0 ? (y.coreDemand / y.coreCapacity) * 100 : (y.coreDemand > 0 ? 999 : 0);
+          return [y.year, val];
+        })),
+      },
+      {
+        label: t('results.buDemand'),
+        values: Object.fromEntries(model.yearlyHealth.map(y => [y.year, y.buDemand])),
+      },
+      {
+        label: t('results.buCapacity'),
+        values: Object.fromEntries(model.yearlyHealth.map(y => [y.year, y.buCapacity])),
+      },
+      {
+        label: t('results.buUtil'),
+        metricType: 'utilization',
+        values: Object.fromEntries(model.yearlyHealth.map(y => {
+          const val = y.buCapacity > 0 ? (y.buDemand / y.buCapacity) * 100 : (y.buDemand > 0 ? 999 : 0);
+          return [y.year, val];
+        })),
+      },
+      {
+        label: t('results.shortageMonthsLabel'),
+        metricType: 'shortage',
+        values: Object.fromEntries(model.yearlyHealth.map(y => [y.year, y.shortageMonths.length])),
+      },
+      {
+        label: t('results.bottleneck'),
+        metricType: 'bottleneck',
+        values: Object.fromEntries(model.yearlyHealth.map(y => [y.year, y.bottleneck === 'None' ? 0 : y.bottleneck === 'Core' ? 1 : 2])),
+      },
+    ];
+  }, [model, t]);
+
+  const yearlyHealthYears = useMemo(() => {
+    if (!model) return [];
+    return model.yearlyHealth.map(y => y.year);
+  }, [model]);
 
   if (loading) {
     return <Spin size="large" />;
@@ -200,12 +201,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
       {/* Executive KPI Cards */}
       <Row gutter={[16, 16]}>
         <Col span={4}>
-          <Card className="stat-card">
+          <Card className="stat-card dashboard-kpi-card">
             <Statistic title={t('dashboard.totalSkus')} value={totalSkus} />
           </Card>
         </Col>
         <Col span={4}>
-          <Card className="stat-card">
+          <Card className="stat-card dashboard-kpi-card">
             <Statistic
               title={t('dashboard.totalRevenue')}
               value={model?.totalRevenue ?? 0}
@@ -215,7 +216,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
           </Card>
         </Col>
         <Col span={4}>
-          <Card className="stat-card">
+          <Card className="stat-card dashboard-kpi-card">
             <Statistic
               title={t('dashboard.revenueTrend')}
               value={highlights?.revenueTrend === 'up' ? '↑' : highlights?.revenueTrend === 'down' ? '↓' : '→'}
@@ -229,7 +230,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
           </Card>
         </Col>
         <Col span={4}>
-          <Card className="stat-card">
+          <Card className="stat-card dashboard-kpi-card">
             <Statistic
               title={t('dashboard.worstYear')}
               value={highlights?.worstYear ?? '—'}
@@ -239,7 +240,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
           </Card>
         </Col>
         <Col span={4}>
-          <Card className="stat-card">
+          <Card className="stat-card dashboard-kpi-card">
             <Statistic
               title={t('dashboard.maxCoreUtil')}
               value={model?.maxCoreUtil === null ? 100 : (model?.maxCoreUtil ?? 0) * 100}
@@ -251,7 +252,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
           </Card>
         </Col>
         <Col span={4}>
-          <Card className="stat-card">
+          <Card className="stat-card dashboard-kpi-card">
             <Statistic
               title={t('dashboard.shortageMonths')}
               value={model?.shortageMonthCount ?? 0}
@@ -263,18 +264,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
         </Col>
       </Row>
 
-      {/* Yearly Capacity Health */}
+      {/* Yearly Capacity Health (metrics as rows, years left-to-right as columns) */}
       {model && model.yearlyHealth.length > 0 && (
         <Card title={t('dashboard.yearlyHealth')} style={{ marginTop: 16 }}>
-          <Table
-            columns={yearlyHealthColumns}
-            dataSource={model.yearlyHealth}
-            rowKey="year"
-            size="small"
-            pagination={false}
-            scroll={{ x: 'max-content' }}
-            rowClassName={(r) => r.severity === 'red' ? 'shortage-row' : r.severity === 'orange' ? 'warning-row' : ''}
-          />
+          <YearlyHealthMatrix rows={yearlyHealthRows} years={yearlyHealthYears} currencySettings={currencySettings} />
         </Card>
       )}
 

@@ -319,6 +319,16 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ userId, proje
 
   return (
     <div>
+      {/* Experimental banner */}
+      <Alert
+        message={`${t('capacityLab.experiment')} — ${t('capacityLab.experimentalBanner')}`}
+        description={t('capacityLab.experimentalDesc')}
+        type="warning"
+        showIcon
+        icon={<ExperimentOutlined />}
+        style={{ marginBottom: 12 }}
+        closable
+      />
       {/* Toolbar */}
       <Card size="small" style={{ marginBottom: 8 }}>
         <Row gutter={[12, 8]} align="middle">

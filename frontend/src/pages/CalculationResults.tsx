@@ -26,7 +26,8 @@ import {
   buildShortageExposure,
   type AnalyticsModel,
 } from '../core/analytics';
-import TimeMatrixTable from '../components/analytics/TimeMatrixTable';
+import TimeMatrixTable, { type TimeMatrixRow } from '../components/analytics/TimeMatrixTable';
+import { YearlyHealthMatrix } from '../components/analytics/YearlyHealthMatrix';
 import type { SkuCalculationResult, MonthlyCapacitySummary, SKU } from '../types';
 
 const { Text } = Typography;
@@ -295,20 +296,27 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
   // ============================
   // CAPACITY ANALYSIS VIEW
   // ============================
-  // Yearly health table
-  const yearlyHealthColumns: ColumnsType<any> = [
-    { title: t('results.year'), dataIndex: 'year', key: 'year', width: 70, fixed: 'left', render: (v: string, r: any) => <Tag color={r.severity === 'red' ? 'red' : r.severity === 'orange' ? 'orange' : 'green'}>{v}</Tag> },
-    { title: t('results.revenue'), dataIndex: 'revenue', key: 'revenue', width: 120, render: (v: number, r: any) => fmtRev(v, r.year) },
-    { title: t('results.forecastPcs'), dataIndex: 'forecastPcs', key: 'forecastPcs', width: 110, render: (v: number) => fmtNum(v) },
-    { title: t('results.coreDemand'), dataIndex: 'coreDemand', key: 'coreDemand', width: 100, render: (v: number) => fmtNum(v) },
-    { title: t('results.coreCapacity'), dataIndex: 'coreCapacity', key: 'coreCapacity', width: 110, render: (v: number) => fmtNum(v) },
-    { title: t('results.coreUtil'), dataIndex: 'coreUtil', key: 'coreUtil', width: 90, render: (v: number | null, r: any) => renderUtil(v, r.coreDemand) },
-    { title: t('results.buDemand'), dataIndex: 'buDemand', key: 'buDemand', width: 100, render: (v: number) => fmtNum(v) },
-    { title: t('results.buCapacity'), dataIndex: 'buCapacity', key: 'buCapacity', width: 110, render: (v: number) => fmtNum(v) },
-    { title: t('results.buUtil'), dataIndex: 'buUtil', key: 'buUtil', width: 90, render: (v: number | null, r: any) => renderUtil(v, r.buDemand) },
-    { title: t('results.shortageMonthsLabel'), dataIndex: 'shortageMonths', key: 'shortageMonths', width: 120, render: (v: string[]) => v.length > 0 ? <Text type="danger">{v.length} {t('dashboard.months')}</Text> : '0' },
-    { title: t('results.bottleneck'), dataIndex: 'bottleneck', key: 'bottleneck', width: 90, render: (v: string) => v === 'None' ? <Tag color="green">{t('common.none')}</Tag> : v === 'Core' ? <Tag color="orange">{t('common.core')}</Tag> : <Tag color="red">{t('common.bu')}</Tag> },
-  ];
+  // Yearly health as horizontal matrix (metrics as rows, years as columns)
+  const yearlyHealthRows = useMemo((): TimeMatrixRow[] => {
+    if (!model || model.yearlyHealth.length === 0) return [];
+    return [
+      { label: t('results.revenue'), metricType: 'revenue', values: Object.fromEntries(model.yearlyHealth.map(y => [y.year, y.revenue])) },
+      { label: t('results.forecastPcs'), values: Object.fromEntries(model.yearlyHealth.map(y => [y.year, y.forecastPcs])) },
+      { label: t('results.coreDemand'), values: Object.fromEntries(model.yearlyHealth.map(y => [y.year, y.coreDemand])) },
+      { label: t('results.coreCapacity'), values: Object.fromEntries(model.yearlyHealth.map(y => [y.year, y.coreCapacity])) },
+      { label: t('results.coreUtil'), metricType: 'utilization', values: Object.fromEntries(model.yearlyHealth.map(y => { const v = y.coreCapacity > 0 ? (y.coreDemand / y.coreCapacity) * 100 : (y.coreDemand > 0 ? 999 : 0); return [y.year, v]; })) },
+      { label: t('results.buDemand'), values: Object.fromEntries(model.yearlyHealth.map(y => [y.year, y.buDemand])) },
+      { label: t('results.buCapacity'), values: Object.fromEntries(model.yearlyHealth.map(y => [y.year, y.buCapacity])) },
+      { label: t('results.buUtil'), metricType: 'utilization', values: Object.fromEntries(model.yearlyHealth.map(y => { const v = y.buCapacity > 0 ? (y.buDemand / y.buCapacity) * 100 : (y.buDemand > 0 ? 999 : 0); return [y.year, v]; })) },
+      { label: t('results.shortageMonthsLabel'), metricType: 'shortage', values: Object.fromEntries(model.yearlyHealth.map(y => [y.year, y.shortageMonths.length])) },
+      { label: t('results.bottleneck'), metricType: 'bottleneck', values: Object.fromEntries(model.yearlyHealth.map(y => [y.year, y.bottleneck === 'None' ? 0 : y.bottleneck === 'Core' ? 1 : 2])) },
+    ];
+  }, [model, t]);
+
+  const yearlyHealthYears = useMemo(() => {
+    if (!model) return [];
+    return model.yearlyHealth.map(y => y.year);
+  }, [model]);
 
   // Monthly Core/BU matrix
   const monthlyColumns = (metric: 'core' | 'bu'): ColumnsType<any> => {
@@ -345,14 +353,11 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
     {
       key: 'yearly-health',
       label: t('results.yearlyHealth'),
-      children: model ? (
-        <Table
-          columns={yearlyHealthColumns}
-          dataSource={model.yearlyHealth}
-          rowKey="year"
-          size="small"
-          pagination={false}
-          scroll={{ x: 'max-content' }}
+      children: model && model.yearlyHealth.length > 0 ? (
+        <YearlyHealthMatrix
+          rows={yearlyHealthRows}
+          years={yearlyHealthYears}
+          currencySettings={currencySettings}
         />
       ) : null,
     },

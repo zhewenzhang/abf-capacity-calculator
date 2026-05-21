@@ -3,7 +3,11 @@ import { Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 
 export interface TimeMatrixRow {
+  /** Row label (displayed text) */
   label: string;
+  /** Metric type identifier for cell formatting (e.g. 'revenue', 'utilization', 'shortage', 'bottleneck', 'number') */
+  metricType?: string;
+  /** Time-period values */
   values: Record<string, number>;
 }
 
@@ -64,6 +68,7 @@ export const TimeMatrixTable: React.FC<TimeMatrixTableProps> = ({
       size="small"
       pagination={false}
       scroll={{ x: 'max-content' }}
+      className="matrix-table"
     />
   );
 };

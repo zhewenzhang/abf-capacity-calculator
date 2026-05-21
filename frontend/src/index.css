@@ -16,8 +16,101 @@ body {
   text-align: center;
 }
 
+/* Dashboard KPI cards — consistent height */
+.dashboard-kpi-card .ant-card-body {
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.stat-card .ant-statistic-title {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.45);
+  margin-bottom: 4px;
+}
+
+.stat-card .ant-statistic-content {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* Shortage/warning row highlight */
 .shortage-row {
   background-color: #fff2f0 !important;
+}
+
+.warning-row {
+  background-color: #fffbe6 !important;
+}
+
+/* Analysis tables — consistent style across Dashboard and Results */
+.analysis-table .ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 12px !important;
+  white-space: nowrap;
+}
+
+.analysis-table .ant-table-tbody > tr > td {
+  padding: 6px 12px !important;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.analysis-table .ant-table-tbody > tr > td:last-child,
+.analysis-table .ant-table-tbody > tr > td:not(:first-child) {
+  text-align: right;
+}
+
+.analysis-table .ant-table-cell-fix-left {
+  font-weight: 500;
+  background: #fff;
+}
+
+.analysis-table .ant-table-thead > tr > th.ant-table-cell-fix-left {
+  background: #fafafa;
+}
+
+/* Matrix tables (TimeMatrixTable) */
+.matrix-table .ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.matrix-table .ant-table-tbody > tr > td {
+  padding: 6px 10px !important;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+/* Data tables (Products, Forecasts, Capacity) */
+.data-table .ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.data-table .ant-table-tbody > tr > td {
+  padding: 8px 8px !important;
+}
+
+/* Utilization severity tags in tables */
+.util-red {
+  color: #cf1322;
+  font-weight: 600;
+}
+
+.util-orange {
+  color: #d48806;
+  font-weight: 600;
+}
+
+.util-green {
+  color: #389e0d;
+  font-weight: 600;
 }
 
 /* Editable Table Styles */

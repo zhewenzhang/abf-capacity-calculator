@@ -29,6 +29,15 @@ A browser-based ABF (Ajinomoto Build-up Film) substrate capacity planning tool b
 9. **Version History** — Save, restore, and delete named snapshots of the entire capacity plan
 10. **Currency Conversion** — USD/TWD display switching with constant or yearly exchange rate settings in Parameters.
 11. **Bilingual UI** — English / Traditional Chinese (繁中) with language switch in the header.
+12. **Analytics Layout** — Yearly analysis tables read horizontally (metrics as rows, years left-to-right), Dashboard KPI cards with consistent height, unified table styling across pages.
+
+## Project Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [DEVELOPMENT.md](DEVELOPMENT.md) | Architecture, data flow, development rules, test/build/deploy commands |
+| [UI_GUIDELINES.md](UI_GUIDELINES.md) | Dashboard KPI cards, table layout standards, severity coloring, language/currency conventions |
+| [ANALYTICS_GUIDE.md](ANALYTICS_GUIDE.md) | Dashboard/Results purpose, key metrics, matrix layout standard, AnalyticsModel structure |
 
 ## Firebase Setup
 
@@ -205,6 +214,7 @@ frontend/src/
 
 ## Version History
 
+- **2026-05-21 v1.9.0**: Polished analytics layout — Yearly Capacity Health now reads horizontally (metrics as rows, years left-to-right), standardized Dashboard KPI card heights, unified table styling (analysis-table/matrix-table/data-table classes), added YearlyHealthMatrix shared component, Capacity Lab marked as experimental with warning banner, created DEVELOPMENT.md / UI_GUIDELINES.md / ANALYTICS_GUIDE.md documentation.
 - **2026-05-21 v1.8.1**: Wired currency/i18n throughout all pages — Dashboard and Results now sync display currency with header switch, Parameters syncs currency preference to localStorage, fixed hardcoded labels in Forecasts (SKU Code/Customer/Device/Layer/UPP) and Products (OSAT), added missing i18n keys, year-aware revenue formatting for TWD yearly exchange rate mode.
 - **2026-05-21 v1.8.0**: Added USD/TWD currency display switching, exchange rate settings, Traditional Chinese/English UI language support, and UI label consistency cleanup.
 - **2026-05-21 v1.7.0**: Dashboard and Results analytics redesign — yearly capacity health table with red/orange/green severity, revenue and Core/BU utilization trend charts, matrix analysis tables (Revenue by Customer/Size/Application, Core/BU Demand by Size/Application/ProductGrade/LayerBucket), Dashboard answers "which year has problems / revenue trend / bottleneck", Results organized into Sales View / Product Planning View / Capacity Analysis View / Raw Detail tabs, reusable analytics.ts helper layer and TimeMatrixTable component.

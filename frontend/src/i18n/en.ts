@@ -286,6 +286,8 @@ export const en: Record<string, string> = {
   'capacityLab.saveAll': 'Save All',
   'capacityLab.discard': 'Discard',
   'capacityLab.experiment': 'Experiment',
+  'capacityLab.experimentalBanner': 'Capacity Lab',
+  'capacityLab.experimentalDesc': 'This spreadsheet-based capacity editing is preserved for evaluation but not recommended as the primary production input method yet. Multi-cell copy/paste (Ctrl+C/V) has limited support. Use the Capacity page for standard capacity management.',
   'capacityLab.experimentTag': 'Capacity Lab — Spreadsheet Experiment',
   'capacityLab.experimentDesc': 'Edit cells directly. Only changed cells are saved (highlighted in orange).',
   'capacityLab.dirtyCells': 'dirty cells:',

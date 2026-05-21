@@ -32,7 +32,7 @@ import type { DisplayCurrency } from './core/currency';
 const { Sider, Content } = Layout;
 const { Title } = Typography;
 
-const APP_VERSION = 'v1.8.0';
+const APP_VERSION = 'v1.9.0';
 
 // --- Sidebar with i18n ---
 const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }> = ({ current, onMenuClick }) => {
