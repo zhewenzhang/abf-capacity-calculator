@@ -65,11 +65,15 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
         setSkus(skuData);
 
         if (skuData.length === 0) {
+          setModel(null);
+          setBpTargets({});
           setError('No SKUs found. Add products first.');
           setLoading(false);
           return;
         }
         if (forecasts.length === 0) {
+          setModel(null);
+          setBpTargets({});
           setError('No forecasts found. Add forecasts first.');
           setLoading(false);
           return;
@@ -78,14 +82,14 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
         const m = buildAnalyticsModel(skuData, forecasts, capacityPlans, params);
         setModel(m);
 
-        // Load currency settings from parameters, merge with user prefs
         if (params.currencySettings) {
           const cs = params.currencySettings as CurrencySettings;
           setCurrencySettings({ ...cs, displayCurrency: prefs.displayCurrency });
         }
-        // Load BP targets
         if (params.bpTargets?.yearlyRevenueTargetsMillionTwd) {
           setBpTargets({ ...params.bpTargets.yearlyRevenueTargetsMillionTwd });
+        } else {
+          setBpTargets({});
         }
       } catch (e: any) {
         setError(e.message || 'Failed to run calculation');
