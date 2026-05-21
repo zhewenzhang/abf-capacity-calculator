@@ -34,8 +34,8 @@ users/{userId}/
 
 | Collection | Document ID | Key Fields |
 |------------|-------------|------------|
-| `skus` | UUID | `skuCode`, `customer`, `deviceName`, `sizeCategory`, `layerCount`, `unitPrice`, `yieldRate`, `application`, `productGrade`, `coreType`, `coreThicknessMm`, `abfType`, `chipLengthMm`, `chipWidthMm`, `pitchMm` |
-| `forecasts` | UUID | `skuId`, `month`, `pcs` |
+| `skus` | UUID | `skuCode`, `customer`, `deviceName`, `sizeCategory`, `layerCount`, `unitPrice`, `upp?`, `yieldEstimate?`, `application`, `productGrade`, `osat`, `coreType?`, `coreThicknessMm?`, `abfType?`, `chipLengthMm`, `chipWidthMm` |
+| `forecasts` | UUID | `skuId`, `month`, `forecastPcs`, `unitPrice` |
 | `capacityPlans` | `{month}-{factoryId}` | `month`, `factoryId`, `corePanelPerDay`, `buPanelPerDay`, `workingDays` |
 | `parameters/default` | `default` | `yieldMatrix`, `panelParams`, `defaultWorkingDays`, `currencySettings`, `factories` |
 | `capacityVersions` | `v-{timestamp}` | `versionName`, `gridData`, `factories`, `workingDays` |
@@ -100,7 +100,7 @@ firebase/auth.ts    — signInWithPopup(Google), signOut, onAuthStateChanged
 
 ## Environment Variables
 
-Required in `frontend/.env`:
+Required in `frontend/.env.local` (or `frontend/.env`):
 
 ```env
 VITE_FIREBASE_API_KEY=...

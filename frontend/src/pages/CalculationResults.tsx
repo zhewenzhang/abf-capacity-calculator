@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Card,
   Table,
   Tag,
   Spin,
   Alert,
   Tabs,
-  Statistic,
   Row,
   Col,
   Typography,
@@ -28,6 +26,7 @@ import {
 } from '../core/analytics';
 import TimeMatrixTable, { type TimeMatrixRow } from '../components/analytics/TimeMatrixTable';
 import { YearlyHealthMatrix } from '../components/analytics/YearlyHealthMatrix';
+import { MetricCard } from '../components/common';
 import type { SkuCalculationResult, MonthlyCapacitySummary, SKU } from '../types';
 
 const { Text } = Typography;
@@ -485,33 +484,24 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
           {/* Summary KPIs */}
           <Row gutter={16} style={{ marginBottom: 16 }}>
             <Col span={6}>
-              <Card>
-                <Statistic
-                  title={t('results.totalRevenue')}
-                  value={model.totalRevenue}
-                  precision={currencySettings.displayCurrency === 'USD' ? 2 : 0}
-                  prefix=""
-                />
-              </Card>
+              <MetricCard
+                title={t('results.totalRevenue')}
+                value={model.totalRevenue}
+                precision={currencySettings.displayCurrency === 'USD' ? 2 : 0}
+              />
             </Col>
             <Col span={6}>
-              <Card>
-                <Statistic title={t('results.totalForecastPcs')} value={model.totalForecastPcs} precision={0} />
-              </Card>
+              <MetricCard title={t('results.totalForecastPcs')} value={model.totalForecastPcs} precision={0} />
             </Col>
             <Col span={6}>
-              <Card>
-                <Statistic title={t('results.calculationRows')} value={model.skuResults.length} />
-              </Card>
+              <MetricCard title={t('results.calculationRows')} value={model.skuResults.length} />
             </Col>
             <Col span={6}>
-              <Card>
-                <Statistic
-                  title={t('results.shortageMonthCount')}
-                  value={model.shortageMonthCount}
-                  valueStyle={{ color: model.shortageMonthCount > 0 ? '#cf1322' : '#3f8600' }}
-                />
-              </Card>
+              <MetricCard
+                title={t('results.shortageMonthCount')}
+                value={model.shortageMonthCount}
+                valueStyle={{ color: model.shortageMonthCount > 0 ? '#cf1322' : '#3f8600' }}
+              />
             </Col>
           </Row>
 

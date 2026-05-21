@@ -215,7 +215,7 @@ frontend/src/
 
 ## Version History
 
-- **2026-05-21 v1.10.0**: Standardized the app on Ant Design theme and common components (MetricCard, SectionCard, AppTable, ExperimentalBanner, PageHeader, StatusTag), clarified Firebase Auth/Firestore/Hosting architecture, created FIREBASE_ARCHITECTURE.md, updated DEVELOPMENT.md and UI_GUIDELINES.md with Firebase and Ant Design rules.
+- **2026-05-21 v1.10.1**: Completed Ant Design standardization pass — applied shared MetricCard/SectionCard to Dashboard and Results, fixed direct-route menu/title sync via useLocation(), connected Ant Design locale to app language (EN/繁中), corrected FIREBASE_ARCHITECTURE.md field names (upp, yieldEstimate, forecastPcs, osat), removed redundant dynamic import warning for skuVersionService.
 - **2026-05-21 v1.9.1**: Fixed NaN year appearing in yearly health matrix by filtering invalid year values in monthsToYears().
 - **2026-05-21 v1.8.1**: Wired currency/i18n throughout all pages — Dashboard and Results now sync display currency with header switch, Parameters syncs currency preference to localStorage, fixed hardcoded labels in Forecasts (SKU Code/Customer/Device/Layer/UPP) and Products (OSAT), added missing i18n keys, year-aware revenue formatting for TWD yearly exchange rate mode.
 - **2026-05-21 v1.8.0**: Added USD/TWD currency display switching, exchange rate settings, Traditional Chinese/English UI language support, and UI label consistency cleanup.

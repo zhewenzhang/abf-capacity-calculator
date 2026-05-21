@@ -31,7 +31,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import * as XLSX from 'xlsx';
 import { getSKUs, saveSKU, deleteSKU, batchSaveSKUs } from '../services/skuService';
-import { saveVersion, getVersions, restoreVersion } from '../services/skuVersionService';
+import { saveVersion, getVersions, restoreVersion, deleteVersion } from '../services/skuVersionService';
 import type { SKU, SizeCategory } from '../types';
 import { validateSKU } from '../core/validation';
 import { DEFAULT_YIELD_MATRIX } from '../core/defaults';
@@ -381,7 +381,6 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
 
   const handleDeleteVersion = async (versionId: string) => {
     try {
-      const { deleteVersion } = await import('../services/skuVersionService');
       await deleteVersion(userId, projectId, versionId);
       message.success('Version deleted');
       loadVersions();

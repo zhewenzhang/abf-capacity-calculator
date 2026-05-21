@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { ConfigProvider, Layout, Menu, Spin, Button, Typography, Space, Radio } from 'antd';
 import {
   DashboardOutlined,
@@ -29,11 +29,13 @@ import { I18nProvider, useI18n, type Language } from './i18n';
 import { AppPrefsProvider, useAppPrefs } from './context/AppPreferencesContext';
 import type { DisplayCurrency } from './core/currency';
 import { antdTheme } from './theme/antdTheme';
+import enUS from 'antd/locale/en_US';
+import zhTW from 'antd/locale/zh_TW';
 
 const { Sider, Content } = Layout;
 const { Title } = Typography;
 
-const APP_VERSION = 'v1.10.0';
+const APP_VERSION = 'v1.10.1';
 
 // --- Sidebar with i18n ---
 const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }> = ({ current, onMenuClick }) => {
@@ -140,8 +142,15 @@ const AppHeader: React.FC<{
 // --- Main App Content ---
 const AppContent: React.FC<{ user: User }> = ({ user }) => {
   const navigate = useNavigate();
-  const [current, setCurrent] = useState('dashboard');
+  const location = useLocation();
   const { t } = useI18n();
+
+  // Derive current menu key from URL path
+  const current = useMemo(() => {
+    const path = location.pathname.replace(/^\//, '');
+    const validKeys = ['dashboard', 'products', 'forecasts', 'capacity', 'capacity-lab', 'parameters', 'results'];
+    return validKeys.includes(path) ? path : 'dashboard';
+  }, [location.pathname]);
 
   const pageTitles: Record<string, string> = useMemo(() => ({
     dashboard: t('dashboard.title'),
@@ -154,7 +163,6 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
   }), [t]);
 
   const handleMenuClick = useCallback((key: string) => {
-    setCurrent(key);
     navigate(`/${key}`);
   }, [navigate]);
 
@@ -227,9 +235,20 @@ const App: React.FC = () => {
     <ConfigProvider theme={antdTheme}>
       <AppPrefsProvider>
         <I18nProvider>
-          <AuthRouter />
+          <LocaleBridge />
         </I18nProvider>
       </AppPrefsProvider>
+    </ConfigProvider>
+  );
+};
+
+// Bridge component that reads i18n language and wraps with locale-aware ConfigProvider
+const LocaleBridge: React.FC = () => {
+  const { lang } = useI18n();
+  const antdLocale = useMemo(() => (lang === 'zh-TW' ? zhTW : enUS), [lang]);
+  return (
+    <ConfigProvider theme={antdTheme} locale={antdLocale}>
+      <AuthRouter />
     </ConfigProvider>
   );
 };
