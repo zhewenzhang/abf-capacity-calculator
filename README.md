@@ -11,6 +11,7 @@ A browser-based ABF (Ajinomoto Build-up Film) substrate capacity planning tool b
 - **Testing**: Vitest
 - **Routing**: React Router v7
 - **CRUDEXP**: Refine (experimental, CRUD evaluation only)
+- **SPREADSHEET**: react-datasheet-grid (Products Sheet Lab — preferred SKU input direction)
 
 ## Features
 
@@ -209,14 +210,14 @@ frontend/src/
 ## Known Limitations
 
 - Single default project per user (multi-project UI not yet implemented).
-- Products Refine Lab (`/products-refine-lab`) does not include Excel import/export, template download, or SKU version history — use the main Products page (`/products`) for those features.
+- Products Spreadsheet Lab (`/products-sheet-lab`) does not include SKU version history — use the main Products page (`/products`) for that feature.
 - No real-time collaboration (Firestore listeners not used).
 - Firebase credentials required for full functionality; no mock data mode yet.
 - Working days are configurable but fixed across all months (not per-month).
 
 ## Version History
 
-- **2026-05-21 v1.11.0**: Added Products Refine Lab (`/products-refine-lab`) — experimental SKU management using `@refinedev/core` + `@refinedev/react-router` with existing Ant Design components. Validates Refine compatibility with React 19, React Router 7, and Ant Design 6. Corrected README Ant Design version (6, not 5) and outdated "no import/export" limitation.
+- **2026-05-21 v1.12.0**: Added Products Spreadsheet Lab (`/products-sheet-lab`) — Excel-like SKU input with multi-cell paste, batch validation, batch save, derived UPP/yield, and CSV export. Created shared `skuDerived.ts` helper for consistent UPP/yield calculation across all pages. Refine Lab retained for technical comparison but spreadsheet-first is now the preferred direction for product input. Corrected README known limitations and tech stack.
 - **2026-05-21 v1.9.1**: Fixed NaN year appearing in yearly health matrix by filtering invalid year values in monthsToYears().
 - **2026-05-21 v1.8.1**: Wired currency/i18n throughout all pages — Dashboard and Results now sync display currency with header switch, Parameters syncs currency preference to localStorage, fixed hardcoded labels in Forecasts (SKU Code/Customer/Device/Layer/UPP) and Products (OSAT), added missing i18n keys, year-aware revenue formatting for TWD yearly exchange rate mode.
 - **2026-05-21 v1.8.0**: Added USD/TWD currency display switching, exchange rate settings, Traditional Chinese/English UI language support, and UI label consistency cleanup.

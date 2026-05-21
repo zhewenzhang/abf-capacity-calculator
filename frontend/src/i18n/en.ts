@@ -10,7 +10,8 @@ export const en: Record<string, string> = {
   // Sidebar
   'menu.dashboard': 'Dashboard',
   'menu.products': 'Products',
-  'menu.productsLab': 'Products Lab',
+  'menu.productsSheet': 'Products Sheet',
+  'menu.productsLab': 'Products Lab (Refine)',
   'menu.forecasts': 'Forecasts',
   'menu.capacity': 'Capacity Plan',
   'menu.capacityLab': 'Capacity Lab',
@@ -136,6 +137,7 @@ export const en: Record<string, string> = {
 
   // Products
   'products.title': 'Products',
+  'productsSheet.title': 'Products Spreadsheet Lab',
   'products.skuCode': 'SKU Code',
   'products.customer': 'Customer',
   'products.deviceName': 'Device',
