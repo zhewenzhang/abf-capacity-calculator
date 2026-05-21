@@ -10,6 +10,7 @@ export const en: Record<string, string> = {
   // Sidebar
   'menu.dashboard': 'Dashboard',
   'menu.products': 'Products',
+  'menu.productsLab': 'Products Lab',
   'menu.forecasts': 'Forecasts',
   'menu.capacity': 'Capacity Plan',
   'menu.capacityLab': 'Capacity Lab',

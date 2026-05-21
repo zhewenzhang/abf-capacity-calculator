@@ -5,11 +5,12 @@ A browser-based ABF (Ajinomoto Build-up Film) substrate capacity planning tool b
 ## Tech Stack
 
 - **Frontend**: React 19 + TypeScript + Vite
-- **UI**: Ant Design 5
-- **Charts**: Recharts
+- **UI**: Ant Design 6
+- **Charts**: @ant-design/charts
 - **Backend**: Firebase (Auth + Firestore + Hosting)
 - **Testing**: Vitest
 - **Routing**: React Router v7
+- **CRUDEXP**: Refine (experimental, CRUD evaluation only)
 
 ## Features
 
@@ -208,14 +209,14 @@ frontend/src/
 ## Known Limitations
 
 - Single default project per user (multi-project UI not yet implemented).
-- No data export/import (CSV, Excel).
+- Products Refine Lab (`/products-refine-lab`) does not include Excel import/export, template download, or SKU version history — use the main Products page (`/products`) for those features.
 - No real-time collaboration (Firestore listeners not used).
 - Firebase credentials required for full functionality; no mock data mode yet.
 - Working days are configurable but fixed across all months (not per-month).
 
 ## Version History
 
-- **2026-05-21 v1.10.1**: Completed Ant Design standardization pass — applied shared MetricCard/SectionCard to Dashboard and Results, fixed direct-route menu/title sync via useLocation(), connected Ant Design locale to app language (EN/繁中), corrected FIREBASE_ARCHITECTURE.md field names (upp, yieldEstimate, forecastPcs, osat), removed redundant dynamic import warning for skuVersionService.
+- **2026-05-21 v1.11.0**: Added Products Refine Lab (`/products-refine-lab`) — experimental SKU management using `@refinedev/core` + `@refinedev/react-router` with existing Ant Design components. Validates Refine compatibility with React 19, React Router 7, and Ant Design 6. Corrected README Ant Design version (6, not 5) and outdated "no import/export" limitation.
 - **2026-05-21 v1.9.1**: Fixed NaN year appearing in yearly health matrix by filtering invalid year values in monthsToYears().
 - **2026-05-21 v1.8.1**: Wired currency/i18n throughout all pages — Dashboard and Results now sync display currency with header switch, Parameters syncs currency preference to localStorage, fixed hardcoded labels in Forecasts (SKU Code/Customer/Device/Layer/UPP) and Products (OSAT), added missing i18n keys, year-aware revenue formatting for TWD yearly exchange rate mode.
 - **2026-05-21 v1.8.0**: Added USD/TWD currency display switching, exchange rate settings, Traditional Chinese/English UI language support, and UI label consistency cleanup.

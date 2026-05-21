@@ -10,6 +10,7 @@ export const zhTW: Record<string, string> = {
   // Sidebar
   'menu.dashboard': '儀表板',
   'menu.products': '產品',
+  'menu.productsLab': '產品實驗',
   'menu.forecasts': '預測',
   'menu.capacity': '產能規劃',
   'menu.capacityLab': '產能實驗',

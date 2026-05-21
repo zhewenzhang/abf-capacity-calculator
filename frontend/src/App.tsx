@@ -25,6 +25,8 @@ import CapacitySpreadsheetPage from './pages/CapacitySpreadsheet';
 import ParametersPage from './pages/Parameters';
 import CalculationResultsPage from './pages/CalculationResults';
 import SetupPage from './pages/SetupPage';
+import ProductsRefineLab from './pages/ProductsRefineLab';
+import { RefineProductsProvider } from './refine/RefineProductsProvider';
 import { I18nProvider, useI18n, type Language } from './i18n';
 import { AppPrefsProvider, useAppPrefs } from './context/AppPreferencesContext';
 import type { DisplayCurrency } from './core/currency';
@@ -35,7 +37,7 @@ import zhTW from 'antd/locale/zh_TW';
 const { Sider, Content } = Layout;
 const { Title } = Typography;
 
-const APP_VERSION = 'v1.10.1';
+const APP_VERSION = 'v1.11.0';
 
 // --- Sidebar with i18n ---
 const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }> = ({ current, onMenuClick }) => {
@@ -44,6 +46,7 @@ const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }
   const menuItems = [
     { key: 'dashboard', icon: <DashboardOutlined />, label: t('menu.dashboard') },
     { key: 'products', icon: <InboxOutlined />, label: t('menu.products') },
+    { key: 'products-refine-lab', icon: <ExperimentOutlined />, label: t('menu.productsLab') },
     { key: 'forecasts', icon: <BarChartOutlined />, label: t('menu.forecasts') },
     { key: 'capacity', icon: <CloudOutlined />, label: t('menu.capacity') },
     { key: 'capacity-lab', icon: <ExperimentOutlined />, label: t('menu.capacityLab') },
@@ -148,13 +151,14 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
   // Derive current menu key from URL path
   const current = useMemo(() => {
     const path = location.pathname.replace(/^\//, '');
-    const validKeys = ['dashboard', 'products', 'forecasts', 'capacity', 'capacity-lab', 'parameters', 'results'];
+    const validKeys = ['dashboard', 'products', 'products-refine-lab', 'forecasts', 'capacity', 'capacity-lab', 'parameters', 'results'];
     return validKeys.includes(path) ? path : 'dashboard';
   }, [location.pathname]);
 
   const pageTitles: Record<string, string> = useMemo(() => ({
     dashboard: t('dashboard.title'),
     products: t('products.title'),
+    'products-refine-lab': 'Products Lab',
     forecasts: t('forecasts.title'),
     capacity: t('capacity.title'),
     'capacity-lab': t('capacityLab.title'),
@@ -183,6 +187,14 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
           <Routes>
             <Route path="/dashboard" element={<DashboardPage userId={user.uid} projectId="default" />} />
             <Route path="/products" element={<ProductsPage userId={user.uid} projectId="default" />} />
+            <Route
+              path="/products-refine-lab"
+              element={
+                <RefineProductsProvider userId={user.uid} projectId="default">
+                  <ProductsRefineLab userId={user.uid} projectId="default" />
+                </RefineProductsProvider>
+              }
+            />
             <Route path="/forecasts" element={<ForecastsPage userId={user.uid} projectId="default" />} />
             <Route path="/capacity" element={<CapacityPlanPage userId={user.uid} projectId="default" />} />
             <Route path="/capacity-lab" element={<CapacitySpreadsheetPage userId={user.uid} projectId="default" />} />
