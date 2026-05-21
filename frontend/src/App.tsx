@@ -38,7 +38,7 @@ import zhTW from 'antd/locale/zh_TW';
 const { Sider, Content } = Layout;
 const { Title } = Typography;
 
-const APP_VERSION = 'v1.14.1';
+const APP_VERSION = 'v1.14.2';
 
 // --- Sidebar with i18n ---
 const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }> = ({ current, onMenuClick }) => {
@@ -73,7 +73,7 @@ const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }
     >
       <div style={{ padding: '16px 12px', textAlign: 'center' }}>
         <Title level={4} style={{ color: '#fff', margin: 0, fontSize: 18 }}>
-          ABF Calc
+          {t('app.abbrev')}
         </Title>
       </div>
       <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -161,7 +161,7 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
     dashboard: t('dashboard.title'),
     products: t('products.title'),
     'products-sheet-lab': t('productsSheet.title'),
-    'products-refine-lab': 'Products Lab',
+    'products-refine-lab': t('menu.productsLab'),
     forecasts: t('forecasts.title'),
     capacity: t('capacity.title'),
     'capacity-lab': t('capacityLab.title'),

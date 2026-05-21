@@ -90,8 +90,8 @@ export interface ProjectParameters {
   };
   bpTargets?: {
     mode: 'yearly' | 'monthly';
-    yearlyRevenueTargetsTwd: Record<string, number>;
-    monthlyRevenueTargetsTwd?: Record<string, number>;
+    yearlyRevenueTargetsMillionTwd: Record<string, number>;
+    monthlyRevenueTargetsMillionTwd?: Record<string, number>;
   };
   updatedAt?: Date;
 }

@@ -5,6 +5,7 @@
 export const en: Record<string, string> = {
   // App
   'app.title': 'ABF Capacity Calculator',
+  'app.abbrev': 'ABF Calc',
   'app.version': 'Version',
 
   // Sidebar

@@ -5,6 +5,7 @@
 export const zhTW: Record<string, string> = {
   // App
   'app.title': 'ABF 產能計算器',
+  'app.abbrev': 'ABF 計算',
   'app.version': '版本',
 
   // Sidebar
@@ -301,6 +302,7 @@ export const zhTW: Record<string, string> = {
   'capacityLab.experiment': '實驗',
   'capacityLab.experimentalBanner': '產能實驗室',
   'capacityLab.experimentalDesc': '此試算表產能編輯功能僅供評估，尚不建議作為主要生產輸入方式。多儲存格複製貼上（Ctrl+C/V）支援有限。請使用「產能計畫」頁面進行標準產能管理。',
+  'capacityLab.experimentTag': '產能實驗 — 試算表實驗',
   'capacityLab.experimentDesc': '直接編輯儲存格。只有變更的儲存格會被儲存（以橘色標示）。',
   'capacityLab.dirtyCells': '個變更儲存格：',
   'capacityLab.coreLabel': 'Core',

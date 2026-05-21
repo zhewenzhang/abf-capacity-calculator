@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd frontend && npm run lint:*)",
+      "Bash(cd frontend && npm test:*)",
+      "Bash(git log:*)",
+      "Bash(git tag:*)",
+      "Bash(git diff:*)",
+      "Bash(git status*)"
+    ]
+  },
+  "hooks": {
+    "postToolUse": [
+      {
+        "if": "tool == 'Edit' or tool == 'Write'",
+        "run": "cd frontend && npm run lint -- --quiet 2>&1 | head -30",
+        "description": "ESLint check after code edits"
+      },
+      {
+        "if": "tool == 'Edit' or tool == 'Write' and path matches /frontend\\/src\\/core\\//",
+        "run": "cd frontend && npm test -- --run src/core/ 2>&1 | tail -20",
+        "description": "Run core tests after business logic changes"
+      }
+    ]
+  }
+}
