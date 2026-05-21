@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Row, Col, Typography, Spin, Alert, Tag, Button, Popconfirm, Space } from 'antd';
+import { Card, Row, Col, Table, Typography, Spin, Alert, Tag, Button, Popconfirm, Space } from 'antd';
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
@@ -22,6 +22,7 @@ import { useI18n } from '../i18n';
 import { useAppPrefs } from '../context/AppPreferencesContext';
 import { formatCurrency, formatCurrencyShort, DEFAULT_CURRENCY_SETTINGS } from '../core/currency';
 import type { CurrencySettings } from '../core/currency';
+import { buildBpAttainment, formatAttainment, formatBpAmount, periodYear } from '../core/bpTargets';
 
 const { Text } = Typography;
 
@@ -40,6 +41,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
   const [model, setModel] = useState<AnalyticsModel | null>(null);
   const [highlights, setHighlights] = useState<DashboardHighlights | null>(null);
   const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(DEFAULT_CURRENCY_SETTINGS);
+  const [bpTargets, setBpTargets] = useState<Record<string, number>>({});
 
   const loadData = async () => {
     setLoading(true);
@@ -66,6 +68,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
 
       // Override display currency from user preference
       setCurrencySettings({ ...baseSettings, displayCurrency: prefs.displayCurrency });
+
+      // Load BP targets
+      const bp = paramsData.bpTargets;
+      if (bp?.yearlyRevenueTargetsUsd) {
+        setBpTargets({ ...bp.yearlyRevenueTargetsUsd });
+      }
 
       if (skus.length > 0 && forecasts.length > 0) {
         const m = buildAnalyticsModel(skus, forecasts, capacityPlans, paramsData);
@@ -256,6 +264,66 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
           <YearlyHealthMatrix rows={yearlyHealthRows} years={yearlyHealthYears} currencySettings={currencySettings} />
         </SectionCard>
       )}
+
+      {/* BP Attainment Section */}
+      {model && Object.keys(bpTargets).length > 0 && (() => {
+        const bpData = buildBpAttainment(model.skuResults, model.monthlySummaries, bpTargets);
+        const bpYearlyColumns: any[] = [
+          { title: t('bp.attainment'), dataIndex: 'period', key: 'period', width: 80, fixed: 'left' as const },
+          {
+            title: t('bp.target'),
+            dataIndex: 'bpTarget',
+            key: 'bpTarget',
+            width: 120,
+            align: 'right' as const,
+            render: (v: number, r: any) => formatBpAmount(v, currencySettings, periodYear(r.period)),
+          },
+          {
+            title: t('bp.forecast'),
+            dataIndex: 'forecastRevenue',
+            key: 'forecastRevenue',
+            width: 120,
+            align: 'right' as const,
+            render: (v: number, r: any) => formatBpAmount(v, currencySettings, periodYear(r.period)),
+          },
+          {
+            title: t('bp.attainment'),
+            dataIndex: 'attainment',
+            key: 'attainment',
+            width: 100,
+            align: 'right' as const,
+            render: (v: number | null) => {
+              if (v === null) return <Tag>-</Tag>;
+              const pct = v * 100;
+              return <Tag color={pct >= 100 ? 'green' : pct >= 80 ? 'orange' : 'red'}>{formatAttainment(v)}</Tag>;
+            },
+          },
+          {
+            title: t('bp.gap'),
+            dataIndex: 'gap',
+            key: 'gap',
+            width: 100,
+            align: 'right' as const,
+            render: (v: number, r: any) => {
+              if (r.attainment === null) return '-';
+              return <Text type={v >= 0 ? 'success' : 'danger'}>{v > 0 ? `+${v.toLocaleString()}` : v.toLocaleString()}</Text>;
+            },
+          },
+        ];
+        return (
+          <SectionCard title={t('bp.attainmentTitle')}>
+            <Table
+              columns={bpYearlyColumns}
+              dataSource={bpData.yearly}
+              rowKey="period"
+              size="small"
+              pagination={false}
+              scroll={{ x: 'max-content' }}
+              className="analysis-table"
+            />
+          </SectionCard>
+        );
+      })()}
 
       {/* Revenue Trend Chart */}
       {model && model.monthlyRevenue.length > 0 && (

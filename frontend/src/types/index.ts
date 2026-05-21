@@ -88,6 +88,11 @@ export interface ProjectParameters {
     constantUsdToTwdRate: number;
     yearlyUsdToTwdRates: Record<string, number>;
   };
+  bpTargets?: {
+    mode: 'yearly' | 'monthly';
+    yearlyRevenueTargetsUsd: Record<string, number>;
+    monthlyRevenueTargetsUsd?: Record<string, number>;
+  };
   updatedAt?: Date;
 }
 

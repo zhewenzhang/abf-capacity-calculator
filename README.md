@@ -16,7 +16,7 @@ A browser-based ABF (Ajinomoto Build-up Film) substrate capacity planning tool b
 ## Features
 
 1. **Product/SKU Management** — Create, edit, and delete SKUs with chip dimensions, layer count, size category, and pricing.
-2. **Monthly Forecasts** — Enter or bulk-generate sales forecasts by SKU and month (2026–2040).
+2. **Monthly Forecasts** — Enter, import, batch-generate, and extend sales forecasts by SKU and month (2026–2040), including empty-year generation from prior-year monthly SKU demand using a fixed annual growth rate.
 3. **Capacity Planning** — Excel-style grid with:
    - **Factory management**: Add, rename, and remove factories dynamically
    - **Batch operations**: Set values by year or quarter across selected factories
@@ -217,6 +217,8 @@ frontend/src/
 
 ## Version History
 
+- **2026-05-21 v1.13.0**: Added BP (Business Plan) Target and Attainment Analysis — yearly BP target revenue input in Parameters (2026–2040), stored in USD under `parameters/default.bpTargets`. Dashboard shows BP attainment table (Target, Forecast Revenue, Attainment %, Gap). Results page adds BP Analysis tab with Year / Quarter / Month views. Quarterly targets = annual / 4, monthly targets = annual / 12 (evenly allocated). Missing or zero targets show `-` for attainment (not treated as failure). Reserved `monthlyRevenueTargetsUsd` data structure for future monthly BP target input. Added 14 bpTargets.test.ts tests. Integrated with existing v1.12.1 forecast yearly growth feature.
+- **2026-05-21 v1.12.1**: Added Forecast yearly growth generation — users can select target empty years and a fixed growth rate; the Forecasts page generates monthly SKU forecasts from the same months in the previous year, skips SKU-years that already have data, supports selected SKUs or all SKUs, and includes tested cascading year logic.
 - **2026-05-21 v1.12.0**: Added Products Spreadsheet Lab (`/products-sheet-lab`) — Excel-like SKU input with multi-cell paste, batch validation, batch save, derived UPP/yield, and CSV export. Created shared `skuDerived.ts` helper for consistent UPP/yield calculation across all pages. Refine Lab retained for technical comparison but spreadsheet-first is now the preferred direction for product input. Corrected README known limitations and tech stack.
 - **2026-05-21 v1.9.1**: Fixed NaN year appearing in yearly health matrix by filtering invalid year values in monthsToYears().
 - **2026-05-21 v1.8.1**: Wired currency/i18n throughout all pages — Dashboard and Results now sync display currency with header switch, Parameters syncs currency preference to localStorage, fixed hardcoded labels in Forecasts (SKU Code/Customer/Device/Layer/UPP) and Products (OSAT), added missing i18n keys, year-aware revenue formatting for TWD yearly exchange rate mode.

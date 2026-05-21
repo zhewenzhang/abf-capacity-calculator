@@ -72,6 +72,8 @@ All Firestore access goes through service modules. Never call Firestore directly
 | `core/analytics.ts` | Builds analysis structures: yearly health, dimension matrices, shortage exposure |
 | `core/currency.ts` | USD/TWD conversion, formatting (display-layer only) |
 | `core/defaults.ts` | Default working days, yield matrix, panel parameters |
+| `core/forecastGrowth.ts` | Generates empty forecast years from prior-year monthly SKU demand using annual growth rates |
+| `core/bpTargets.ts` | BP target attainment analysis: yearly/quarterly/monthly views, attainment %, gap calculation |
 | `i18n/` | English / Traditional Chinese translation dictionaries |
 | `theme/antdTheme.ts` | Ant Design design tokens (colors, spacing, typography) |
 | `components/analytics/` | Shared analysis components (TimeMatrixTable, YearlyHealthMatrix) |
@@ -86,6 +88,15 @@ All Firestore access goes through service modules. Never call Firestore directly
 3. **Core page logic** — Products, Forecasts, Capacity pages have working flows. Do not refactor without specific task.
 4. **Firebase** — do not replace with Supabase or any other backend.
 5. **Ant Design** — do not replace with MUI, shadcn, Tailwind, or any other UI system.
+
+### Forecast growth rules
+
+1. Forecast annual growth is a Forecasts-page batch operation, not a backend job.
+2. A target SKU-year is generated only when that SKU has no positive forecast data in the target year.
+3. Generated values use the same SKU and same month from the previous year: `targetMonthForecastPcs = round(previousYearSameMonthForecastPcs * (1 + growthRate / 100))`.
+4. Existing target-year forecast data is never overwritten by growth generation.
+5. Multi-year generation may cascade: a generated 2027 can become the base for 2028 in the same operation.
+6. If no SKU is selected, yearly growth applies to all SKUs with previous-year base data.
 
 ### Display-layer conventions
 

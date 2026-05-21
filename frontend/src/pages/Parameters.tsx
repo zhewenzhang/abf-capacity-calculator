@@ -10,6 +10,7 @@ import {
   Alert,
   Popconfirm,
   Radio,
+  Typography,
 } from 'antd';
 import { SaveOutlined, UndoOutlined } from '@ant-design/icons';
 import { getParameters, saveParameters } from '../services/parameterService';
@@ -18,6 +19,8 @@ import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_WORKING_DAYS } from
 import { useI18n } from '../i18n';
 import { useAppPrefs } from '../context/AppPreferencesContext';
 import { DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
+
+const { Text } = Typography;
 
 interface ParametersPageProps {
   userId: string;
@@ -36,6 +39,7 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
   const [error, setError] = useState<string | null>(null);
   const [form] = Form.useForm();
   const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(DEFAULT_CURRENCY_SETTINGS);
+  const [bpTargets, setBpTargets] = useState<Record<string, number>>({});
 
   const loadParams = async () => {
     setLoading(true);
@@ -60,6 +64,11 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
           constantUsdToTwdRate: cs.constantUsdToTwdRate,
           yearlyUsdToTwdRates: cs.yearlyUsdToTwdRates,
         });
+      }
+      // Load BP targets
+      const bp = data.bpTargets;
+      if (bp?.yearlyRevenueTargetsUsd) {
+        setBpTargets({ ...bp.yearlyRevenueTargetsUsd });
       }
     } catch (e: any) {
       setError(e.message || 'Failed to load parameters');
@@ -88,6 +97,10 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
           toleranceMm: panelValues.toleranceMm,
         },
         currencySettings,
+        bpTargets: {
+          mode: 'yearly' as const,
+          yearlyRevenueTargetsUsd: bpTargets,
+        },
       };
       await saveParameters(userId, projectId, updated);
       message.success('Parameters saved');
@@ -287,6 +300,35 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
             />
           )}
         </Form>
+      </Card>
+
+      {/* BP Targets Section */}
+      <Card title={t('parameters.bpTargets')} style={{ marginBottom: 16 }}>
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Text type="secondary">{t('parameters.bpTargetsNote')}</Text>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 8 }}>
+            {Array.from({ length: 2041 - 2026 + 1 }, (_, i) => 2026 + i).map(year => (
+              <div key={year} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Text style={{ minWidth: 40, fontSize: 13 }}>{year}</Text>
+                <InputNumber
+                  size="small"
+                  min={0}
+                  step={1000}
+                  precision={0}
+                  style={{ width: 130 }}
+                  placeholder={t('parameters.bpTargetPlaceholder')}
+                  value={bpTargets[String(year)] ?? undefined}
+                  onChange={(v) => {
+                    setBpTargets(prev => ({
+                      ...prev,
+                      [String(year)]: v ?? 0,
+                    }));
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        </Space>
       </Card>
     </div>
   );

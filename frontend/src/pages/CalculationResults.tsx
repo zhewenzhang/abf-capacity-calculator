@@ -27,6 +27,7 @@ import {
 import TimeMatrixTable, { type TimeMatrixRow } from '../components/analytics/TimeMatrixTable';
 import { YearlyHealthMatrix } from '../components/analytics/YearlyHealthMatrix';
 import { MetricCard } from '../components/common';
+import { buildBpAttainment, formatAttainment, formatBpAmount, periodYear } from '../core/bpTargets';
 import type { SkuCalculationResult, MonthlyCapacitySummary, SKU } from '../types';
 
 const { Text } = Typography;
@@ -36,7 +37,7 @@ interface CalculationResultsPageProps {
   projectId: string;
 }
 
-type ResultsView = 'sales' | 'product' | 'capacity' | 'raw';
+type ResultsView = 'sales' | 'product' | 'capacity' | 'bp' | 'raw';
 
 const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId, projectId }) => {
   const { t } = useI18n();
@@ -47,6 +48,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
   const [model, setModel] = useState<AnalyticsModel | null>(null);
   const [view, setView] = useState<ResultsView>('sales');
   const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(DEFAULT_CURRENCY_SETTINGS);
+  const [bpTargets, setBpTargets] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const loadData = async () => {
@@ -80,6 +82,10 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
         if (params.currencySettings) {
           const cs = params.currencySettings as CurrencySettings;
           setCurrencySettings({ ...cs, displayCurrency: prefs.displayCurrency });
+        }
+        // Load BP targets
+        if (params.bpTargets?.yearlyRevenueTargetsUsd) {
+          setBpTargets({ ...params.bpTargets.yearlyRevenueTargetsUsd });
         }
       } catch (e: any) {
         setError(e.message || 'Failed to run calculation');
@@ -513,6 +519,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
               { label: t('results.salesView'), value: 'sales' },
               { label: t('results.productView'), value: 'product' },
               { label: t('results.capacityView'), value: 'capacity' },
+              { label: t('bp.analysis'), value: 'bp' },
               { label: t('results.rawDetail'), value: 'raw' },
             ]}
             style={{ marginBottom: 16 }}
@@ -531,6 +538,109 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
           {/* Capacity Analysis View */}
           {view === 'capacity' && (
             <Tabs items={capacityItems} size="small" />
+          )}
+
+          {/* BP Analysis View */}
+          {view === 'bp' && model && Object.keys(bpTargets).length > 0 && (() => {
+            const bpData = buildBpAttainment(model.skuResults, model.monthlySummaries, bpTargets);
+            const bpColumns: any[] = [
+              { title: t('results.year'), dataIndex: 'period', key: 'period', width: 80, fixed: 'left' as const },
+              {
+                title: t('bp.target'),
+                dataIndex: 'bpTarget',
+                key: 'bpTarget',
+                width: 120,
+                align: 'right' as const,
+                render: (v: number, r: any) => formatBpAmount(v, currencySettings, periodYear(r.period)),
+              },
+              {
+                title: t('bp.forecast'),
+                dataIndex: 'forecastRevenue',
+                key: 'forecastRevenue',
+                width: 120,
+                align: 'right' as const,
+                render: (v: number, r: any) => formatBpAmount(v, currencySettings, periodYear(r.period)),
+              },
+              {
+                title: t('bp.attainment'),
+                dataIndex: 'attainment',
+                key: 'attainment',
+                width: 100,
+                align: 'right' as const,
+                render: (v: number | null) => {
+                  if (v === null) return '-';
+                  const pct = v * 100;
+                  return <Tag color={pct >= 100 ? 'green' : pct >= 80 ? 'orange' : 'red'}>{formatAttainment(v)}</Tag>;
+                },
+              },
+              {
+                title: t('bp.gap'),
+                dataIndex: 'gap',
+                key: 'gap',
+                width: 100,
+                align: 'right' as const,
+                render: (v: number, r: any) => {
+                  if (r.attainment === null) return '-';
+                  return <Text type={v >= 0 ? 'success' : 'danger'}>{v > 0 ? `+${v.toLocaleString()}` : v.toLocaleString()}</Text>;
+                },
+              },
+            ];
+            return (
+              <Tabs
+                items={[
+                  {
+                    key: 'yearly',
+                    label: t('results.year'),
+                    children: (
+                      <Table
+                        columns={bpColumns}
+                        dataSource={bpData.yearly}
+                        rowKey="period"
+                        size="small"
+                        pagination={false}
+                        scroll={{ x: 'max-content' }}
+                        className="analysis-table"
+                      />
+                    ),
+                  },
+                  {
+                    key: 'quarterly',
+                    label: t('results.quarter'),
+                    children: (
+                      <Table
+                        columns={bpColumns}
+                        dataSource={bpData.quarterly}
+                        rowKey="period"
+                        size="small"
+                        pagination={false}
+                        scroll={{ x: 'max-content' }}
+                        className="analysis-table"
+                      />
+                    ),
+                  },
+                  {
+                    key: 'monthly',
+                    label: t('results.month'),
+                    children: (
+                      <Table
+                        columns={bpColumns}
+                        dataSource={bpData.monthly}
+                        rowKey="period"
+                        size="small"
+                        pagination={{ pageSize: 12 }}
+                        scroll={{ x: 'max-content' }}
+                        className="analysis-table"
+                      />
+                    ),
+                  },
+                ]}
+                size="small"
+              />
+            );
+          })()}
+
+          {view === 'bp' && (!model || Object.keys(bpTargets).length === 0) && (
+            <Alert message={t('bp.noTarget')} type="info" showIcon />
           )}
 
           {/* Raw Detail */}

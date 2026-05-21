@@ -32,6 +32,7 @@ import { getForecasts, batchSaveForecasts, deleteForecast } from '../services/fo
 import { getSKUs } from '../services/skuService';
 import type { Forecast, SKU } from '../types';
 import { useI18n } from '../i18n';
+import { buildYearlyGrowthForecasts } from '../core/forecastGrowth';
 
 const { Text } = Typography;
 
@@ -124,7 +125,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
   // Batch modal
   const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [batchForm] = Form.useForm();
-  const [batchMode, setBatchMode] = useState<'set' | 'multiply' | 'extend'>('set');
+  const [batchMode, setBatchMode] = useState<'set' | 'multiply' | 'growth'>('set');
 
   // Month view toggle
   const [showFullRange, setShowFullRange] = useState(false);
@@ -361,6 +362,54 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
       await loadData();
     } catch (e: any) {
       message.error(e.message || 'Failed to batch update');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleYearlyGrowth = async () => {
+    try {
+      const values = await batchForm.validateFields();
+      const targetYears: string[] = values.targetYears || [];
+      const growthRate = Number(values.growthRate ?? 0);
+
+      if (targetYears.length === 0) {
+        message.warning(t('forecasts.selectTargetYears'));
+        return;
+      }
+
+      const targetSkuIds = selectedRowKeys.length > 0 ? selectedRowKeys.map(String) : undefined;
+      const growthRatesByYear = Object.fromEntries(targetYears.map((year) => [year, growthRate]));
+      const result = buildYearlyGrowthForecasts({
+        skus,
+        forecasts,
+        targetYears,
+        growthRatesByYear,
+        selectedSkuIds: targetSkuIds,
+      });
+
+      if (result.generated.length === 0) {
+        message.info(t('forecasts.noGrowthForecasts'));
+        return;
+      }
+
+      setSaving(true);
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < result.generated.length; i += BATCH_SIZE) {
+        await batchSaveForecasts(userId, projectId, result.generated.slice(i, i + BATCH_SIZE));
+      }
+
+      message.success(
+        t('forecasts.yearlyGrowthSaved')
+          .replace('{count}', String(result.generatedCount))
+          .replace('{skipped}', String(result.skippedSkuYears.length))
+      );
+      setBatchModalOpen(false);
+      batchForm.resetFields();
+      setSelectedRowKeys([]);
+      await loadData();
+    } catch (e: any) {
+      message.error(e.message || 'Failed to apply yearly growth');
     } finally {
       setSaving(false);
     }
@@ -701,6 +750,19 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
 
   const hasChanges = Object.keys(editingCells).length > 0;
   const isPeriodView = viewMode !== 'month';
+  const availableYears = monthsToYears(ALL_MONTHS).filter((year) => Number(year) > 2026);
+  const batchModalTitle =
+    batchMode === 'set'
+      ? t('forecasts.batchSetTitle')
+      : batchMode === 'multiply'
+        ? t('forecasts.batchMultiplyTitle')
+        : t('forecasts.yearlyGrowthTitle');
+  const handleBatchModalOk =
+    batchMode === 'set'
+      ? handleBatchSet
+      : batchMode === 'multiply'
+        ? handleBatchMultiply
+        : handleYearlyGrowth;
 
   return (
     <div>
@@ -808,6 +870,16 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
                 {t('forecasts.multiply')}
               </Button>
               <Button
+                icon={<ThunderboltOutlined />}
+                onClick={() => {
+                  setBatchMode('growth');
+                  batchForm.setFieldsValue({ targetYears: availableYears.slice(0, 1), growthRate: 10 });
+                  setBatchModalOpen(true);
+                }}
+              >
+                {t('forecasts.yearlyGrowth')}
+              </Button>
+              <Button
                 icon={<SyncOutlined />}
                 onClick={handleBatchExtend}
                 loading={saving}
@@ -863,21 +935,27 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
 
       {/* Batch Modal */}
       <Modal
-        title={batchMode === 'set' ? t('forecasts.batchSetTitle') : t('forecasts.batchMultiplyTitle')}
+        title={batchModalTitle}
         open={batchModalOpen}
-        onOk={batchMode === 'set' ? handleBatchSet : handleBatchMultiply}
+        onOk={handleBatchModalOk}
         onCancel={() => { setBatchModalOpen(false); batchForm.resetFields(); }}
         confirmLoading={saving}
       >
         <Form form={batchForm} layout="vertical">
-          <Text type="secondary">{selectedRowKeys.length} {t('forecasts.selectedCount')}</Text>
-          <Form.Item name="targetMonths" label={t('forecasts.targetMonths')}>
-            <Select
-              mode="multiple"
-              options={ALL_MONTHS.map(m => ({ label: m, value: m }))}
-              placeholder={t('forecasts.allMonthsPlaceholder')}
-            />
-          </Form.Item>
+          <Text type="secondary">
+            {selectedRowKeys.length > 0
+              ? `${selectedRowKeys.length} ${t('forecasts.selectedCount')}`
+              : t('forecasts.allSkusDefault')}
+          </Text>
+          {batchMode !== 'growth' && (
+            <Form.Item name="targetMonths" label={t('forecasts.targetMonths')}>
+              <Select
+                mode="multiple"
+                options={ALL_MONTHS.map(m => ({ label: m, value: m }))}
+                placeholder={t('forecasts.allMonthsPlaceholder')}
+              />
+            </Form.Item>
+          )}
           {batchMode === 'set' && (
             <Form.Item name="targetValue" label={t('forecasts.targetValue')} rules={[{ required: true }]}>
               <InputNumber min={0} step={0.1} precision={1} style={{ width: '100%' }} addonAfter="K" />
@@ -887,6 +965,26 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
             <Form.Item name="multiplier" label={t('forecasts.multiplier')} rules={[{ required: true }]}>
               <InputNumber min={0} step={0.1} style={{ width: '100%' }} />
             </Form.Item>
+          )}
+          {batchMode === 'growth' && (
+            <>
+              <Alert
+                type="info"
+                showIcon
+                style={{ margin: '12px 0' }}
+                message={t('forecasts.yearlyGrowthDesc')}
+              />
+              <Form.Item name="targetYears" label={t('forecasts.targetYears')} rules={[{ required: true }]}>
+                <Select
+                  mode="multiple"
+                  options={availableYears.map(year => ({ label: year, value: year }))}
+                  placeholder={t('forecasts.targetYearsPlaceholder')}
+                />
+              </Form.Item>
+              <Form.Item name="growthRate" label={t('forecasts.growthRate')} rules={[{ required: true }]}>
+                <InputNumber min={-100} step={1} precision={2} style={{ width: '100%' }} addonAfter="%" />
+              </Form.Item>
+            </>
           )}
         </Form>
       </Modal>
