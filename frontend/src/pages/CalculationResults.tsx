@@ -27,7 +27,8 @@ import {
 import TimeMatrixTable, { type TimeMatrixRow } from '../components/analytics/TimeMatrixTable';
 import { YearlyHealthMatrix } from '../components/analytics/YearlyHealthMatrix';
 import { MetricCard } from '../components/common';
-import { buildBpAttainment, formatAttainment, formatBpAmount, periodYear } from '../core/bpTargets';
+import { buildBpAnalysis } from '../core/bpTargets';
+import BpAnalysisPanel from '../components/analytics/BpAnalysisPanel';
 import type { SkuCalculationResult, MonthlyCapacitySummary, SKU } from '../types';
 
 const { Text } = Typography;
@@ -61,7 +62,6 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
           getCapacityPlans(userId, projectId),
           getParameters(userId, projectId),
         ]);
-
         setSkus(skuData);
 
         if (skuData.length === 0) {
@@ -84,8 +84,8 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
           setCurrencySettings({ ...cs, displayCurrency: prefs.displayCurrency });
         }
         // Load BP targets
-        if (params.bpTargets?.yearlyRevenueTargetsTwd) {
-          setBpTargets({ ...params.bpTargets.yearlyRevenueTargetsTwd });
+        if (params.bpTargets?.yearlyRevenueTargetsMillionTwd) {
+          setBpTargets({ ...params.bpTargets.yearlyRevenueTargetsMillionTwd });
         }
       } catch (e: any) {
         setError(e.message || 'Failed to run calculation');
@@ -541,106 +541,14 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
           )}
 
           {/* BP Analysis View */}
-          {view === 'bp' && model && Object.keys(bpTargets).length > 0 && (() => {
-            const bpData = buildBpAttainment(model.skuResults, model.monthlySummaries, bpTargets, currencySettings);
-            const bpColumns: any[] = [
-              { title: t('results.year'), dataIndex: 'period', key: 'period', width: 80, fixed: 'left' as const },
-              {
-                title: t('bp.target'),
-                dataIndex: 'bpTarget',
-                key: 'bpTarget',
-                width: 120,
-                align: 'right' as const,
-                render: (v: number, r: any) => formatBpAmount(v, currencySettings, periodYear(r.period)),
-              },
-              {
-                title: t('bp.forecast'),
-                dataIndex: 'forecastRevenue',
-                key: 'forecastRevenue',
-                width: 120,
-                align: 'right' as const,
-                render: (v: number, r: any) => formatBpAmount(v, currencySettings, periodYear(r.period)),
-              },
-              {
-                title: t('bp.attainment'),
-                dataIndex: 'attainment',
-                key: 'attainment',
-                width: 100,
-                align: 'right' as const,
-                render: (v: number | null) => {
-                  if (v === null) return '-';
-                  const pct = v * 100;
-                  return <Tag color={pct >= 100 ? 'green' : pct >= 80 ? 'orange' : 'red'}>{formatAttainment(v)}</Tag>;
-                },
-              },
-              {
-                title: t('bp.gap'),
-                dataIndex: 'gap',
-                key: 'gap',
-                width: 100,
-                align: 'right' as const,
-                render: (v: number, r: any) => {
-                  if (r.attainment === null) return '-';
-                  return <Text type={v >= 0 ? 'success' : 'danger'}>{v > 0 ? `+${v.toLocaleString()}` : v.toLocaleString()}</Text>;
-                },
-              },
-            ];
-            return (
-              <Tabs
-                items={[
-                  {
-                    key: 'yearly',
-                    label: t('results.year'),
-                    children: (
-                      <Table
-                        columns={bpColumns}
-                        dataSource={bpData.yearly}
-                        rowKey="period"
-                        size="small"
-                        pagination={false}
-                        scroll={{ x: 'max-content' }}
-                        className="analysis-table"
-                      />
-                    ),
-                  },
-                  {
-                    key: 'quarterly',
-                    label: t('results.quarter'),
-                    children: (
-                      <Table
-                        columns={bpColumns}
-                        dataSource={bpData.quarterly}
-                        rowKey="period"
-                        size="small"
-                        pagination={false}
-                        scroll={{ x: 'max-content' }}
-                        className="analysis-table"
-                      />
-                    ),
-                  },
-                  {
-                    key: 'monthly',
-                    label: t('results.month'),
-                    children: (
-                      <Table
-                        columns={bpColumns}
-                        dataSource={bpData.monthly}
-                        rowKey="period"
-                        size="small"
-                        pagination={{ pageSize: 12 }}
-                        scroll={{ x: 'max-content' }}
-                        className="analysis-table"
-                      />
-                    ),
-                  },
-                ]}
-                size="small"
-              />
-            );
-          })()}
+          {view === 'bp' && model && Object.keys(bpTargets).length > 0 && (
+            <BpAnalysisPanel
+              model={buildBpAnalysis(model.skuResults, skus, model.monthlySummaries, bpTargets, currencySettings)}
+            />
+          )}
 
           {view === 'bp' && (!model || Object.keys(bpTargets).length === 0) && (
-            <Alert message={t('bp.noTarget')} type="info" showIcon />
+            <Alert message={model ? t('bp.noTarget') : t('bp.noData')} type="info" showIcon />
           )}
 
           {/* Raw Detail */}

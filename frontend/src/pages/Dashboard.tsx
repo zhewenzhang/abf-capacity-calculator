@@ -22,7 +22,7 @@ import { useI18n } from '../i18n';
 import { useAppPrefs } from '../context/AppPreferencesContext';
 import { formatCurrency, formatCurrencyShort, DEFAULT_CURRENCY_SETTINGS } from '../core/currency';
 import type { CurrencySettings } from '../core/currency';
-import { buildBpAttainment, formatAttainment, formatBpAmount, periodYear } from '../core/bpTargets';
+import { buildBpAnalysis, computeBpKpi, formatAttainment, formatBpAmount } from '../core/bpTargets';
 
 const { Text } = Typography;
 
@@ -71,8 +71,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
 
       // Load BP targets
       const bp = paramsData.bpTargets;
-      if (bp?.yearlyRevenueTargetsTwd) {
-        setBpTargets({ ...bp.yearlyRevenueTargetsTwd });
+      if (bp?.yearlyRevenueTargetsMillionTwd) {
+        setBpTargets({ ...bp.yearlyRevenueTargetsMillionTwd });
       }
 
       if (skus.length > 0 && forecasts.length > 0) {
@@ -267,55 +267,83 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
 
       {/* BP Attainment Section */}
       {model && Object.keys(bpTargets).length > 0 && (() => {
-        const bpData = buildBpAttainment(model.skuResults, model.monthlySummaries, bpTargets, currencySettings);
-        const bpYearlyColumns: any[] = [
-          { title: t('bp.attainment'), dataIndex: 'period', key: 'period', width: 80, fixed: 'left' as const },
-          {
-            title: t('bp.target'),
-            dataIndex: 'bpTarget',
-            key: 'bpTarget',
-            width: 120,
-            align: 'right' as const,
-            render: (v: number, r: any) => formatBpAmount(v, currencySettings, periodYear(r.period)),
-          },
-          {
-            title: t('bp.forecast'),
-            dataIndex: 'forecastRevenue',
-            key: 'forecastRevenue',
-            width: 120,
-            align: 'right' as const,
-            render: (v: number, r: any) => formatBpAmount(v, currencySettings, periodYear(r.period)),
-          },
-          {
-            title: t('bp.attainment'),
-            dataIndex: 'attainment',
-            key: 'attainment',
+        const bpModel = buildBpAnalysis(model.skuResults, [], model.monthlySummaries, bpTargets, currencySettings);
+        const kpi = computeBpKpi(bpModel.yearly);
+
+        // Transposed: rows = metrics, columns = years left-to-right
+        const columns = [
+          { title: '', dataIndex: 'metric', key: 'metric', width: 120, fixed: 'left' as const },
+          ...bpModel.yearly.map(r => ({
+            title: r.period,
+            dataIndex: r.period,
+            key: r.period,
             width: 100,
             align: 'right' as const,
-            render: (v: number | null) => {
-              if (v === null) return <Tag>-</Tag>;
-              const pct = v * 100;
-              return <Tag color={pct >= 100 ? 'green' : pct >= 80 ? 'orange' : 'red'}>{formatAttainment(v)}</Tag>;
-            },
-          },
-          {
-            title: t('bp.gap'),
-            dataIndex: 'gap',
-            key: 'gap',
-            width: 100,
-            align: 'right' as const,
-            render: (v: number, r: any) => {
-              if (r.attainment === null) return '-';
-              return <Text type={v >= 0 ? 'success' : 'danger'}>{v > 0 ? `+${v.toLocaleString()}` : v.toLocaleString()}</Text>;
-            },
-          },
+          })),
         ];
+
+        const buildRow = (label: string, getValue: (r: any) => any) => {
+          const row: any = { metric: label };
+          bpModel.yearly.forEach(r => { row[r.period] = getValue(r); });
+          return row;
+        };
+
+        const rows = [
+          buildRow(t('bp.target'), (r: any) => formatBpAmount(r.targetMillionTwd)),
+          buildRow(t('bp.forecast'), (r: any) => formatBpAmount(r.forecastMillionTwd)),
+          buildRow(t('bp.attainment'), (r: any) => {
+            if (r.attainment === null) return '-';
+            const pct = r.attainment * 100;
+            return <Tag color={pct >= 100 ? 'green' : pct >= 80 ? 'orange' : 'red'}>{formatAttainment(r.attainment)}</Tag>;
+          }),
+          buildRow(t('bp.gap'), (r: any) => {
+            if (r.gapMillionTwd === null) return '-';
+            const color = r.gapMillionTwd >= 0 ? 'success' : 'danger';
+            const text = r.gapMillionTwd > 0 ? `+${r.gapMillionTwd.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}` : r.gapMillionTwd.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+            return <Text type={color}>{text}</Text>;
+          }),
+        ];
+
         return (
           <SectionCard title={t('bp.attainmentTitle')}>
+            <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
+              <Col span={6}>
+                <MetricCard
+                  title={t('bp.kpi.totalTarget')}
+                  value={kpi.totalTargetMillionTwd ?? 0}
+                  precision={1}
+                />
+              </Col>
+              <Col span={6}>
+                <MetricCard
+                  title={t('bp.kpi.totalForecast')}
+                  value={kpi.totalForecastMillionTwd}
+                  precision={1}
+                />
+              </Col>
+              <Col span={6}>
+                <MetricCard
+                  title={t('bp.kpi.overallAttainment')}
+                  value={kpi.overallAttainment === null ? '-' : formatAttainment(kpi.overallAttainment)}
+                  valueStyle={{
+                    color: kpi.overallAttainment === null ? undefined : kpi.overallAttainment >= 1 ? '#52c41a' : kpi.overallAttainment >= 0.8 ? '#faad14' : '#ff4d4f',
+                  }}
+                />
+              </Col>
+              <Col span={6}>
+                <MetricCard
+                  title={t('bp.kpi.totalGap')}
+                  value={kpi.totalGapMillionTwd === null ? '-' : (kpi.totalGapMillionTwd > 0 ? '+' : '') + kpi.totalGapMillionTwd.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                  valueStyle={{
+                    color: kpi.totalGapMillionTwd === null ? undefined : kpi.totalGapMillionTwd >= 0 ? '#52c41a' : '#ff4d4f',
+                  }}
+                />
+              </Col>
+            </Row>
             <Table
-              columns={bpYearlyColumns}
-              dataSource={bpData.yearly}
-              rowKey="period"
+              columns={columns}
+              dataSource={rows}
+              rowKey="metric"
               size="small"
               pagination={false}
               scroll={{ x: 'max-content' }}
