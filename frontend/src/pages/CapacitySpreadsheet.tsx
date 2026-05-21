@@ -7,6 +7,7 @@ import { getCapacityPlans, batchSaveCapacityPlans } from '../services/capacitySe
 import { getParameters } from '../services/parameterService';
 import type { CapacityMetric } from '../types';
 import { useI18n } from '../i18n';
+import { ExperimentalBanner } from '../components/common';
 
 const { Text } = Typography;
 
@@ -320,14 +321,9 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ userId, proje
   return (
     <div>
       {/* Experimental banner */}
-      <Alert
-        message={`${t('capacityLab.experiment')} — ${t('capacityLab.experimentalBanner')}`}
+      <ExperimentalBanner
+        label={t('capacityLab.experiment')}
         description={t('capacityLab.experimentalDesc')}
-        type="warning"
-        showIcon
-        icon={<ExperimentOutlined />}
-        style={{ marginBottom: 12 }}
-        closable
       />
       {/* Toolbar */}
       <Card size="small" style={{ marginBottom: 8 }}>

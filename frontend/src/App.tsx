@@ -28,11 +28,12 @@ import SetupPage from './pages/SetupPage';
 import { I18nProvider, useI18n, type Language } from './i18n';
 import { AppPrefsProvider, useAppPrefs } from './context/AppPreferencesContext';
 import type { DisplayCurrency } from './core/currency';
+import { antdTheme } from './theme/antdTheme';
 
 const { Sider, Content } = Layout;
 const { Title } = Typography;
 
-const APP_VERSION = 'v1.9.0';
+const APP_VERSION = 'v1.10.0';
 
 // --- Sidebar with i18n ---
 const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }> = ({ current, onMenuClick }) => {
@@ -223,7 +224,7 @@ const AuthRouter: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <ConfigProvider>
+    <ConfigProvider theme={antdTheme}>
       <AppPrefsProvider>
         <I18nProvider>
           <AuthRouter />

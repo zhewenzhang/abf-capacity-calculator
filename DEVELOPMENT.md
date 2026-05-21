@@ -6,7 +6,18 @@
 - **Charts**: @ant-design/charts (Recharts-based)
 - **Backend**: Firebase Auth + Firestore + Hosting
 - **State**: React Context (AppPreferencesContext for language/currency)
+- **UI System**: Ant Design is the **only** UI framework. No MUI, shadcn, Tailwind, or other UI systems.
 - **Data flow**: Firestore → Service layer → Calculation engine → Analytics → UI
+
+## Platform Decisions (Non-Negotiable)
+
+1. **Firebase is the backend.** Auth + Firestore + Hosting. No Supabase. No custom backend.
+2. **Ant Design is the only UI system.** No second UI framework. All styling goes through `theme/antdTheme.ts` and shared components.
+3. **Calculation formulas are stable.** `runCalculation()` must not be changed without approval and test coverage.
+4. **Unit price input is always USD.** Currency conversion is display-layer only.
+5. **Capacity Lab is experimental.** Keep it. Do not invest further without approval.
+
+See [FIREBASE_ARCHITECTURE.md](FIREBASE_ARCHITECTURE.md) for full Firebase details.
 
 ## Data Flow
 
@@ -24,6 +35,35 @@ UI pages (Dashboard, CalculationResults)
 Currency/i18n helpers — display-layer only
 ```
 
+## Firestore Structure
+
+```
+users/{userId}/projects/{projectId}/
+  skus/{skuId}                           ← Product/SKU definitions
+  forecasts/{forecastId}                  ← Monthly demand forecasts per SKU
+  capacityPlans/{month}-{factoryId}       ← Core/BU capacity per month per factory
+  parameters/default                      ← Yield matrix, panel params, working days, currency
+  capacityVersions/{versionId}            ← Named snapshots of capacity plans
+  skuVersions/{versionId}                 ← Named snapshots of SKU definitions
+```
+
+## Service Module Responsibilities
+
+| Module | Responsibility |
+|--------|---------------|
+| `projectService.ts` | Create/list/delete projects; ensure default project |
+| `skuService.ts` | CRUD for SKUs; batch save |
+| `forecastService.ts` | CRUD for forecasts; batch save; query by SKU |
+| `capacityService.ts` | CRUD for capacity plans; batch save with month-based delete/replace |
+| `parameterService.ts` | Get/save project parameters (single doc at `parameters/default`) |
+| `versionService.ts` | Save/list/delete/restore capacity plan versions |
+| `skuVersionService.ts` | Save/list/delete/restore SKU definition versions |
+| `demoDataService.ts` | Load sample data for quick testing |
+
+### Service Pattern
+
+All Firestore access goes through service modules. Never call Firestore directly from React components.
+
 ## Core Files
 
 | File | Purpose |
@@ -31,8 +71,11 @@ Currency/i18n helpers — display-layer only
 | `core/calculationEngine.ts` | Yield matrix, panel layout, Core/BU steps, per-SKU monthly calculations |
 | `core/analytics.ts` | Builds analysis structures: yearly health, dimension matrices, shortage exposure |
 | `core/currency.ts` | USD/TWD conversion, formatting (display-layer only) |
+| `core/defaults.ts` | Default working days, yield matrix, panel parameters |
 | `i18n/` | English / Traditional Chinese translation dictionaries |
-| `components/analytics/` | Shared table components (TimeMatrixTable, YearlyHealthMatrix) |
+| `theme/antdTheme.ts` | Ant Design design tokens (colors, spacing, typography) |
+| `components/analytics/` | Shared analysis components (TimeMatrixTable, YearlyHealthMatrix) |
+| `components/common/` | Shared UI components (MetricCard, SectionCard, AppTable, ExperimentalBanner, PageHeader, StatusTag) |
 
 ## Development Rules
 
@@ -41,6 +84,8 @@ Currency/i18n helpers — display-layer only
 1. **Calculation formulas** — `runCalculation()` produces deterministic results. Do not modify without explicit approval and test coverage.
 2. **Unit price input** — always in USD. Currency conversion is display-layer only.
 3. **Core page logic** — Products, Forecasts, Capacity pages have working flows. Do not refactor without specific task.
+4. **Firebase** — do not replace with Supabase or any other backend.
+5. **Ant Design** — do not replace with MUI, shadcn, Tailwind, or any other UI system.
 
 ### Display-layer conventions
 
@@ -51,14 +96,20 @@ Currency/i18n helpers — display-layer only
 
 ### Component conventions
 
-1. **YearlyHealthMatrix** — shared component for yearly health analysis (metrics as rows, years as columns). Uses `metricType` for cell formatting (revenue, utilization, shortage, bottleneck).
-2. **TimeMatrixTable** — generic matrix table (dimensions as rows, time as columns). Accepts `metricType` on rows for future extension.
-3. **Table CSS classes** — `analysis-table`, `matrix-table`, `data-table` for consistent styling.
+1. **Common components** — use `components/common/` for shared UI (MetricCard, SectionCard, AppTable, etc.).
+2. **Theme tokens** — customize through `theme/antdTheme.ts` and `ConfigProvider` in App.tsx.
+3. **CSS classes** — `analysis-table`, `matrix-table`, `data-table`, `app-table`, `dashboard-kpi-card` for consistent styling.
+4. **YearlyHealthMatrix** — shared component for yearly health analysis (metrics as rows, years as columns). Uses `metricType` for cell formatting.
+5. **TimeMatrixTable** — generic matrix table (dimensions as rows, time as columns).
+
+### Known Technical Debt
+
+- `capacityService.ts` parses document IDs by splitting on `-`. Works because format is `{month}-{factoryId}` but fragile.
+- `capacityPlans` document IDs use composite key instead of UUIDs.
 
 ## Experimental Pages
 
-- **Capacity Lab** (`CapacitySpreadsheet`) — spreadsheet-based capacity editing. Preserved for evaluation. Do not invest further development without approval. Multi-cell copy/paste has limited support.
-- Marked with warning banner and "EXPERIMENT" tag.
+- **Capacity Lab** (`CapacitySpreadsheet`) — spreadsheet-based capacity editing. Preserved for evaluation. Uses `ExperimentalBanner`. Do not invest further development without approval. Multi-cell copy/paste has limited support.
 
 ## Test / Build / Deploy
 
@@ -80,3 +131,4 @@ firebase deploy --only hosting   # Deploy to abf-capacity-calculator project
 - Project ID: `abf-capacity-calculator`
 - **CRITICAL**: Never deploy to `homebox-hosting` or any other Firebase project.
 - Always verify: `firebase use abf-capacity-calculator` before deploying.
+- See [FIREBASE_ARCHITECTURE.md](FIREBASE_ARCHITECTURE.md) for full architecture.

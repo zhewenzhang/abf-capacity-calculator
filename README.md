@@ -35,8 +35,9 @@ A browser-based ABF (Ajinomoto Build-up Film) substrate capacity planning tool b
 
 | Document | Purpose |
 |----------|---------|
-| [DEVELOPMENT.md](DEVELOPMENT.md) | Architecture, data flow, development rules, test/build/deploy commands |
-| [UI_GUIDELINES.md](UI_GUIDELINES.md) | Dashboard KPI cards, table layout standards, severity coloring, language/currency conventions |
+| [DEVELOPMENT.md](DEVELOPMENT.md) | Architecture, data flow, development rules, Firebase/Ant Design strategy, service modules |
+| [FIREBASE_ARCHITECTURE.md](FIREBASE_ARCHITECTURE.md) | Firestore paths, service module responsibilities, Auth/Hosting setup, security rules |
+| [UI_GUIDELINES.md](UI_GUIDELINES.md) | Ant Design theme tokens, shared components, table standards, severity coloring, language/currency conventions |
 | [ANALYTICS_GUIDE.md](ANALYTICS_GUIDE.md) | Dashboard/Results purpose, key metrics, matrix layout standard, AnalyticsModel structure |
 
 ## Firebase Setup
@@ -214,7 +215,8 @@ frontend/src/
 
 ## Version History
 
-- **2026-05-21 v1.9.0**: Polished analytics layout — Yearly Capacity Health now reads horizontally (metrics as rows, years left-to-right), standardized Dashboard KPI card heights, unified table styling (analysis-table/matrix-table/data-table classes), added YearlyHealthMatrix shared component, Capacity Lab marked as experimental with warning banner, created DEVELOPMENT.md / UI_GUIDELINES.md / ANALYTICS_GUIDE.md documentation.
+- **2026-05-21 v1.10.0**: Standardized the app on Ant Design theme and common components (MetricCard, SectionCard, AppTable, ExperimentalBanner, PageHeader, StatusTag), clarified Firebase Auth/Firestore/Hosting architecture, created FIREBASE_ARCHITECTURE.md, updated DEVELOPMENT.md and UI_GUIDELINES.md with Firebase and Ant Design rules.
+- **2026-05-21 v1.9.1**: Fixed NaN year appearing in yearly health matrix by filtering invalid year values in monthsToYears().
 - **2026-05-21 v1.8.1**: Wired currency/i18n throughout all pages — Dashboard and Results now sync display currency with header switch, Parameters syncs currency preference to localStorage, fixed hardcoded labels in Forecasts (SKU Code/Customer/Device/Layer/UPP) and Products (OSAT), added missing i18n keys, year-aware revenue formatting for TWD yearly exchange rate mode.
 - **2026-05-21 v1.8.0**: Added USD/TWD currency display switching, exchange rate settings, Traditional Chinese/English UI language support, and UI label consistency cleanup.
 - **2026-05-21 v1.7.0**: Dashboard and Results analytics redesign — yearly capacity health table with red/orange/green severity, revenue and Core/BU utilization trend charts, matrix analysis tables (Revenue by Customer/Size/Application, Core/BU Demand by Size/Application/ProductGrade/LayerBucket), Dashboard answers "which year has problems / revenue trend / bottleneck", Results organized into Sales View / Product Planning View / Capacity Analysis View / Raw Detail tabs, reusable analytics.ts helper layer and TimeMatrixTable component.
