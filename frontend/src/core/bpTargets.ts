@@ -108,7 +108,6 @@ export function buildBpAnalysis(
   // Get all periods from skuResults (not monthlySummaries)
   const allMonths = Array.from(new Set(skuResults.map(r => r.month))).sort();
   const years = Array.from(new Set(allMonths.map(m => m.substring(0, 4)))).sort();
-  const quarters = Array.from(new Set(allMonths.map(m => toQuarter(m)))).sort();
 
   // Sorted targets
   const sortedTargets = Object.fromEntries(
@@ -154,16 +153,16 @@ export function buildBpAnalysis(
   });
 
   // Customer contribution by year
-  const customerByYear = buildDimensionMatrix(skuResults, skuMap, s => s.customer, r => r.revenue, currencySettings, toYear, years);
+  const customerByYear = buildDimensionMatrix(skuResults, skuMap, s => s.customer, r => r.revenue, currencySettings, toYear);
   // Customer contribution by quarter
-  const customerByQuarter = buildDimensionMatrix(skuResults, skuMap, s => s.customer, r => r.revenue, currencySettings, toQuarter, quarters);
+  const customerByQuarter = buildDimensionMatrix(skuResults, skuMap, s => s.customer, r => r.revenue, currencySettings, toQuarter);
   // Customer contribution by month
-  const customerByMonth = buildDimensionMatrix(skuResults, skuMap, s => s.customer, r => r.revenue, currencySettings, m => m, allMonths);
+  const customerByMonth = buildDimensionMatrix(skuResults, skuMap, s => s.customer, r => r.revenue, currencySettings, m => m);
 
   // SKU contribution by year
-  const skuByYear = buildSkuDimensionMatrix(skuResults, skuMap, r => r.revenue, currencySettings, toYear, years);
-  const skuByQuarter = buildSkuDimensionMatrix(skuResults, skuMap, r => r.revenue, currencySettings, toQuarter, quarters);
-  const skuByMonth = buildSkuDimensionMatrix(skuResults, skuMap, r => r.revenue, currencySettings, m => m, allMonths);
+  const skuByYear = buildSkuDimensionMatrix(skuResults, skuMap, r => r.revenue, currencySettings, toYear);
+  const skuByQuarter = buildSkuDimensionMatrix(skuResults, skuMap, r => r.revenue, currencySettings, toQuarter);
+  const skuByMonth = buildSkuDimensionMatrix(skuResults, skuMap, r => r.revenue, currencySettings, m => m);
 
   return {
     yearly,
@@ -187,8 +186,7 @@ function buildDimensionMatrix(
   dimensionFn: (sku: SKU) => string,
   valueFn: (r: SkuCalculationResult) => number,
   currencySettings: CurrencySettings,
-  timeFn: (m: string) => string,
-  _timePeriods: string[]
+  timeFn: (m: string) => string
 ): BpDimensionRecord[] {
   const dimMap = new Map<string, Map<string, number>>();
   for (const r of skuResults) {
@@ -235,8 +233,7 @@ function buildSkuDimensionMatrix(
   skuMap: Map<string, SKU>,
   valueFn: (r: SkuCalculationResult) => number,
   currencySettings: CurrencySettings,
-  timeFn: (m: string) => string,
-  _timePeriods: string[]
+  timeFn: (m: string) => string
 ): BpDimensionRecord[] {
   const dimMap = new Map<string, Map<string, number>>();
   for (const r of skuResults) {

@@ -3,10 +3,10 @@
     "allow": [
       "Bash(cd frontend && npm run lint:*)",
       "Bash(cd frontend && npm test:*)",
-      "Bash(git log:*)",
-      "Bash(git tag:*)",
-      "Bash(git diff:*)",
-      "Bash(git status*)"
+      "Bash(cd frontend && npm run build:*)",
+      "Bash(git *)",
+      "Bash(firebase *)",
+      "Bash(gh *)"
     ]
   },
   "hooks": {

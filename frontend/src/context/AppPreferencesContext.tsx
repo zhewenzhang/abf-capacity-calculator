@@ -28,14 +28,14 @@ function loadPrefs(): AppPreferences {
         displayCurrency: parsed.displayCurrency === 'TWD' ? 'TWD' : 'USD',
       };
     }
-  } catch {}
+  } catch { /* localStorage unavailable — use defaults */ }
   return { ...DEFAULT_PREFS };
 }
 
 function savePrefs(prefs: AppPreferences) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
-  } catch {}
+  } catch { /* localStorage unavailable — skip persist */ }
 }
 
 interface AppPrefsContextValue {

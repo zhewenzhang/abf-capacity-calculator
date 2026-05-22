@@ -25,7 +25,7 @@ export const RefineProductsProvider: React.FC<RefineProductsProps> = ({
   // Stub router provider - we manage routing through React Router externally
   // The go property must be a factory function that returns the actual go function
   const goFn = React.useCallback(() => {
-    return (_config: any) => { /* no-op */ };
+    return () => { /* no-op */ };
   }, []);
 
   const routerProvider = React.useMemo(() => ({

@@ -101,23 +101,15 @@ export function runCalculation(
     const coreCapacity = cp ? cp.corePanelPerDay * workingDays : 0;
     const buCapacity = cp ? cp.buPanelPerDay * workingDays : 0;
 
-    let coreUtilization: number | null = null;
-    if (coreCapacity > 0) {
-      coreUtilization = totalCorePanelDemand / coreCapacity;
-    } else if (totalCorePanelDemand > 0) {
-      coreUtilization = null;
-    } else {
-      coreUtilization = 0;
-    }
+    const coreUtilization: number | null =
+      coreCapacity > 0 ? totalCorePanelDemand / coreCapacity
+        : totalCorePanelDemand > 0 ? null
+        : 0;
 
-    let buUtilization: number | null = null;
-    if (buCapacity > 0) {
-      buUtilization = totalBuPanelDemand / buCapacity;
-    } else if (totalBuPanelDemand > 0) {
-      buUtilization = null;
-    } else {
-      buUtilization = 0;
-    }
+    const buUtilization: number | null =
+      buCapacity > 0 ? totalBuPanelDemand / buCapacity
+        : totalBuPanelDemand > 0 ? null
+        : 0;
 
     const coreShortage = Math.max(totalCorePanelDemand - coreCapacity, 0);
     const buShortage = Math.max(totalBuPanelDemand - buCapacity, 0);

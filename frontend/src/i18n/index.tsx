@@ -20,7 +20,7 @@ function getInitialLang(): Language {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored === 'zh-TW' || stored === 'en') return stored;
-  } catch {}
+  } catch { /* localStorage unavailable */ }
   return 'en';
 }
 
@@ -47,7 +47,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     setLangState(l);
     try {
       localStorage.setItem(STORAGE_KEY, l);
-    } catch {}
+    } catch { /* localStorage unavailable */ }
   }, []);
 
   const t = useCallback(
