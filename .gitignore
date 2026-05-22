@@ -8,3 +8,6 @@ frontend/dist/
 firebase-debug.log
 *.log
 frontend/code_trans_keys*.txt
+.claude/CODE_QUALITY_FIX_PLAN.md
+.claude/MIGRATION_PLAN.md
+PROJECT_ARCHIVE.md
