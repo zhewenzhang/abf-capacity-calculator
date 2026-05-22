@@ -240,6 +240,82 @@ describe('getStatusKey', () => {
 });
 
 // ========================================
+// Phase 3 product-risk coverage
+// ========================================
+
+describe('Phase 3 BP product-risk coverage', () => {
+  it('keeps BP targets in million TWD and does not compare against raw USD revenue', () => {
+    const usdLookingRevenue: SkuCalculationResult[] = [
+      { skuId: 'sku1', skuCode: 'SKU-001', month: '2026-01', forecastPcs: 1, unitPrice: 1, yieldRate: 1, requiredInputPcs: 1, pcsPerPanel: 1, requiredPanels: 1, coreSteps: 1, buSteps: 0, corePanelDemand: 1, buPanelDemand: 0, revenue: 1000000 },
+    ];
+
+    const result = buildBpAnalysis(usdLookingRevenue, mockSkus, [], { '2026': 32 }, twdSettings);
+
+    expect(result.yearly[0].forecastMillionTwd).toBe(32);
+    expect(result.yearly[0].attainment).toBe(1);
+    expect(result.yearly[0].status).toBe('met');
+  });
+
+  it('uses displayCurrency as conversion policy so USD settings cannot accidentally satisfy TWD BP targets', () => {
+    const usdSettings = { ...DEFAULT_CURRENCY_SETTINGS, displayCurrency: 'USD' as const, constantUsdToTwdRate: 32 };
+    const usdLookingRevenue: SkuCalculationResult[] = [
+      { skuId: 'sku1', skuCode: 'SKU-001', month: '2026-01', forecastPcs: 1, unitPrice: 1, yieldRate: 1, requiredInputPcs: 1, pcsPerPanel: 1, requiredPanels: 1, coreSteps: 1, buSteps: 0, corePanelDemand: 1, buPanelDemand: 0, revenue: 1000000 },
+    ];
+
+    const result = buildBpAnalysis(usdLookingRevenue, mockSkus, [], { '2026': 32 }, usdSettings);
+
+    expect(result.yearly[0].forecastMillionTwd).toBe(1);
+    expect(result.yearly[0].attainment).toBeCloseTo(1 / 32, 6);
+    expect(result.yearly[0].status).toBe('miss');
+  });
+
+  it('computes quarter and month attainment from the same annual TWD BP target allocation', () => {
+    const result = buildBpAnalysis(mockSkuResults, mockSkus, mockMonthlySummaries, { '2026': 3.84 }, twdSettings);
+
+    expect(result.quarterly[0]).toMatchObject({
+      period: '2026-Q1',
+      targetMillionTwd: 0.96,
+      status: 'met',
+    });
+    expect(result.quarterly[0].forecastMillionTwd).toBeCloseTo(0.96, 2);
+    expect(result.quarterly[0].attainment).toBeCloseTo(1, 2);
+
+    expect(result.monthly[0].period).toBe('2026-01');
+    expect(result.monthly[0].targetMillionTwd).toBeCloseTo(0.32, 2);
+    expect(result.monthly[0].forecastMillionTwd).toBeCloseTo(0.64, 2);
+    expect(result.monthly[0].attainment).toBeCloseTo(2, 2);
+  });
+
+  it('returns empty BP model arrays when there are no SKU calculation results', () => {
+    const result = buildBpAnalysis([], mockSkus, mockMonthlySummaries, { '2026': 3.2 }, twdSettings);
+
+    expect(result.yearly).toEqual([]);
+    expect(result.quarterly).toEqual([]);
+    expect(result.monthly).toEqual([]);
+    expect(result.customerRevenueByYear).toEqual([]);
+    expect(result.skuRevenueByYear).toEqual([]);
+    expect(computeBpKpi(result.yearly)).toEqual({
+      totalTargetMillionTwd: null,
+      totalForecastMillionTwd: 0,
+      overallAttainment: null,
+      totalGapMillionTwd: null,
+    });
+  });
+
+  it('ignores SKU calculation rows without matching SKU metadata in contribution matrices but keeps period totals', () => {
+    const orphanResults: SkuCalculationResult[] = [
+      ...mockSkuResults,
+      { skuId: 'missing-sku', skuCode: 'SKU-X', month: '2026-01', forecastPcs: 1, unitPrice: 1, yieldRate: 1, requiredInputPcs: 1, pcsPerPanel: 1, requiredPanels: 1, coreSteps: 1, buSteps: 0, corePanelDemand: 1, buPanelDemand: 0, revenue: 10000 },
+    ];
+
+    const result = buildBpAnalysis(orphanResults, mockSkus, [], { '2026': 3.2 }, twdSettings);
+
+    expect(result.yearly[0].forecastMillionTwd).toBeCloseTo(1.28, 2);
+    expect(result.skuRevenueByYear.some((row) => row.label.includes('SKU-X'))).toBe(false);
+  });
+});
+
+// ========================================
 // Backward compatibility: buildBpAttainment
 // ========================================
 

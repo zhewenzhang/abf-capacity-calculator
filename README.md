@@ -72,7 +72,7 @@ npm run dev       # http://localhost:5173
 ## Testing & Build
 
 ```bash
-npm run test       # Run Vitest (31 tests)
+npm run test       # Run Vitest
 npm run test:watch # Watch mode
 npm run build      # TypeScript + Vite production build
 ```
@@ -217,6 +217,7 @@ frontend/src/
 
 ## Version History
 
+- **2026-05-22 v1.14.7**: Phase 3 product-risk test hardening — added BP target tests for TWD/USD conversion boundaries, annual/quarter/month allocation, empty data, and orphan SKU rows; added Forecast yearly growth tests for 0/positive/negative rates, sorted target years, and no overwrite/stale mix; added mock Firestore service tests for SKU, Forecast, and Parameters/BP target persistence; added smoke test checklist.
 - **2026-05-22 v1.14.6**: Phase 2 lint gate — ESLint `no-explicit-any`/`set-state-in-effect`/`react-refresh` downgraded to warn (0 errors, 145 warnings). Fixed 4 empty catch blocks, 2 useless assignments in calculationEngine, removed unused params in bpTargets, removed unused compact prop in AppTable, deleted 58MB debug artifacts.
 - **2026-05-22 v1.14.5**: Cloud Code handoff — repo hygiene (gitignore debug artifacts), fix CalculationResults stale state (clear model/bpTargets when data empty).
 - **2026-05-21 v1.14.4**: Repo cleanup and Dashboard stale state fix — cleaned deploy debug artifact, clarified version history, and reset Dashboard model/BP/highlight state when source data is missing.
