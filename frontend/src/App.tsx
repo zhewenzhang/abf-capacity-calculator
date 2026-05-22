@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useCallback, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { ConfigProvider, Layout, Menu, Spin, Button, Typography, Space, Radio } from 'antd';
 import {
@@ -17,16 +17,8 @@ import type { User } from 'firebase/auth';
 import { isConfigured } from './firebase/config';
 import { onAuthChange, signOutUser } from './firebase/auth';
 import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/Dashboard';
-import ProductsPage from './pages/Products';
-import ForecastsPage from './pages/Forecasts';
-import CapacityPlanPage from './pages/CapacityPlan';
-import CapacitySpreadsheetPage from './pages/CapacitySpreadsheet';
-import ParametersPage from './pages/Parameters';
-import CalculationResultsPage from './pages/CalculationResults';
 import SetupPage from './pages/SetupPage';
-import ProductsRefineLab from './pages/ProductsRefineLab';
-import ProductsSpreadsheetLab from './pages/ProductsSpreadsheetLab';
+import PageLoading from './components/common/PageLoading';
 import { RefineProductsProvider } from './refine/RefineProductsProvider';
 import { I18nProvider, useI18n, type Language } from './i18n';
 import { AppPrefsProvider, useAppPrefs } from './context/AppPreferencesContext';
@@ -35,10 +27,20 @@ import { antdTheme } from './theme/antdTheme';
 import enUS from 'antd/locale/en_US';
 import zhTW from 'antd/locale/zh_TW';
 
+const DashboardPage = lazy(() => import('./pages/Dashboard'));
+const ProductsPage = lazy(() => import('./pages/Products'));
+const ProductsSpreadsheetLab = lazy(() => import('./pages/ProductsSpreadsheetLab'));
+const ProductsRefineLab = lazy(() => import('./pages/ProductsRefineLab'));
+const ForecastsPage = lazy(() => import('./pages/Forecasts'));
+const CapacityPlanPage = lazy(() => import('./pages/CapacityPlan'));
+const CapacitySpreadsheetPage = lazy(() => import('./pages/CapacitySpreadsheet'));
+const ParametersPage = lazy(() => import('./pages/Parameters'));
+const CalculationResultsPage = lazy(() => import('./pages/CalculationResults'));
+
 const { Sider, Content } = Layout;
 const { Title } = Typography;
 
-const APP_VERSION = 'v1.14.7';
+const APP_VERSION = 'v1.14.8';
 
 // --- Sidebar with i18n ---
 const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }> = ({ current, onMenuClick }) => {
@@ -187,25 +189,27 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
             onLogout={handleLogout}
             pageTitle={pageTitles[current] || current}
           />
-          <Routes>
-            <Route path="/dashboard" element={<DashboardPage userId={user.uid} projectId="default" />} />
-            <Route path="/products" element={<ProductsPage userId={user.uid} projectId="default" />} />
-            <Route path="/products-sheet-lab" element={<ProductsSpreadsheetLab userId={user.uid} projectId="default" />} />
-            <Route
-              path="/products-refine-lab"
-              element={
-                <RefineProductsProvider userId={user.uid} projectId="default">
-                  <ProductsRefineLab userId={user.uid} projectId="default" />
-                </RefineProductsProvider>
-              }
-            />
-            <Route path="/forecasts" element={<ForecastsPage userId={user.uid} projectId="default" />} />
-            <Route path="/capacity" element={<CapacityPlanPage userId={user.uid} projectId="default" />} />
-            <Route path="/capacity-lab" element={<CapacitySpreadsheetPage userId={user.uid} projectId="default" />} />
-            <Route path="/parameters" element={<ParametersPage userId={user.uid} projectId="default" />} />
-            <Route path="/results" element={<CalculationResultsPage userId={user.uid} projectId="default" />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
+          <Suspense fallback={<PageLoading />}>
+            <Routes>
+              <Route path="/dashboard" element={<DashboardPage userId={user.uid} projectId="default" />} />
+              <Route path="/products" element={<ProductsPage userId={user.uid} projectId="default" />} />
+              <Route path="/products-sheet-lab" element={<ProductsSpreadsheetLab userId={user.uid} projectId="default" />} />
+              <Route
+                path="/products-refine-lab"
+                element={
+                  <RefineProductsProvider userId={user.uid} projectId="default">
+                    <ProductsRefineLab userId={user.uid} projectId="default" />
+                  </RefineProductsProvider>
+                }
+              />
+              <Route path="/forecasts" element={<ForecastsPage userId={user.uid} projectId="default" />} />
+              <Route path="/capacity" element={<CapacityPlanPage userId={user.uid} projectId="default" />} />
+              <Route path="/capacity-lab" element={<CapacitySpreadsheetPage userId={user.uid} projectId="default" />} />
+              <Route path="/parameters" element={<ParametersPage userId={user.uid} projectId="default" />} />
+              <Route path="/results" element={<CalculationResultsPage userId={user.uid} projectId="default" />} />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </Suspense>
         </Content>
       </Layout>
     </Layout>

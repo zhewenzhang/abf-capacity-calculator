@@ -217,6 +217,7 @@ frontend/src/
 
 ## Version History
 
+- **2026-05-22 v1.14.8**: Phase 4 performance and structure optimization — added route-level lazy loading for major pages, introduced shared accessible `PageLoading` fallback, reduced initial main JS bundle from 4,306.83 kB to 1,281.97 kB (gzip 1,295.18 kB → 406.85 kB), and verified test/lint/build gates.
 - **2026-05-22 v1.14.7**: Phase 3 product-risk test hardening — added BP target tests for TWD/USD conversion boundaries, annual/quarter/month allocation, empty data, and orphan SKU rows; added Forecast yearly growth tests for 0/positive/negative rates, sorted target years, and no overwrite/stale mix; added mock Firestore service tests for SKU, Forecast, and Parameters/BP target persistence; added smoke test checklist.
 - **2026-05-22 v1.14.6**: Phase 2 lint gate — ESLint `no-explicit-any`/`set-state-in-effect`/`react-refresh` downgraded to warn (0 errors, 145 warnings). Fixed 4 empty catch blocks, 2 useless assignments in calculationEngine, removed unused params in bpTargets, removed unused compact prop in AppTable, deleted 58MB debug artifacts.
 - **2026-05-22 v1.14.5**: Cloud Code handoff — repo hygiene (gitignore debug artifacts), fix CalculationResults stale state (clear model/bpTargets when data empty).
