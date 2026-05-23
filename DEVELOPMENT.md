@@ -97,6 +97,7 @@ All Firestore access goes through service modules. Never call Firestore directly
 4. Existing target-year forecast data is never overwritten by growth generation.
 5. Multi-year generation may cascade: a generated 2027 can become the base for 2028 in the same operation.
 6. If no SKU is selected, yearly growth applies to all SKUs with previous-year base data.
+7. Generated forecast uses current SKU unitPrice/unitPriceCurrency first, and falls back to base forecast only if SKU price/currency is missing. (生成的 Forecast 优先使用当前 SKU 设定的单价与币别；仅在 SKU 单价/币别缺失时，才降级使用基准前年预测的单价与币别兜底。)
 
 ### Display-layer conventions
 

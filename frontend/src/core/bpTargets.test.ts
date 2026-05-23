@@ -256,7 +256,7 @@ describe('Phase 3 BP product-risk coverage', () => {
     expect(result.yearly[0].status).toBe('met');
   });
 
-  it('uses displayCurrency as conversion policy so USD settings cannot accidentally satisfy TWD BP targets', () => {
+  it('does not use displayCurrency as conversion policy in BP targets so USD settings still correctly convert USD revenue to TWD to satisfy TWD BP targets', () => {
     const usdSettings = { ...DEFAULT_CURRENCY_SETTINGS, displayCurrency: 'USD' as const, constantUsdToTwdRate: 32 };
     const usdLookingRevenue: SkuCalculationResult[] = [
       { skuId: 'sku1', skuCode: 'SKU-001', month: '2026-01', forecastPcs: 1, unitPrice: 1, yieldRate: 1, requiredInputPcs: 1, pcsPerPanel: 1, requiredPanels: 1, coreSteps: 1, buSteps: 0, corePanelDemand: 1, buPanelDemand: 0, revenue: 1000000 },
@@ -264,9 +264,9 @@ describe('Phase 3 BP product-risk coverage', () => {
 
     const result = buildBpAnalysis(usdLookingRevenue, mockSkus, [], { '2026': 32 }, usdSettings);
 
-    expect(result.yearly[0].forecastMillionTwd).toBe(1);
-    expect(result.yearly[0].attainment).toBeCloseTo(1 / 32, 6);
-    expect(result.yearly[0].status).toBe('miss');
+    expect(result.yearly[0].forecastMillionTwd).toBe(32);
+    expect(result.yearly[0].attainment).toBe(1);
+    expect(result.yearly[0].status).toBe('met');
   });
 
   it('computes quarter and month attainment from the same annual TWD BP target allocation', () => {

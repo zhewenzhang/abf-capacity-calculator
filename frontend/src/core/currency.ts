@@ -85,7 +85,6 @@ export function getUsdToCurrencyRate(settings: CurrencySettings, targetCurrency:
 
 export function getUsdToTwdRate(settings: CurrencySettings, year?: string): number {
   const normalized = normalizeCurrencySettings(settings);
-  if (normalized.displayCurrency === 'USD') return 1;
   if (normalized.exchangeRateMode === 'yearly' && year) {
     const yearlyRate = normalized.yearlyUsdToTwdRates[year];
     if (yearlyRate && yearlyRate > 0) return yearlyRate;
@@ -165,7 +164,7 @@ export function currencySymbol(settings: CurrencySettings): string {
   const displayCurrency = normalizeCurrencySettings(settings).displayCurrency;
   if (displayCurrency === 'USD') return '$';
   if (displayCurrency === 'TWD') return 'NT$';
-  return '¥';
+  return '\u00A5';
 }
 
 export function currencyLabel(settings: CurrencySettings): string {

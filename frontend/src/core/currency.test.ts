@@ -4,16 +4,18 @@ import {
   convertCurrency,
   formatCurrency,
   DEFAULT_CURRENCY_SETTINGS,
+  convertFromUsd,
+  currencySymbol,
 } from './currency';
 import type { CurrencySettings } from './currency';
 
 describe('getUsdToTwdRate', () => {
-  it('returns 1 for USD display currency', () => {
+  it('returns Twd rate even for USD display currency to prevent conversion pollution', () => {
     const settings: CurrencySettings = {
       ...DEFAULT_CURRENCY_SETTINGS,
       displayCurrency: 'USD',
     };
-    expect(getUsdToTwdRate(settings, '2026')).toBe(1);
+    expect(getUsdToTwdRate(settings, '2026')).toBe(32);
   });
 
   it('returns constant rate for TWD constant mode', () => {
@@ -100,5 +102,27 @@ describe('formatCurrency', () => {
     const result = formatCurrency(1000, settings);
     expect(result).toContain('32,000');
     expect(result).not.toContain('$');
+  });
+});
+
+describe('hotfix v1.15.1 conversion and symbol', () => {
+  it('convertFromUsd is not polluted by displayCurrency', () => {
+    const settings: CurrencySettings = {
+      ...DEFAULT_CURRENCY_SETTINGS,
+      displayCurrency: 'USD',
+      constantUsdToTwdRate: 32,
+    };
+    expect(convertFromUsd(100, 'TWD', settings)).toBe(3200);
+  });
+
+  it('formats CNY correctly and returns correct symbol', () => {
+    const settings: CurrencySettings = {
+      ...DEFAULT_CURRENCY_SETTINGS,
+      displayCurrency: 'CNY',
+      constantUsdToCnyRate: 7.2,
+    };
+    const result = formatCurrency(100, settings);
+    expect(result).toBe('720');
+    expect(currencySymbol(settings)).toBe('\u00A5');
   });
 });
