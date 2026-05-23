@@ -12,7 +12,6 @@ export const zhTW: Record<string, string> = {
   'menu.dashboard': '儀表板',
   'menu.products': '產品',
   'menu.productsSheet': '產品表格',
-  'menu.productsLab': '產品實驗（Refine）',
   'menu.forecasts': '預測',
   'menu.capacity': '產能規劃',
   'menu.capacityLab': '產能實驗',
@@ -84,6 +83,8 @@ export const zhTW: Record<string, string> = {
 
   // Results
   'results.title': '分析結果',
+  'results.riskBrief': '風險簡報',
+  'results.execSummary': '執行摘要',
   'results.totalRevenue': '總營收',
   'results.totalForecastPcs': '總預測數量',
   'results.calculationRows': '計算列數',

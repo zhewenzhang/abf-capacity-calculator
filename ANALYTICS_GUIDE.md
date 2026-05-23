@@ -10,7 +10,15 @@ The Dashboard is an **executive summary** — it answers three questions at a gl
 
 ## Results Purpose
 
-The Calculation Results page is the **detailed analysis workbench**. It has four views:
+The Calculation Results page is the **detailed analysis workbench**. It has five views:
+
+### Risk Brief (Preferred Decision-Grade Tab)
+
+- **Executive Summary** — Overall aggregated revenue, total forecast PCS, structural capacity risk peaks, and Business Plan (BP) attainments gap.
+- **Action Boards** — Direct operations guides for **Sales**, **Product Planning**, **Capacity Operations**, and **Executive Decisions**.
+- **Data Quality Confidence** — Rating tag (`HIGH`, `MEDIUM`, `LOW`, `BLOCKED`) showing underlying data checks diagnostic.
+- **Top Drivers Breakdown** — Highlight tables of top 3 Customers and top 3 Application demand drivers.
+- **Metric Definitions** — In-page reference index containing complete formulas and caveats.
 
 ### Sales View
 

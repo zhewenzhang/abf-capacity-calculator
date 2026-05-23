@@ -12,7 +12,6 @@ export const en: Record<string, string> = {
   'menu.dashboard': 'Dashboard',
   'menu.products': 'Products',
   'menu.productsSheet': 'Products Sheet',
-  'menu.productsLab': 'Products Lab (Refine)',
   'menu.forecasts': 'Forecasts',
   'menu.capacity': 'Capacity Plan',
   'menu.capacityLab': 'Capacity Lab',
@@ -84,6 +83,8 @@ export const en: Record<string, string> = {
 
   // Results
   'results.title': 'Results',
+  'results.riskBrief': 'Risk Brief',
+  'results.execSummary': 'Executive Summary',
   'results.totalRevenue': 'Total Revenue',
   'results.totalForecastPcs': 'Total Forecast PCS',
   'results.calculationRows': 'Calculation Rows',

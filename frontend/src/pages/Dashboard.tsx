@@ -14,6 +14,8 @@ import { getCapacityPlans } from '../services/capacityService';
 import { getParameters } from '../services/parameterService';
 import { buildAnalyticsModel, getDashboardHighlights, type AnalyticsModel, type DashboardHighlights } from '../core/analytics';
 import { loadDemoData } from '../services/demoDataService';
+import { buildDataQualitySummary } from '../core/dataQuality';
+import type { DataQualitySummary } from '../core/dataQuality';
 import { Link } from 'react-router-dom';
 import TimeMatrixTable, { type TimeMatrixRow } from '../components/analytics/TimeMatrixTable';
 import { YearlyHealthMatrix } from '../components/analytics/YearlyHealthMatrix';
@@ -49,6 +51,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
   const [highlights, setHighlights] = useState<DashboardHighlights | null>(null);
   const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(DEFAULT_CURRENCY_SETTINGS);
   const [bpTargets, setBpTargets] = useState<Record<string, number>>({});
+  const [qualitySummary, setQualitySummary] = useState<DataQualitySummary | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -79,9 +82,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
         const m = buildAnalyticsModel(skus, forecasts, capacityPlans, paramsData);
         setModel(m);
         setHighlights(getDashboardHighlights(m));
+        setQualitySummary(buildDataQualitySummary({ skus, forecasts, capacityPlans, params: paramsData }));
       } else {
         setModel(null);
         setHighlights(null);
+        setQualitySummary(null);
       }
     } catch (e: any) {
       setError(e.message || 'Failed to load dashboard data');
@@ -209,6 +214,32 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
   return (
     <div>
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
+      {qualitySummary && (
+        <Alert
+          message={
+            <span>
+              <strong>Data Trust & Quality Confidence: </strong>
+              <Tag color={
+                qualitySummary.confidence === 'high' ? 'green' :
+                qualitySummary.confidence === 'medium' ? 'orange' : 'red'
+              }>
+                {qualitySummary.confidence.toUpperCase()}
+              </Tag>
+              {qualitySummary.status !== 'ok' && (
+                <Text type="secondary" style={{ marginLeft: 8 }}>
+                  Detected {qualitySummary.issues.filter(i => i.severity === 'error').length} fatal errors and {qualitySummary.issues.filter(i => i.severity === 'warning').length} warnings. Go to Calculation Results -&gt; Risk Brief for full diagnostic sheet.
+                </Text>
+              )}
+            </span>
+          }
+          type={
+            qualitySummary.status === 'error' ? 'error' :
+            qualitySummary.status === 'warning' ? 'warning' : 'info'
+          }
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      )}
       {totalSkus === 0 && (
         <Card style={{ marginBottom: 16, background: '#e6f7ff', border: '1px solid #91d5ff' }}>
           <Space direction="vertical" size={8} style={{ width: '100%' }}>

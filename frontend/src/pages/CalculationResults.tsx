@@ -9,7 +9,12 @@ import {
   Col,
   Typography,
   Segmented,
+  Card,
+  List,
 } from 'antd';
+import {
+  CheckCircleOutlined,
+} from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useI18n } from '../i18n';
 import { useAppPrefs } from '../context/AppPreferencesContext';
@@ -29,7 +34,10 @@ import { YearlyHealthMatrix } from '../components/analytics/YearlyHealthMatrix';
 import { MetricCard } from '../components/common';
 import { buildBpAnalysis } from '../core/bpTargets';
 import BpAnalysisPanel from '../components/analytics/BpAnalysisPanel';
-import type { SkuCalculationResult, MonthlyCapacitySummary, SKU } from '../types';
+import type { SkuCalculationResult, MonthlyCapacitySummary, SKU, Forecast, CapacityPlan, ProjectParameters } from '../types';
+import { buildAnalysisContractPayload } from '../core/analysisContract';
+import { buildRiskBrief } from '../core/riskBrief';
+import { METRIC_DEFINITIONS } from '../core/metricDefinitions';
 
 const { Text } = Typography;
 
@@ -38,7 +46,7 @@ interface CalculationResultsPageProps {
   projectId: string;
 }
 
-type ResultsView = 'sales' | 'product' | 'capacity' | 'bp' | 'raw';
+type ResultsView = 'risk' | 'sales' | 'product' | 'capacity' | 'bp' | 'raw';
 
 const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId, projectId }) => {
   const { t } = useI18n();
@@ -46,8 +54,11 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [skus, setSkus] = useState<SKU[]>([]);
+  const [forecasts, setForecasts] = useState<Forecast[]>([]);
+  const [capacityPlans, setCapacityPlans] = useState<CapacityPlan[]>([]);
+  const [params, setParams] = useState<ProjectParameters | null>(null);
   const [model, setModel] = useState<AnalyticsModel | null>(null);
-  const [view, setView] = useState<ResultsView>('sales');
+  const [view, setView] = useState<ResultsView>('risk');
   const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(DEFAULT_CURRENCY_SETTINGS);
   const [bpTargets, setBpTargets] = useState<Record<string, number>>({});
 
@@ -56,13 +67,16 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
       setLoading(true);
       setError(null);
       try {
-        const [skuData, forecasts, capacityPlans, params] = await Promise.all([
+        const [skuData, forecastData, capacityData, paramsData] = await Promise.all([
           getSKUs(userId, projectId),
           getForecasts(userId, projectId),
           getCapacityPlans(userId, projectId),
           getParameters(userId, projectId),
         ]);
         setSkus(skuData);
+        setForecasts(forecastData);
+        setCapacityPlans(capacityData);
+        setParams(paramsData);
 
         if (skuData.length === 0) {
           setModel(null);
@@ -71,7 +85,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
           setLoading(false);
           return;
         }
-        if (forecasts.length === 0) {
+        if (forecastData.length === 0) {
           setModel(null);
           setBpTargets({});
           setError('No forecasts found. Add forecasts first.');
@@ -79,15 +93,15 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
           return;
         }
 
-        const m = buildAnalyticsModel(skuData, forecasts, capacityPlans, params);
+        const m = buildAnalyticsModel(skuData, forecastData, capacityData, paramsData);
         setModel(m);
 
-        if (params.currencySettings) {
-          const cs = params.currencySettings as CurrencySettings;
+        if (paramsData.currencySettings) {
+          const cs = paramsData.currencySettings as CurrencySettings;
           setCurrencySettings({ ...cs, displayCurrency: prefs.displayCurrency });
         }
-        if (params.bpTargets?.yearlyRevenueTargetsMillionTwd) {
-          setBpTargets({ ...params.bpTargets.yearlyRevenueTargetsMillionTwd });
+        if (paramsData.bpTargets?.yearlyRevenueTargetsMillionTwd) {
+          setBpTargets({ ...paramsData.bpTargets.yearlyRevenueTargetsMillionTwd });
         } else {
           setBpTargets({});
         }
@@ -116,6 +130,24 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
     if (!model) return [];
     return model.yearlyHealth.map(y => y.year);
   }, [model]);
+
+  const bpAnalysisModel = useMemo(() => {
+    if (!model) return undefined;
+    return buildBpAnalysis(model.skuResults, skus, model.monthlySummaries, bpTargets, currencySettings);
+  }, [model, skus, bpTargets, currencySettings]);
+
+  const riskBrief = useMemo(() => {
+    if (!model || !params) return null;
+    const payload = buildAnalysisContractPayload(
+      skus,
+      forecasts,
+      capacityPlans,
+      params,
+      model,
+      bpAnalysisModel
+    );
+    return buildRiskBrief(payload);
+  }, [skus, forecasts, capacityPlans, params, model, bpAnalysisModel]);
 
   // --- Reusable util cell render ---
   const renderUtil = (val: number | null, demand: number) => {
@@ -520,6 +552,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
             value={view}
             onChange={(v) => setView(v as ResultsView)}
             options={[
+              { label: t('results.riskBrief') || 'Risk Brief', value: 'risk' },
               { label: t('results.salesView'), value: 'sales' },
               { label: t('results.productView'), value: 'product' },
               { label: t('results.capacityView'), value: 'capacity' },
@@ -528,6 +561,142 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
             ]}
             style={{ marginBottom: 16 }}
           />
+
+          {/* Risk Brief View */}
+          {view === 'risk' && riskBrief && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Executive Summary */}
+              <Card title={t('results.execSummary') || 'Executive Summary'} bordered={false}>
+                <List
+                  dataSource={riskBrief.executiveSummary}
+                  renderItem={(item) => (
+                    <List.Item style={{ border: 'none', padding: '4px 0' }}>
+                      <Text style={{ fontSize: 14 }}>📌 {item}</Text>
+                    </List.Item>
+                  )}
+                />
+              </Card>
+
+              {/* Action Board */}
+              <Row gutter={[16, 16]}>
+                <Col xs={24} md={12}>
+                  <Card title="💼 Sales & Customer Actions" size="small" bordered={false}>
+                    <List
+                      dataSource={riskBrief.roleAttention.sales}
+                      renderItem={(item) => (
+                        <List.Item style={{ border: 'none', padding: '6px 0' }}>
+                          <Text style={{ fontSize: 13 }}>👉 {item}</Text>
+                        </List.Item>
+                      )}
+                    />
+                  </Card>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Card title="📦 Product Planning Actions" size="small" bordered={false}>
+                    <List
+                      dataSource={riskBrief.roleAttention.productPlanning}
+                      renderItem={(item) => (
+                        <List.Item style={{ border: 'none', padding: '6px 0' }}>
+                          <Text style={{ fontSize: 13 }}>👉 {item}</Text>
+                        </List.Item>
+                      )}
+                    />
+                  </Card>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Card title="⚡ Factory & Capacity Actions" size="small" bordered={false}>
+                    <List
+                      dataSource={riskBrief.roleAttention.capacity}
+                      renderItem={(item) => (
+                        <List.Item style={{ border: 'none', padding: '6px 0' }}>
+                          <Text style={{ fontSize: 13 }}>👉 {item}</Text>
+                        </List.Item>
+                      )}
+                    />
+                  </Card>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Card title="🛡️ Data Quality & Confidence Status" size="small" bordered={false}>
+                    <div style={{ marginBottom: 12 }}>
+                      <Text style={{ marginRight: 8 }}>Confidence Level:</Text>
+                      <Tag color={
+                        riskBrief.confidence === 'high' ? 'green' :
+                        riskBrief.confidence === 'medium' ? 'orange' : 'red'
+                      }>
+                        {riskBrief.confidence.toUpperCase()}
+                      </Tag>
+                    </div>
+                    <div style={{ maxHeight: 150, overflowY: 'auto' }}>
+                      {riskBrief.confidence === 'high' ? (
+                        <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                          <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 24, marginBottom: 8 }} />
+                          <div>All underlying data inputs verified. No errors or warnings.</div>
+                        </div>
+                      ) : (
+                        <List
+                          size="small"
+                          dataSource={riskBrief.roleAttention.executive}
+                          renderItem={(item) => (
+                            <List.Item style={{ border: 'none', padding: '4px 0' }}>
+                              <Text style={{ fontSize: 12 }} type="secondary">⚙️ {item}</Text>
+                            </List.Item>
+                          )}
+                        />
+                      )}
+                    </div>
+                  </Card>
+                </Col>
+              </Row>
+
+              {/* Drivers Breakdown */}
+              <Row gutter={[16, 16]}>
+                <Col xs={24} lg={12}>
+                  <Card title="👥 Top Customer Revenue Drivers" size="small" bordered={false}>
+                    <Table
+                      dataSource={riskBrief.topDrivers.customers}
+                      rowKey="label"
+                      pagination={false}
+                      size="small"
+                      columns={[
+                        { title: 'Customer', dataIndex: 'label', key: 'label' },
+                        { title: 'Revenue (USD)', dataIndex: 'value', key: 'value', align: 'right', render: (v: number) => formatCurrency(v, currencySettings) },
+                      ]}
+                    />
+                  </Card>
+                </Col>
+                <Col xs={24} lg={12}>
+                  <Card title="🗂️ Top Applications (BU Demand Drivers)" size="small" bordered={false}>
+                    <Table
+                      dataSource={riskBrief.topDrivers.applications}
+                      rowKey="label"
+                      pagination={false}
+                      size="small"
+                      columns={[
+                        { title: 'Application', dataIndex: 'label', key: 'label' },
+                        { title: 'Accumulated BU Demand (Panels)', dataIndex: 'value', key: 'value', align: 'right', render: (v: number) => v.toLocaleString() },
+                      ]}
+                    />
+                  </Card>
+                </Col>
+              </Row>
+
+              {/* Metric Glossaries */}
+              <Card title="📖 Decision-Grade Metric Registry Reference" size="small" bordered={false}>
+                <Table
+                  dataSource={METRIC_DEFINITIONS}
+                  rowKey="id"
+                  pagination={false}
+                  size="small"
+                  columns={[
+                    { title: 'Metric ID', dataIndex: 'id', key: 'id', width: 140 },
+                    { title: 'Formula', dataIndex: 'formula', key: 'formula', width: 220, render: (v: string) => <code>{v}</code> },
+                    { title: 'Description', dataIndex: 'definition', key: 'definition' },
+                    { title: 'Unit', dataIndex: 'unit', key: 'unit', width: 90, render: (v: string) => <Tag>{v}</Tag> },
+                  ]}
+                />
+              </Card>
+            </div>
+          )}
 
           {/* Sales View */}
           {view === 'sales' && (

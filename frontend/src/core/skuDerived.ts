@@ -2,7 +2,7 @@
  * Shared SKU derived calculation helper.
  *
  * Contains the canonical implementations of UPP and Yield Estimate.
- * All pages (Products, ProductsRefineLab, ProductsSpreadsheetLab) should
+ * All pages (Products, ProductsSpreadsheetLab) should
  * use these functions to avoid algorithm drift.
  */
 

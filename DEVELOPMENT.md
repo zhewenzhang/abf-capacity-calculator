@@ -28,9 +28,13 @@ Service layer (skuService, forecastService, etc.)
   ↓
 runCalculation() — deterministic calculation engine
   ↓
-buildAnalyticsModel() — builds Dashboard/Results analysis structures
+buildAnalyticsModel() / buildBpAnalysis() — analysis structures
   ↓
-UI pages (Dashboard, CalculationResults)
+buildAnalysisContractPayload() — packs metrics & data quality into contract
+  ↓
+buildRiskBrief() — compiles deterministic Risk Brief
+  ↓
+UI pages (Dashboard Alert, CalculationResults Risk Brief Tab)
   ↓
 Currency/i18n helpers — display-layer only
 ```
@@ -74,6 +78,10 @@ All Firestore access goes through service modules. Never call Firestore directly
 | `core/defaults.ts` | Default working days, yield matrix, panel parameters |
 | `core/forecastGrowth.ts` | Generates empty forecast years from prior-year monthly SKU demand using annual growth rates |
 | `core/bpTargets.ts` | BP target attainment analysis: yearly/quarterly/monthly views, attainment %, gap calculation |
+| `core/metricDefinitions.ts` | Metric Registry defining 15 core decision metrics, formulas, and owners |
+| `core/dataQuality.ts` | Data Quality Checker evaluating domain integrity and computing confidence levels |
+| `core/analysisContract.ts` | Analysis Contract Payload generator fusing models, metrics, quality, and assumptions |
+| `core/riskBrief.ts` | Deterministic Risk Brief Builder generating executive summaries and role attention plans |
 | `i18n/` | English / Traditional Chinese translation dictionaries |
 | `theme/antdTheme.ts` | Ant Design design tokens (colors, spacing, typography) |
 | `components/analytics/` | Shared analysis components (TimeMatrixTable, YearlyHealthMatrix) |
