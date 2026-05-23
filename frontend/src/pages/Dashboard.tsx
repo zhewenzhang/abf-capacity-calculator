@@ -218,16 +218,22 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
         <Alert
           message={
             <span>
-              <strong>Data Trust & Quality Confidence: </strong>
+              <strong>Data Confidence: </strong>
               <Tag color={
                 qualitySummary.confidence === 'high' ? 'green' :
-                qualitySummary.confidence === 'medium' ? 'orange' : 'red'
+                qualitySummary.confidence === 'medium' ? 'orange' :
+                qualitySummary.confidence === 'blocked' ? 'default' : 'red'
               }>
                 {qualitySummary.confidence.toUpperCase()}
               </Tag>
               {qualitySummary.status !== 'ok' && (
                 <Text type="secondary" style={{ marginLeft: 8 }}>
-                  Detected {qualitySummary.issues.filter(i => i.severity === 'error').length} fatal errors and {qualitySummary.issues.filter(i => i.severity === 'warning').length} warnings. Go to Calculation Results -&gt; Risk Brief for full diagnostic sheet.
+                  {qualitySummary.issues.filter(i => i.severity === 'error').length} error(s), {qualitySummary.issues.filter(i => i.severity === 'warning').length} warning(s).
+                </Text>
+              )}
+              {highlights?.worstYear && qualitySummary.confidence !== 'blocked' && (
+                <Text type="danger" style={{ marginLeft: 8 }}>
+                  Highest risk period: {highlights.worstYear}.
                 </Text>
               )}
             </span>

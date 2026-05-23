@@ -81,19 +81,47 @@ The Analysis Contract outputs a standardized, future-proof payload `AnalysisCont
 
 ---
 
-## 5. Deterministic Risk Brief
+## 5. Deterministic Risk Brief (v1.16.1 — Decision-Grade Calibration)
 
-The Risk Brief generates high-level summaries and actionable role-specific directives without relying on external AI API integrations:
-1. **Executive Summary**: Explicitly lists total revenue, volume, primary bottlenecks, peaks, and BP achievement risks.
-2. **Top Risk Periods**: Automatically flags years/months with utilization $>100\%$ (Red Severity) or $>85\%$ (Orange Severity).
-3. **Primary Bottleneck Resource**: Compares Core vs BU peak utilization dynamically.
-4. **Top Drivers**: Highlights top-3 contributors for Customer, SKU, Size, and Applications.
-5. **BP Attainment Gap**: Pinpoints the worst-performing year and the exact TWD shortfall.
-6. **Role-Based Attention Boards**:
-   - **Sales**: Orders pipeline, order securement directives, delivery scheduling warnings.
-   - **Product Planning**: Mix pricing logic, high-layer yield monitoring, pricing warnings.
-   - **Capacity Operations**: Constraints bottleneck relief, working days optimization, zero-capacity warnings.
-   - **Executive Decision**: Data quality trust rating, capital expenditure and expansion directions.
+The Risk Brief generates high-level summaries and actionable role-specific directives without relying on external AI API integrations.
+
+### 5.1 Structure — Fact / Driver / Assumption / Data Caveat / Recommended Attention
+
+The Risk Brief is organized into clear sections that distinguish between:
+
+| Section | Purpose |
+|---------|---------|
+| **Executive Summary** | 5-bullet decision overview: highest risk period, primary bottleneck, top driver, BP risk, confidence level. |
+| **Facts** | System-determined results with severity tags (critical / warning / info / positive). Each fact has a title, detail, and optional evidence. |
+| **Top Risk Periods** | Periods scored by severity: shortage months (×100) > utilization >100% (×50) > utilization ≥85% (×20) > BP gap (capped at ×30). Sorted by score descending. |
+| **Driver Analysis** | Drivers separated into 5 groups: Revenue, Core Capacity Pressure, BU Capacity Pressure, Shortage Exposure, BP Risk. Each item includes value, share (% of group total), and reason. |
+| **BP Risk** | Dedicated section for BP target miss with attainment %, gap in M TWD, and statement. |
+| **Data Confidence & Caveats** | Confidence level with human-readable explanation. Caveats limited to top 5 (by severity), with total count displayed. |
+| **Assumptions** | Explicit modeling constraints: BP allocation, working days, USD normalization, BP TWD, core steps. |
+| **Role-Based Attention** | Action items for Sales, Product Planning, Capacity Operations, and Executive. |
+
+### 5.2 Driver Ranking Logic
+
+Drivers are ranked within each group by total value (descending) across all time periods:
+
+1. **Revenue Drivers** — from `revenueByCustomer` matrix, top 5, with share of total revenue.
+2. **Core Pressure Drivers** — from `coreDemandBySize` matrix, top 5, with share of total Core demand.
+3. **BU Pressure Drivers** — from `buDemandBySize` matrix, top 5, with share of total BU demand.
+4. **Shortage Exposure Drivers** — only shown when shortage exists; from `coreDemandBySize`, top 3.
+5. **BP Risk Drivers** — only shown when BP miss/watch years exist; lists period, gap, and attainment.
+
+### 5.3 Confidence Logic
+
+| Confidence | Condition | Explanation Template |
+|------------|-----------|---------------------|
+| `blocked` | No SKUs and no forecasts loaded | "No active data loaded. Please import products and monthly forecasts." |
+| `high` | No errors, no warnings | "All data inputs are complete and consistent. No errors or warnings found." |
+| `medium` | Warnings present, no errors | "N warning-level issue(s) found: [top 3 warning titles]." |
+| `low` | Errors present | "N error-level issue(s) found: [top 3 error titles]. Results may not be reliable for capital decisions." |
+
+### 5.4 Current Non-AI Deterministic Status
+
+Risk Brief text is compiled using strict structural rules on the frontend. Zero data is transmitted to external servers. No LLM API integration exists or is planned for this phase.
 
 ---
 

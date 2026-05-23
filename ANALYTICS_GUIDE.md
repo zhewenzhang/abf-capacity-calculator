@@ -14,11 +14,17 @@ The Calculation Results page is the **detailed analysis workbench**. It has five
 
 ### Risk Brief (Preferred Decision-Grade Tab)
 
-- **Executive Summary** — Overall aggregated revenue, total forecast PCS, structural capacity risk peaks, and Business Plan (BP) attainments gap.
-- **Action Boards** — Direct operations guides for **Sales**, **Product Planning**, **Capacity Operations**, and **Executive Decisions**.
-- **Data Quality Confidence** — Rating tag (`HIGH`, `MEDIUM`, `LOW`, `BLOCKED`) showing underlying data checks diagnostic.
-- **Top Drivers Breakdown** — Highlight tables of top 3 Customers and top 3 Application demand drivers.
-- **Metric Definitions** — In-page reference index containing complete formulas and caveats.
+The Risk Brief is calibrated as a **decision brief**, not a data listing. It distinguishes between Fact, Driver, Assumption, Data Caveat, and Recommended Attention.
+
+- **Executive Summary** — 5-bullet overview: highest risk period, primary bottleneck, top driver (with share), BP risk, data confidence level.
+- **Top Risk Periods** — Scored table: Period, Severity (red/orange/green), Bottleneck (Core/BU), Reason. Sorted by composite score (shortage months > over-capacity > near-capacity > BP gap).
+- **Key Facts** — System-determined results with severity tags: revenue, bottleneck status, shortage count.
+- **Driver Analysis** — Tabbed view with 5 driver groups: Revenue, Core Capacity Pressure, BU Capacity Pressure, Shortage Exposure, BP Risk. Each driver shows value, share (%), and reason.
+- **BP Risk** — Warning alert when BP target miss detected (attainment %, gap in M TWD).
+- **Data Confidence & Caveats** — Confidence tag with human-readable explanation. Collapsible caveats section showing top 5 of N total issues (by severity).
+- **Assumptions** — List of modeling constraints: BP allocation method, fixed working days, USD normalization, BP in million TWD, core steps fixed.
+- **Role-Based Attention** — 4-column action boards: Sales, Product Planning, Capacity Operations, Executive.
+- **Metric Registry Reference** — Formula and definition table for all KPIs.
 
 ### Sales View
 

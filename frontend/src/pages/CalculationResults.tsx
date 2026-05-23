@@ -11,9 +11,12 @@ import {
   Segmented,
   Card,
   List,
+  Collapse,
 } from 'antd';
 import {
-  CheckCircleOutlined,
+  WarningOutlined,
+  InfoCircleOutlined,
+  CaretRightOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useI18n } from '../i18n';
@@ -566,122 +569,259 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
           {view === 'risk' && riskBrief && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Executive Summary */}
-              <Card title={t('results.execSummary') || 'Executive Summary'} bordered={false}>
+              <Card title="Executive Summary" bordered={false} size="small">
                 <List
                   dataSource={riskBrief.executiveSummary}
                   renderItem={(item) => (
                     <List.Item style={{ border: 'none', padding: '4px 0' }}>
-                      <Text style={{ fontSize: 14 }}>📌 {item}</Text>
+                      <Text style={{ fontSize: 14 }}>{item}</Text>
                     </List.Item>
                   )}
                 />
               </Card>
 
-              {/* Action Board */}
+              {/* Top Risk Periods */}
+              {riskBrief.topRiskPeriods.length > 0 && (
+                <Card title={`Top Risk Periods (${riskBrief.topRiskPeriods.length})`} bordered={false} size="small">
+                  <Table
+                    dataSource={riskBrief.topRiskPeriods}
+                    rowKey="period"
+                    pagination={false}
+                    size="small"
+                    columns={[
+                      {
+                        title: 'Period',
+                        dataIndex: 'period',
+                        key: 'period',
+                        width: 80,
+                        render: (v: string) => <Text strong>{v}</Text>,
+                      },
+                      {
+                        title: 'Severity',
+                        dataIndex: 'severity',
+                        key: 'severity',
+                        width: 90,
+                        render: (v: string) => (
+                          <Tag color={v === 'red' ? 'red' : v === 'orange' ? 'orange' : 'green'}>
+                            {v.toUpperCase()}
+                          </Tag>
+                        ),
+                      },
+                      {
+                        title: 'Bottleneck',
+                        dataIndex: 'bottleneck',
+                        key: 'bottleneck',
+                        width: 90,
+                        render: (v: string) => (
+                          <Tag color={v === 'Core' ? 'orange' : v === 'BU' ? 'red' : 'default'}>{v}</Tag>
+                        ),
+                      },
+                      { title: 'Reason', dataIndex: 'reason', key: 'reason' },
+                    ]}
+                  />
+                </Card>
+              )}
+
+              {/* Key Facts */}
+              {riskBrief.facts.length > 0 && (
+                <Card title="Key Facts" bordered={false} size="small">
+                  <List
+                    dataSource={riskBrief.facts}
+                    renderItem={(item) => (
+                      <List.Item style={{ border: 'none', padding: '4px 0' }}>
+                        <Tag
+                          color={
+                            item.severity === 'critical' ? 'red' :
+                            item.severity === 'warning' ? 'orange' :
+                            item.severity === 'positive' ? 'green' : 'blue'
+                          }
+                          style={{ marginRight: 8 }}
+                        >
+                          {item.severity.toUpperCase()}
+                        </Tag>
+                        <Text strong>{item.title}:</Text>
+                        <Text style={{ marginLeft: 4 }}>{item.detail}</Text>
+                      </List.Item>
+                    )}
+                  />
+                </Card>
+              )}
+
+              {/* Driver Analysis */}
+              {riskBrief.drivers.length > 0 && (
+                <Card title="Driver Analysis" bordered={false} size="small">
+                  <Tabs
+                    size="small"
+                    items={riskBrief.drivers.map((dg) => ({
+                      key: dg.metric,
+                      label: dg.title,
+                      children: (
+                        <Table
+                          dataSource={dg.items}
+                          rowKey="label"
+                          pagination={false}
+                          size="small"
+                          columns={[
+                            { title: 'Driver', dataIndex: 'label', key: 'label', width: 180 },
+                            {
+                              title: 'Value',
+                              dataIndex: 'value',
+                              key: 'value',
+                              width: 120,
+                              align: 'right',
+                              render: (v: number) => dg.metric === 'revenue' ? formatCurrency(v, currencySettings) : v.toLocaleString(),
+                            },
+                            {
+                              title: 'Share',
+                              dataIndex: 'share',
+                              key: 'share',
+                              width: 80,
+                              align: 'right',
+                              render: (v: number | undefined) => v !== undefined ? `${v.toFixed(1)}%` : '-',
+                            },
+                            { title: 'Reason', dataIndex: 'reason', key: 'reason' },
+                          ]}
+                        />
+                      ),
+                    }))}
+                  />
+                </Card>
+              )}
+
+              {/* BP Risk */}
+              {riskBrief.bpRisk?.statement && (
+                <Card title="BP Risk" bordered={false} size="small">
+                  <Alert
+                    type="warning"
+                    showIcon
+                    icon={<WarningOutlined />}
+                    message={riskBrief.bpRisk.statement.title}
+                    description={riskBrief.bpRisk.statement.detail}
+                  />
+                </Card>
+              )}
+
+              {/* Data Confidence & Caveats */}
+              <Card title="Data Confidence & Caveats" bordered={false} size="small">
+                <div style={{ marginBottom: 12 }}>
+                  <Tag
+                    color={
+                      riskBrief.confidence === 'high' ? 'green' :
+                      riskBrief.confidence === 'medium' ? 'orange' :
+                      riskBrief.confidence === 'blocked' ? 'default' : 'red'
+                    }
+                  >
+                    {riskBrief.confidence.toUpperCase()}
+                  </Tag>
+                  <Text type="secondary" style={{ marginLeft: 8, fontSize: 13 }}>
+                    {riskBrief.confidenceExplanation}
+                  </Text>
+                </div>
+                {riskBrief.dataCaveats.total > 0 && (
+                  <Collapse
+                    size="small"
+                    items={[{
+                      key: 'caveats',
+                      label: `Data Caveats: ${riskBrief.dataCaveats.top.length} shown of ${riskBrief.dataCaveats.total} total`,
+                      children: (
+                        <List
+                          size="small"
+                          dataSource={riskBrief.dataCaveats.top}
+                          renderItem={(issue) => (
+                            <List.Item>
+                              <Tag
+                                color={
+                                  issue.severity === 'error' ? 'red' :
+                                  issue.severity === 'warning' ? 'orange' : 'blue'
+                                }
+                                style={{ marginRight: 8 }}
+                              >
+                                {issue.severity.toUpperCase()}
+                              </Tag>
+                              <Tag color="default" style={{ marginRight: 8 }}>{issue.domain}</Tag>
+                              <Text strong>{issue.title}</Text>
+                              <Text type="secondary" style={{ marginLeft: 4, fontSize: 12 }}>{issue.detail}</Text>
+                            </List.Item>
+                          )}
+                        />
+                      ),
+                    }]}
+                  />
+                )}
+              </Card>
+
+              {/* Assumptions */}
+              <Card title="Assumptions" bordered={false} size="small">
+                <List
+                  dataSource={riskBrief.assumptions}
+                  renderItem={(item) => (
+                    <List.Item style={{ border: 'none', padding: '4px 0' }}>
+                      <InfoCircleOutlined style={{ color: '#1677ff', marginRight: 8 }} />
+                      <Text strong>{item.title}:</Text>
+                      <Text type="secondary" style={{ marginLeft: 4 }}>{item.detail}</Text>
+                    </List.Item>
+                  )}
+                />
+              </Card>
+
+              {/* Role-Based Attention */}
               <Row gutter={[16, 16]}>
                 <Col xs={24} md={12}>
-                  <Card title="💼 Sales & Customer Actions" size="small" bordered={false}>
+                  <Card title="Sales & Customer Actions" size="small" bordered={false}>
                     <List
                       dataSource={riskBrief.roleAttention.sales}
                       renderItem={(item) => (
                         <List.Item style={{ border: 'none', padding: '6px 0' }}>
-                          <Text style={{ fontSize: 13 }}>👉 {item}</Text>
+                          <CaretRightOutlined style={{ color: '#1677ff', marginRight: 8 }} />
+                          <Text style={{ fontSize: 13 }}>{item}</Text>
                         </List.Item>
                       )}
                     />
                   </Card>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Card title="📦 Product Planning Actions" size="small" bordered={false}>
+                  <Card title="Product Planning Actions" size="small" bordered={false}>
                     <List
                       dataSource={riskBrief.roleAttention.productPlanning}
                       renderItem={(item) => (
                         <List.Item style={{ border: 'none', padding: '6px 0' }}>
-                          <Text style={{ fontSize: 13 }}>👉 {item}</Text>
+                          <CaretRightOutlined style={{ color: '#1677ff', marginRight: 8 }} />
+                          <Text style={{ fontSize: 13 }}>{item}</Text>
                         </List.Item>
                       )}
                     />
                   </Card>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Card title="⚡ Factory & Capacity Actions" size="small" bordered={false}>
+                  <Card title="Factory & Capacity Actions" size="small" bordered={false}>
                     <List
                       dataSource={riskBrief.roleAttention.capacity}
                       renderItem={(item) => (
                         <List.Item style={{ border: 'none', padding: '6px 0' }}>
-                          <Text style={{ fontSize: 13 }}>👉 {item}</Text>
+                          <CaretRightOutlined style={{ color: '#1677ff', marginRight: 8 }} />
+                          <Text style={{ fontSize: 13 }}>{item}</Text>
                         </List.Item>
                       )}
                     />
                   </Card>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Card title="🛡️ Data Quality & Confidence Status" size="small" bordered={false}>
-                    <div style={{ marginBottom: 12 }}>
-                      <Text style={{ marginRight: 8 }}>Confidence Level:</Text>
-                      <Tag color={
-                        riskBrief.confidence === 'high' ? 'green' :
-                        riskBrief.confidence === 'medium' ? 'orange' : 'red'
-                      }>
-                        {riskBrief.confidence.toUpperCase()}
-                      </Tag>
-                    </div>
-                    <div style={{ maxHeight: 150, overflowY: 'auto' }}>
-                      {riskBrief.confidence === 'high' ? (
-                        <div style={{ textAlign: 'center', padding: '16px 0' }}>
-                          <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 24, marginBottom: 8 }} />
-                          <div>All underlying data inputs verified. No errors or warnings.</div>
-                        </div>
-                      ) : (
-                        <List
-                          size="small"
-                          dataSource={riskBrief.roleAttention.executive}
-                          renderItem={(item) => (
-                            <List.Item style={{ border: 'none', padding: '4px 0' }}>
-                              <Text style={{ fontSize: 12 }} type="secondary">⚙️ {item}</Text>
-                            </List.Item>
-                          )}
-                        />
+                  <Card title="Executive Actions" size="small" bordered={false}>
+                    <List
+                      dataSource={riskBrief.roleAttention.executive}
+                      renderItem={(item) => (
+                        <List.Item style={{ border: 'none', padding: '6px 0' }}>
+                          <CaretRightOutlined style={{ color: '#1677ff', marginRight: 8 }} />
+                          <Text style={{ fontSize: 13 }}>{item}</Text>
+                        </List.Item>
                       )}
-                    </div>
-                  </Card>
-                </Col>
-              </Row>
-
-              {/* Drivers Breakdown */}
-              <Row gutter={[16, 16]}>
-                <Col xs={24} lg={12}>
-                  <Card title="👥 Top Customer Revenue Drivers" size="small" bordered={false}>
-                    <Table
-                      dataSource={riskBrief.topDrivers.customers}
-                      rowKey="label"
-                      pagination={false}
-                      size="small"
-                      columns={[
-                        { title: 'Customer', dataIndex: 'label', key: 'label' },
-                        { title: 'Revenue (USD)', dataIndex: 'value', key: 'value', align: 'right', render: (v: number) => formatCurrency(v, currencySettings) },
-                      ]}
-                    />
-                  </Card>
-                </Col>
-                <Col xs={24} lg={12}>
-                  <Card title="🗂️ Top Applications (BU Demand Drivers)" size="small" bordered={false}>
-                    <Table
-                      dataSource={riskBrief.topDrivers.applications}
-                      rowKey="label"
-                      pagination={false}
-                      size="small"
-                      columns={[
-                        { title: 'Application', dataIndex: 'label', key: 'label' },
-                        { title: 'Accumulated BU Demand (Panels)', dataIndex: 'value', key: 'value', align: 'right', render: (v: number) => v.toLocaleString() },
-                      ]}
                     />
                   </Card>
                 </Col>
               </Row>
 
               {/* Metric Glossaries */}
-              <Card title="📖 Decision-Grade Metric Registry Reference" size="small" bordered={false}>
+              <Card title="Metric Registry Reference" size="small" bordered={false}>
                 <Table
                   dataSource={METRIC_DEFINITIONS}
                   rowKey="id"

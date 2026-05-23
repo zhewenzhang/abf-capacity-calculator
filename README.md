@@ -31,6 +31,7 @@ A browser-based ABF (Ajinomoto Build-up Film) substrate capacity planning tool b
 10. **Currency Conversion** — USD/TWD display switching with constant or yearly exchange rate settings in Parameters.
 11. **Bilingual UI** — English / Traditional Chinese (繁中) with language switch in the header.
 12. **Analytics Layout** — Yearly analysis tables read horizontally (metrics as rows, years left-to-right), Dashboard KPI cards with consistent height, unified table styling across pages.
+13. **Decision-Grade Risk Brief** — Calibrated risk brief with clear sections: Executive Summary, Facts, Top Risk Periods (scored), Driver Analysis (revenue/core/BU/shortage/BP with share %), BP Risk, Data Confidence & Caveats (top 5), Assumptions, Role-Based Attention. Deterministic, no AI.
 
 ## Project Documentation
 
