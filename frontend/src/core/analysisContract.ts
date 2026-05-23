@@ -5,6 +5,8 @@ import { METRIC_DEFINITIONS } from './metricDefinitions';
 import type { MetricDefinition } from './metricDefinitions';
 import { buildDataQualitySummary } from './dataQuality';
 import type { DataQualitySummary } from './dataQuality';
+import { buildRiskAttributionModel } from './riskAttribution';
+import type { RiskAttributionModel } from './riskAttribution';
 
 export interface AnalysisContractPayload {
   version: '1.0';
@@ -38,6 +40,7 @@ export interface AnalysisContractPayload {
     coreDemandByApplication: AnalyticsModel['coreDemandByApplication'];
     buDemandByApplication: AnalyticsModel['buDemandByApplication'];
   };
+  riskAttribution: RiskAttributionModel;
 }
 
 export function buildAnalysisContractPayload(
@@ -95,5 +98,6 @@ export function buildAnalysisContractPayload(
       coreDemandByApplication: model.coreDemandByApplication,
       buDemandByApplication: model.buDemandByApplication,
     },
+    riskAttribution: buildRiskAttributionModel(model, skus, bpModel),
   };
 }

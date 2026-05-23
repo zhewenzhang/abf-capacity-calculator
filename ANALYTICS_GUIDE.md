@@ -19,7 +19,10 @@ The Risk Brief is calibrated as a **decision brief**, not a data listing. It dis
 - **Executive Summary** — 5-bullet overview: highest risk period, primary bottleneck, top driver (with share), BP risk, data confidence level.
 - **Top Risk Periods** — Scored table: Period, Severity (red/orange/green), Bottleneck (Core/BU), Reason. Sorted by composite score (shortage months > over-capacity > near-capacity > BP gap).
 - **Key Facts** — System-determined results with severity tags: revenue, bottleneck status, shortage count.
-- **Driver Analysis** — Tabbed view with 5 driver groups: Revenue, Core Capacity Pressure, BU Capacity Pressure, Shortage Exposure, BP Risk. Each driver shows value, share (%), and reason.
+- **Driver Analysis** — Three separated panels (v1.17.0):
+  - **Risk Period Attribution** — "Who drives pressure during shortage months." Aggregates demand by customer / SKU / size / application / layer bucket / product grade, restricted to shortage months only. Each driver shows value, share, severity, affected periods, and a reason.
+  - **SKU Health Signals** — Deterministic MVP classification per SKU using revenue share vs. capacity-pressure share. Classes: `strategicGrowth`, `cashCow`, `capacityDrainer`, `lowValueHighLoad`, `watchList`, `dataIncomplete`. Thresholds: `HIGH_SHARE = 15%`, `LOW_SHARE = 5%`. **Not AI judgment, not final causal attribution.**
+  - **Overall Contribution** — Tabbed view of 5 driver groups (Revenue, Core Capacity Pressure, BU Capacity Pressure, Shortage Exposure, BP Risk) across **all** periods. Provides context for the attribution layer.
 - **BP Risk** — Warning alert when BP target miss detected (attainment %, gap in M TWD).
 - **Data Confidence & Caveats** — Confidence tag with human-readable explanation. Collapsible caveats section showing top 5 of N total issues (by severity).
 - **Assumptions** — List of modeling constraints: BP allocation method, fixed working days, USD normalization, BP in million TWD, core steps fixed.

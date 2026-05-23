@@ -81,7 +81,7 @@ The Analysis Contract outputs a standardized, future-proof payload `AnalysisCont
 
 ---
 
-## 5. Deterministic Risk Brief (v1.16.1 — Decision-Grade Calibration)
+## 5. Deterministic Risk Brief (v1.17.0 — Risk Driver Attribution)
 
 The Risk Brief generates high-level summaries and actionable role-specific directives without relying on external AI API integrations.
 
@@ -122,6 +122,50 @@ Drivers are ranked within each group by total value (descending) across all time
 ### 5.4 Current Non-AI Deterministic Status
 
 Risk Brief text is compiled using strict structural rules on the frontend. Zero data is transmitted to external servers. No LLM API integration exists or is planned for this phase.
+
+### 5.5 Risk Attribution vs Overall Contribution (v1.17.0)
+
+The Risk Brief now distinguishes three layers of "who matters":
+
+| Layer | Question Answered | Source |
+|-------|-------------------|--------|
+| **Overall Contribution** | Who is biggest across ALL periods? | `matrices.*` (revenue, demand by customer/SKU/size/application) |
+| **Risk Period Attribution** | Who drives pressure during **shortage months only**? | `riskAttribution.drivers` (`riskAttribution.ts`) |
+| **SKU Health Signals** | Which SKUs are strategicGrowth / cashCow / capacityDrainer / lowValueHighLoad / watchList / dataIncomplete? | `riskAttribution.skuHealthSignals` (deterministic MVP) |
+
+#### Shortage-month definition
+
+A month qualifies as a shortage month if either Core or BU side meets:
+
+- `coreShortage > 0` (unmet Core demand), or
+- `coreUtilization === null` while `totalCorePanelDemand > 0` (capacity = 0 with demand), or
+- The same conditions on the BU side.
+
+Attribution then aggregates `skuResults` restricted to shortage months only — sliced by customer, SKU, size, application, layer bucket, and product grade. Each driver is sorted deterministically (value desc, label asc) and truncated to top-N.
+
+#### Capacity Pressure Index (MVP)
+
+`capacityPressureIndex = shortageCoreDemand + shortageBuDemand` (unweighted). This is a proxy, not a final causal model. Future work may weight Core vs BU and incorporate yield risk.
+
+#### SKU Health Signal thresholds
+
+These are MVP assumptions, documented for transparency:
+
+- `HIGH_SHARE = 15` — high enough to dominate a dimension
+- `LOW_SHARE = 5` — low enough to be considered minor
+
+Classification rules (in priority order):
+
+| Class | Rule |
+|-------|------|
+| `dataIncomplete` | SKU missing required attributes (chip size, layer count, size category, unit price). |
+| `strategicGrowth` | `revenueShare >= HIGH_SHARE` AND `pressureShare >= HIGH_SHARE`. |
+| `cashCow` | `revenueShare >= HIGH_SHARE` AND `pressureShare < HIGH_SHARE`. |
+| `lowValueHighLoad` | `revenueShare <= LOW_SHARE` AND `pressureShare >= HIGH_SHARE`. |
+| `capacityDrainer` | `pressureShare >= HIGH_SHARE` AND `revenueShare < pressureShare`. |
+| `watchList` | Any pressure exposure without a stronger rule, OR moderate revenue without shortage. |
+
+These signals are deterministic and explainable — **not AI judgment** and **not final causal attribution**.
 
 ---
 

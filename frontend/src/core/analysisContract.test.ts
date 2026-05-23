@@ -111,5 +111,33 @@ describe('analysisContract', () => {
     expect(payload.bpAnalysis).toBeDefined();
     expect(payload.matrices.revenueByCustomer.length).toBeGreaterThan(0);
     expect(payload.matrices.revenueBySku.length).toBeGreaterThan(0);
+    expect(payload.riskAttribution).toBeDefined();
+    expect(payload.riskAttribution.shortageMonths).toBeDefined();
+    expect(Array.isArray(payload.riskAttribution.drivers)).toBe(true);
+    expect(Array.isArray(payload.riskAttribution.skuHealthSignals)).toBe(true);
+  });
+
+  it('exposes riskAttribution drivers in shortage scenarios', () => {
+    const sku = makeSku();
+    const forecasts: Forecast[] = [];
+    const capacityPlans: CapacityPlan[] = [];
+    for (let i = 1; i <= 12; i++) {
+      const month = `2026-${String(i).padStart(2, '0')}`;
+      forecasts.push(makeForecast({ id: `fc-${i}`, month, forecastPcs: 10_000_000 }));
+      capacityPlans.push(makeCapacityPlan({ id: `cp-${i}`, month, corePanelPerDay: 10, buPanelPerDay: 10 }));
+    }
+    const analyticsModel = buildAnalyticsModel([sku], forecasts, capacityPlans, defaultParams);
+    const bpModel = buildBpAnalysis(
+      analyticsModel.skuResults,
+      [sku],
+      analyticsModel.monthlySummaries,
+      defaultParams.bpTargets!.yearlyRevenueTargetsMillionTwd,
+      defaultParams.currencySettings!
+    );
+    const payload = buildAnalysisContractPayload(
+      [sku], forecasts, capacityPlans, defaultParams, analyticsModel, bpModel, 'v1.17.0'
+    );
+    expect(payload.riskAttribution.shortageMonths.length).toBeGreaterThan(0);
+    expect(payload.riskAttribution.drivers.length).toBeGreaterThan(0);
   });
 });

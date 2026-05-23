@@ -647,9 +647,140 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
                 </Card>
               )}
 
-              {/* Driver Analysis */}
+              {/* Risk Period Attribution — shortage-month drivers */}
+              {riskBrief.attributionDrivers.length > 0 && (
+                <Card
+                  title={`Risk Period Attribution (${riskBrief.shortageMonths.length} shortage month${riskBrief.shortageMonths.length === 1 ? '' : 's'})`}
+                  bordered={false}
+                  size="small"
+                  extra={
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      Who drives pressure during shortage months (deterministic, no AI)
+                    </Text>
+                  }
+                >
+                  <Table
+                    dataSource={riskBrief.attributionDrivers}
+                    rowKey={(r) => `${r.dimension}-${r.metric}-${r.label}`}
+                    pagination={false}
+                    size="small"
+                    columns={[
+                      { title: 'Dimension', dataIndex: 'dimension', key: 'dimension', width: 110 },
+                      { title: 'Driver', dataIndex: 'label', key: 'label', width: 180 },
+                      { title: 'Metric', dataIndex: 'metric', key: 'metric', width: 170 },
+                      {
+                        title: 'Value',
+                        dataIndex: 'value',
+                        key: 'value',
+                        width: 110,
+                        align: 'right',
+                        render: (v: number) => v.toLocaleString(undefined, { maximumFractionDigits: 1 }),
+                      },
+                      {
+                        title: 'Share',
+                        dataIndex: 'share',
+                        key: 'share',
+                        width: 80,
+                        align: 'right',
+                        render: (v: number | undefined) => (v !== undefined ? `${v.toFixed(1)}%` : '-'),
+                      },
+                      {
+                        title: 'Severity',
+                        dataIndex: 'severity',
+                        key: 'severity',
+                        width: 90,
+                        render: (s: string) => (
+                          <Tag color={s === 'critical' ? 'red' : s === 'warning' ? 'orange' : 'blue'}>{s.toUpperCase()}</Tag>
+                        ),
+                      },
+                      {
+                        title: 'Periods',
+                        dataIndex: 'affectedPeriods',
+                        key: 'affectedPeriods',
+                        render: (ps: string[]) => (ps.length > 4 ? `${ps.slice(0, 4).join(', ')} +${ps.length - 4} more` : ps.join(', ') || '-'),
+                      },
+                      { title: 'Reason', dataIndex: 'reason', key: 'reason' },
+                    ]}
+                  />
+                </Card>
+              )}
+
+              {/* SKU Health Signals (deterministic MVP) */}
+              {riskBrief.skuHealthSignals.length > 0 && (
+                <Card
+                  title={`SKU Health Signals (top ${riskBrief.skuHealthSignals.length})`}
+                  bordered={false}
+                  size="small"
+                  extra={
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      Revenue share vs capacity-pressure share — deterministic signal, not AI judgment
+                    </Text>
+                  }
+                >
+                  <Table
+                    dataSource={riskBrief.skuHealthSignals}
+                    rowKey="skuId"
+                    pagination={false}
+                    size="small"
+                    columns={[
+                      { title: 'SKU', dataIndex: 'skuCode', key: 'skuCode', width: 140 },
+                      { title: 'Customer', dataIndex: 'customer', key: 'customer', width: 140 },
+                      {
+                        title: 'Classification',
+                        dataIndex: 'classification',
+                        key: 'classification',
+                        width: 160,
+                        render: (c: string) => {
+                          const colorMap: Record<string, string> = {
+                            strategicGrowth: 'geekblue',
+                            cashCow: 'green',
+                            capacityDrainer: 'orange',
+                            lowValueHighLoad: 'red',
+                            watchList: 'default',
+                            dataIncomplete: 'volcano',
+                          };
+                          return <Tag color={colorMap[c] ?? 'default'}>{c}</Tag>;
+                        },
+                      },
+                      {
+                        title: 'Revenue Share',
+                        dataIndex: 'revenueShare',
+                        key: 'revenueShare',
+                        width: 120,
+                        align: 'right',
+                        render: (v: number | undefined) => (v !== undefined ? `${v.toFixed(1)}%` : '-'),
+                      },
+                      {
+                        title: 'Pressure Share',
+                        dataIndex: 'capacityPressureShare',
+                        key: 'capacityPressureShare',
+                        width: 130,
+                        align: 'right',
+                        render: (v: number | undefined) => (v !== undefined ? `${v.toFixed(1)}%` : '-'),
+                      },
+                      {
+                        title: 'Reason',
+                        dataIndex: 'reasons',
+                        key: 'reasons',
+                        render: (rs: string[]) => rs.join(' '),
+                      },
+                    ]}
+                  />
+                </Card>
+              )}
+
+              {/* Overall Contribution Drivers */}
               {riskBrief.drivers.length > 0 && (
-                <Card title="Driver Analysis" bordered={false} size="small">
+                <Card
+                  title="Overall Contribution"
+                  bordered={false}
+                  size="small"
+                  extra={
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      Who is biggest across ALL periods (context only)
+                    </Text>
+                  }
+                >
                   <Tabs
                     size="small"
                     items={riskBrief.drivers.map((dg) => ({

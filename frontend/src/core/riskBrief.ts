@@ -1,5 +1,6 @@
 import type { AnalysisContractPayload } from './analysisContract';
 import type { DataQualitySummary, DataQualityIssue } from './dataQuality';
+import type { RiskDriver, SkuHealthSignal } from './riskAttribution';
 
 // ============================================================
 // Types — Decision-Grade Risk Brief
@@ -43,7 +44,24 @@ export interface RiskBrief {
     severity: 'red' | 'orange' | 'green';
     score: number; // for deterministic sorting
   }>;
+  /**
+   * Overall Contribution drivers — answers "who is biggest across all periods".
+   * Keep as context; not the primary risk attribution.
+   */
   drivers: DriverGroup[];
+  /**
+   * Risk Period Attribution — answers "who drives pressure during shortage months".
+   * Derived from RiskAttributionModel.drivers.
+   */
+  attributionDrivers: RiskDriver[];
+  /**
+   * Months that triggered shortage attribution.
+   */
+  shortageMonths: string[];
+  /**
+   * Deterministic SKU Health Signals MVP.
+   */
+  skuHealthSignals: SkuHealthSignal[];
   assumptions: BriefStatement[];
   dataCaveats: {
     total: number;
@@ -146,7 +164,7 @@ function totalOfGroup(rows: MatrixRow[]): number {
 // ============================================================
 
 export function buildRiskBrief(payload: AnalysisContractPayload): RiskBrief {
-  const { summary, yearlyHealth, bpAnalysis, matrices, quality, skus, forecasts } = payload;
+  const { summary, yearlyHealth, bpAnalysis, matrices, quality } = payload;
   const facts: BriefStatement[] = [];
   const drivers: DriverGroup[] = [];
   const assumptions: BriefStatement[] = [];
@@ -165,6 +183,9 @@ export function buildRiskBrief(payload: AnalysisContractPayload): RiskBrief {
       facts: [],
       topRiskPeriods: [],
       drivers: [],
+      attributionDrivers: [],
+      shortageMonths: [],
+      skuHealthSignals: [],
       assumptions: [],
       dataCaveats: { total: quality.issues.length, top: quality.issues.slice(0, MAX_CAVEATS_DISPLAY) },
       roleAttention: {
@@ -500,14 +521,26 @@ export function buildRiskBrief(payload: AnalysisContractPayload): RiskBrief {
   }
 
   // ============================================================
-  // 9. Role-Based Attention
+  // 9. Role-Based Attention — informed by Risk Attribution + SKU Health
   // ============================================================
 
-  // Sales
+  const attribution = payload.riskAttribution;
+  const attributionDrivers = attribution.drivers;
+  const skuHealthSignals = attribution.skuHealthSignals;
+  const shortageMonths = attribution.shortageMonths;
+
+  // Sales — overall revenue + shortage customer attribution + BP risk
   if (revenueDrivers.items.length > 0) {
     const top = revenueDrivers.items[0];
     salesAttention.push(
       `Major revenue driver [${top.label}] contributes ${top.share?.toFixed(0) ?? 'significant'}% share. Secure their allocation planning immediately.`
+    );
+  }
+  const shortageCustomerDrivers = attributionDrivers.filter((d) => d.dimension === 'customer' && (d.metric === 'shortageCoreDemand' || d.metric === 'shortageBuDemand'));
+  if (shortageCustomerDrivers.length > 0) {
+    const top = shortageCustomerDrivers[0];
+    salesAttention.push(
+      `During shortage months, [${top.label}] drives ${top.share?.toFixed(1) ?? 'significant'}% of ${top.metric === 'shortageCoreDemand' ? 'Core' : 'BU'} pressure. Validate forecast accuracy and confirm pricing.`
     );
   }
   if (summary.shortageMonthCount > 0) {
@@ -518,29 +551,51 @@ export function buildRiskBrief(payload: AnalysisContractPayload): RiskBrief {
     salesAttention.push('Normal customer order pipeline; no unfulfilled demand issues forecasted.');
   }
 
-  // Product Planning
+  // Product Planning — SKU Health Signals
+  const lowValue = skuHealthSignals.filter((s) => s.classification === 'lowValueHighLoad');
+  const drainers = skuHealthSignals.filter((s) => s.classification === 'capacityDrainer');
+  if (lowValue.length > 0) {
+    planningAttention.push(
+      `Low-value-high-load SKU(s): ${lowValue.slice(0, 3).map((s) => s.skuCode).join(', ')}. Re-price or reduce capacity allocation.`
+    );
+  }
+  if (drainers.length > 0) {
+    planningAttention.push(
+      `Capacity drainer SKU(s): ${drainers.slice(0, 3).map((s) => s.skuCode).join(', ')}. Consume scarce capacity beyond their revenue share.`
+    );
+  }
   const topSkus = extractTopDrivers(matrices.revenueBySku, 3);
-  if (topSkus.length > 0) {
+  if (topSkus.length > 0 && lowValue.length === 0 && drainers.length === 0) {
     planningAttention.push(
       `Main demand SKU [${topSkus[0].label.split(' / ')[0]}] consumes substantial panel resources. Monitor yield stability.`
     );
   }
-  const lowRevHighCapIssue = forecasts.some((f) => {
-    const sku = skus.find((s) => s.id === f.skuId);
-    return sku && sku.unitPrice < 1.5 && sku.layerCount > 16;
-  });
-  if (lowRevHighCapIssue) {
-    planningAttention.push(
-      'Warning: Low-price, high-layer SKUs detected. Review pricing strategy or capacity consumption premiums.'
-    );
-  } else {
+  if (planningAttention.length === 0) {
     planningAttention.push('Product mix sizing and layer counts are harmonized with capacity parameters.');
   }
 
-  // Capacity
+  // Capacity — bottleneck + shortage attribution by size/application/layer
   if (primaryBottleneck !== 'None') {
     capacityAttention.push(
       `Bottleneck pointing to [${primaryBottleneck}]. Prioritize shift optimization and bottleneck relief at constraints.`
+    );
+  }
+  const shortageSizeDriver = attributionDrivers.find((d) => d.dimension === 'size' && d.metric === 'capacityPressureIndex');
+  const shortageAppDriver = attributionDrivers.find((d) => d.dimension === 'application' && d.metric === 'capacityPressureIndex');
+  const shortageLayerDriver = attributionDrivers.find((d) => d.dimension === 'layerBucket' && d.metric === 'capacityPressureIndex');
+  if (shortageSizeDriver) {
+    capacityAttention.push(
+      `Top shortage size: [${shortageSizeDriver.label}] (${shortageSizeDriver.share?.toFixed(1) ?? '-'}%). Align panel layout planning.`
+    );
+  }
+  if (shortageAppDriver) {
+    capacityAttention.push(
+      `Top shortage application: [${shortageAppDriver.label}] (${shortageAppDriver.share?.toFixed(1) ?? '-'}%).`
+    );
+  }
+  if (shortageLayerDriver) {
+    capacityAttention.push(
+      `Top shortage layer bucket: [${shortageLayerDriver.label}] (${shortageLayerDriver.share?.toFixed(1) ?? '-'}%). Review yield + step constraints.`
     );
   }
   const zeroCapWarn = quality.issues.some((i) => i.id === 'bu-demand-zero-capacity');
@@ -548,11 +603,12 @@ export function buildRiskBrief(payload: AnalysisContractPayload): RiskBrief {
     capacityAttention.push(
       'Critical: BU demand detected but BU capacity set to 0. Update factory configurations in Parameters page.'
     );
-  } else {
+  }
+  if (capacityAttention.length === 0) {
     capacityAttention.push('Working days and daily panel capacity outputs match default constraints.');
   }
 
-  // Executive
+  // Executive — data quality + strategic signals + BP miss
   if (quality.status === 'error') {
     execAttention.push(
       `Data Quality Alert: Confidence is LOW due to ${quality.issues.filter((i) => i.severity === 'error').length} error(s). Clean up data before making capital investment decisions.`
@@ -560,6 +616,18 @@ export function buildRiskBrief(payload: AnalysisContractPayload): RiskBrief {
   } else {
     execAttention.push(
       `Data Quality Rating is [${quality.confidence.toUpperCase()}]. Underlying calculation matrices are verified and decision-grade.`
+    );
+  }
+  const strategicCount = skuHealthSignals.filter((s) => s.classification === 'strategicGrowth').length;
+  if (strategicCount > 0) {
+    execAttention.push(
+      `${strategicCount} strategic-growth SKU(s) flagged: high revenue share AND high capacity pressure. Prioritize capacity expansion to protect upside.`
+    );
+  }
+  const dataIncompleteCount = skuHealthSignals.filter((s) => s.classification === 'dataIncomplete').length;
+  if (dataIncompleteCount > 0 && quality.confidence !== 'high') {
+    execAttention.push(
+      `${dataIncompleteCount} SKU(s) classified as Data Incomplete. Resolve data cleanup before approving capital decisions.`
     );
   }
   if (bpWorstPeriod) {
@@ -580,6 +648,9 @@ export function buildRiskBrief(payload: AnalysisContractPayload): RiskBrief {
     facts,
     topRiskPeriods,
     drivers,
+    attributionDrivers,
+    shortageMonths,
+    skuHealthSignals,
     assumptions,
     dataCaveats,
     bpRisk: bpWorstPeriod

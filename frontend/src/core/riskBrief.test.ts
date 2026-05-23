@@ -318,4 +318,41 @@ describe('riskBrief — Phase 5.1 Calibration', () => {
     expect(brief.roleAttention.capacity.length).toBeGreaterThan(0);
     expect(brief.roleAttention.executive.length).toBeGreaterThan(0);
   });
+
+  // Phase 5.2: risk attribution surfaces in brief
+  it('exposes attributionDrivers, shortageMonths, and skuHealthSignals from riskAttribution', () => {
+    const skuA = makeSku({ id: 'sku-a', skuCode: 'A-1', customer: 'A Co' });
+    const skuB = makeSku({ id: 'sku-b', skuCode: 'B-1', customer: 'B Co' });
+    const forecasts: Forecast[] = [];
+    const capacityPlans: CapacityPlan[] = [];
+    for (let i = 1; i <= 12; i++) {
+      const month = `2026-${String(i).padStart(2, '0')}`;
+      forecasts.push(makeForecast({ id: `fa-${i}`, skuId: 'sku-a', month, forecastPcs: 20_000_000 }));
+      forecasts.push(makeForecast({ id: `fb-${i}`, skuId: 'sku-b', month, forecastPcs: 5_000_000 }));
+      capacityPlans.push(makeCapacityPlan({ id: `cp-${i}`, month, corePanelPerDay: 10, buPanelPerDay: 10 }));
+    }
+    const brief = buildBrief([skuA, skuB], forecasts, capacityPlans);
+    expect(brief.shortageMonths.length).toBeGreaterThan(0);
+    expect(brief.attributionDrivers.length).toBeGreaterThan(0);
+    expect(brief.skuHealthSignals.length).toBeGreaterThan(0);
+  });
+
+  // Phase 5.2: role attention references SKU health / shortage attribution
+  it('weaves SKU health and shortage attribution into role attention', () => {
+    const big = makeSku({ id: 'big', skuCode: 'BIG', unitPrice: 100, customer: 'BigCo' });
+    const small = makeSku({ id: 'small', skuCode: 'SMALL', unitPrice: 0.001, customer: 'SmallCo' });
+    const forecasts: Forecast[] = [];
+    const capacityPlans: CapacityPlan[] = [];
+    for (let i = 1; i <= 12; i++) {
+      const month = `2026-${String(i).padStart(2, '0')}`;
+      forecasts.push(makeForecast({ id: `b-${i}`, skuId: 'big', month, forecastPcs: 10000, unitPrice: 100 }));
+      forecasts.push(makeForecast({ id: `s-${i}`, skuId: 'small', month, forecastPcs: 100_000_000, unitPrice: 0.001 }));
+      capacityPlans.push(makeCapacityPlan({ id: `cp-${i}`, month, corePanelPerDay: 100, buPanelPerDay: 100 }));
+    }
+    const brief = buildBrief([big, small], forecasts, capacityPlans);
+    const planningText = brief.roleAttention.productPlanning.join(' ').toLowerCase();
+    expect(planningText).toMatch(/low-value-high-load|capacity drainer|sku/);
+    const capacityText = brief.roleAttention.capacity.join(' ').toLowerCase();
+    expect(capacityText).toMatch(/shortage|bottleneck|size|application|layer/);
+  });
 });
