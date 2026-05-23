@@ -59,9 +59,9 @@ describe('buildYearlyGrowthForecasts', () => {
     });
 
     expect(result.generated).toEqual([
-      { skuId: 'sku-a', month: '2027-01', forecastPcs: 1100, unitPrice: 2 },
-      { skuId: 'sku-a', month: '2027-02', forecastPcs: 2200, unitPrice: 2 },
-      { skuId: 'sku-b', month: '2027-01', forecastPcs: 550, unitPrice: 5 },
+      { skuId: 'sku-a', month: '2027-01', forecastPcs: 1100, unitPrice: 2, unitPriceCurrency: 'USD' },
+      { skuId: 'sku-a', month: '2027-02', forecastPcs: 2200, unitPrice: 2, unitPriceCurrency: 'USD' },
+      { skuId: 'sku-b', month: '2027-01', forecastPcs: 550, unitPrice: 5, unitPriceCurrency: 'USD' },
     ]);
     expect(result.generatedCount).toBe(3);
     expect(result.skippedSkuYears).toEqual([]);
@@ -97,8 +97,8 @@ describe('buildYearlyGrowthForecasts', () => {
     });
 
     expect(result.generated).toEqual([
-      { skuId: 'sku-a', month: '2027-01', forecastPcs: 1100, unitPrice: 2 },
-      { skuId: 'sku-a', month: '2028-01', forecastPcs: 1320, unitPrice: 2 },
+      { skuId: 'sku-a', month: '2027-01', forecastPcs: 1100, unitPrice: 2, unitPriceCurrency: 'USD' },
+      { skuId: 'sku-a', month: '2028-01', forecastPcs: 1320, unitPrice: 2, unitPriceCurrency: 'USD' },
     ]);
   });
 
@@ -117,7 +117,7 @@ describe('buildYearlyGrowthForecasts', () => {
     });
 
     expect(result.generated).toEqual([
-      { skuId: 'sku-b', month: '2027-01', forecastPcs: 1100, unitPrice: 5 },
+      { skuId: 'sku-b', month: '2027-01', forecastPcs: 1100, unitPrice: 5, unitPriceCurrency: 'USD' },
     ]);
   });
 
@@ -136,10 +136,10 @@ describe('buildYearlyGrowthForecasts', () => {
       growthRatesByYear: { '2027': 0 },
     });
     expect(zeroGrowth.generated).toEqual([
-      { skuId: 'sku-a', month: '2027-01', forecastPcs: 1000, unitPrice: 2 },
-      { skuId: 'sku-a', month: '2027-02', forecastPcs: 333, unitPrice: 2 },
-      { skuId: 'sku-b', month: '2027-01', forecastPcs: 1000, unitPrice: 5 },
-      { skuId: 'sku-b', month: '2027-02', forecastPcs: 999, unitPrice: 5 },
+      { skuId: 'sku-a', month: '2027-01', forecastPcs: 1000, unitPrice: 2, unitPriceCurrency: 'USD' },
+      { skuId: 'sku-a', month: '2027-02', forecastPcs: 333, unitPrice: 2, unitPriceCurrency: 'USD' },
+      { skuId: 'sku-b', month: '2027-01', forecastPcs: 1000, unitPrice: 5, unitPriceCurrency: 'USD' },
+      { skuId: 'sku-b', month: '2027-02', forecastPcs: 999, unitPrice: 5, unitPriceCurrency: 'USD' },
     ]);
 
     const positiveGrowth = buildYearlyGrowthForecasts({
@@ -149,8 +149,8 @@ describe('buildYearlyGrowthForecasts', () => {
       growthRatesByYear: { '2027': 12.5 },
     });
     expect(positiveGrowth.generated).toEqual([
-      { skuId: 'sku-a', month: '2027-01', forecastPcs: 1125, unitPrice: 2 },
-      { skuId: 'sku-a', month: '2027-02', forecastPcs: 375, unitPrice: 2 },
+      { skuId: 'sku-a', month: '2027-01', forecastPcs: 1125, unitPrice: 2, unitPriceCurrency: 'USD' },
+      { skuId: 'sku-a', month: '2027-02', forecastPcs: 375, unitPrice: 2, unitPriceCurrency: 'USD' },
     ]);
 
     const negativeGrowth = buildYearlyGrowthForecasts({
@@ -160,8 +160,8 @@ describe('buildYearlyGrowthForecasts', () => {
       growthRatesByYear: { '2027': -25 },
     });
     expect(negativeGrowth.generated).toEqual([
-      { skuId: 'sku-b', month: '2027-01', forecastPcs: 750, unitPrice: 5 },
-      { skuId: 'sku-b', month: '2027-02', forecastPcs: 749, unitPrice: 5 },
+      { skuId: 'sku-b', month: '2027-01', forecastPcs: 750, unitPrice: 5, unitPriceCurrency: 'USD' },
+      { skuId: 'sku-b', month: '2027-02', forecastPcs: 749, unitPrice: 5, unitPriceCurrency: 'USD' },
     ]);
   });
 
@@ -174,8 +174,8 @@ describe('buildYearlyGrowthForecasts', () => {
     });
 
     expect(result.generated).toEqual([
-      { skuId: 'sku-a', month: '2027-01', forecastPcs: 1100, unitPrice: 2 },
-      { skuId: 'sku-a', month: '2028-01', forecastPcs: 1210, unitPrice: 2 },
+      { skuId: 'sku-a', month: '2027-01', forecastPcs: 1100, unitPrice: 2, unitPriceCurrency: 'USD' },
+      { skuId: 'sku-a', month: '2028-01', forecastPcs: 1210, unitPrice: 2, unitPriceCurrency: 'USD' },
     ]);
     expect(result.skippedSkuYears).toEqual([]);
   });

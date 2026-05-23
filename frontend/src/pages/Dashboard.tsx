@@ -20,7 +20,7 @@ import { YearlyHealthMatrix } from '../components/analytics/YearlyHealthMatrix';
 import { MetricCard, SectionCard } from '../components/common';
 import { useI18n } from '../i18n';
 import { useAppPrefs } from '../context/AppPreferencesContext';
-import { formatCurrency, formatCurrencyShort, DEFAULT_CURRENCY_SETTINGS } from '../core/currency';
+import { formatCurrency, formatCurrencyShort, DEFAULT_CURRENCY_SETTINGS, normalizeCurrencySettings } from '../core/currency';
 import type { CurrencySettings } from '../core/currency';
 import { buildBpAnalysis, computeBpKpi, formatAttainment, formatBpAmount, type BpPeriodRecord } from '../core/bpTargets';
 
@@ -64,13 +64,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
       setTotalSkus(skus.length);
 
       const cs = paramsData.currencySettings;
-      const baseSettings: CurrencySettings = cs ? {
-        baseCurrency: 'USD',
-        displayCurrency: cs.displayCurrency,
-        exchangeRateMode: cs.exchangeRateMode,
-        constantUsdToTwdRate: cs.constantUsdToTwdRate,
-        yearlyUsdToTwdRates: cs.yearlyUsdToTwdRates,
-      } : DEFAULT_CURRENCY_SETTINGS;
+      const baseSettings: CurrencySettings = normalizeCurrencySettings(cs);
 
       setCurrencySettings({ ...baseSettings, displayCurrency: prefs.displayCurrency });
 

@@ -1,4 +1,5 @@
 import type { Forecast, SKU } from '../types';
+import { currencyOrUsd } from './currency';
 
 type SkipReason = 'target-has-data' | 'base-year-empty';
 
@@ -84,6 +85,7 @@ export function buildYearlyGrowthForecasts(input: YearlyGrowthBuildInput): Yearl
           month: targetMonth,
           forecastPcs: Math.round(basePcs * multiplier),
           unitPrice: sku.unitPrice ?? baseForecast?.unitPrice ?? 0,
+          unitPriceCurrency: currencyOrUsd(sku.unitPriceCurrency ?? baseForecast?.unitPriceCurrency),
         };
 
         generated.push(nextForecast);

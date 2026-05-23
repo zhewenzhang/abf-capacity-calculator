@@ -32,7 +32,8 @@ import type { ColumnsType } from 'antd/es/table';
 import * as XLSX from 'xlsx';
 import { getSKUs, saveSKU, deleteSKU, batchSaveSKUs } from '../services/skuService';
 import { saveVersion, getVersions, restoreVersion, deleteVersion } from '../services/skuVersionService';
-import type { SKU, SizeCategory } from '../types';
+import type { CurrencyCode, SKU, SizeCategory } from '../types';
+import { normalizeCurrencyCode } from '../core/currency';
 import { validateSKU } from '../core/validation';
 import { DEFAULT_YIELD_MATRIX } from '../core/defaults';
 import { useI18n } from '../i18n';
@@ -58,6 +59,11 @@ const APP_OPTIONS = [
 
 const CORE_TYPE_OPTIONS = ['E705G', 'E795G', 'E705GLH', 'E795GLH'].map(c => ({ label: c, value: c }));
 const ABF_TYPE_OPTIONS = ['GL102', 'GL107', 'GXT31', 'GZ41'].map(a => ({ label: a, value: a }));
+const CURRENCY_OPTIONS: { label: string; value: CurrencyCode }[] = [
+  { label: 'USD', value: 'USD' },
+  { label: 'TWD (NTD)', value: 'TWD' },
+  { label: 'CNY (RMB)', value: 'CNY' },
+];
 
 // UPP calculation
 function calculateUPP(chipLengthMm: number, chipWidthMm: number): number {
@@ -125,6 +131,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
         'Layer Count': 10,
         'Yield Rate': 0.92,
         'Unit Price': 2.5,
+        'Currency': 'USD',
         'Core Type': 'E705G',
         'Core Thickness (mm)': 0.8,
         'ABF Type': 'GL102',
@@ -142,6 +149,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
         'Layer Count': 14,
         'Yield Rate': 0.85,
         'Unit Price': 5.8,
+        'Currency': 'TWD',
         'Core Type': 'E795G',
         'Core Thickness (mm)': 1.0,
         'ABF Type': 'GL107',
@@ -164,6 +172,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
       { wch: 14 }, // Layer Count
       { wch: 14 }, // Yield Rate
       { wch: 14 }, // Unit Price
+      { wch: 12 }, // Currency
       { wch: 14 }, // Core Type
       { wch: 18 }, // Core Thickness
       { wch: 12 }, // ABF Type
@@ -236,6 +245,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
         message.error(errors.map((e) => e.message).join(', '));
         return;
       }
+      values.unitPriceCurrency = values.unitPriceCurrency ?? 'USD';
       values.upp = calculateUPP(values.chipLengthMm, values.chipWidthMm);
       values.yieldEstimate = getYieldEstimate(values.sizeCategory, values.layerCount);
       await saveSKU(userId, projectId, values);
@@ -268,6 +278,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
         message.error(errors.map((e) => e.message).join(', '));
         return;
       }
+      values.unitPriceCurrency = values.unitPriceCurrency ?? sku.unitPriceCurrency ?? 'USD';
       values.upp = calculateUPP(values.chipLengthMm, values.chipWidthMm);
       values.yieldEstimate = getYieldEstimate(values.sizeCategory, values.layerCount);
       await saveSKU(userId, projectId, { ...sku, ...values });
@@ -315,6 +326,12 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
 
           const rawYield = parseFloat(row['Yield Rate'] || row['yieldEstimate'] || row['Yield']);
           const yieldEstimate = (rawYield > 0 && rawYield <= 1) ? rawYield : getYieldEstimate(sizeCategory, layerCount);
+          const rawCurrency = row['Currency'] || row['Price Currency'] || row['unitPriceCurrency'] || row['Unit Price Currency'] || 'USD';
+          const unitPriceCurrency = normalizeCurrencyCode(rawCurrency);
+          if (!unitPriceCurrency) {
+            message.error(`${t('products.invalidCurrency')}: ${rawCurrency}`);
+            return;
+          }
 
           imported.push({
             skuCode, customer,
@@ -324,6 +341,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
             productGrade: row['Grade'] || row['productGrade'] || '',
             sizeCategory, chipLengthMm, chipWidthMm, layerCount,
             unitPrice: parseFloat(row['Price'] || row['unitPrice'] || row['Unit Price']) || 0,
+            unitPriceCurrency,
             upp: calculateUPP(chipLengthMm, chipWidthMm),
             yieldEstimate,
             coreType: row['Core Type'] || row['coreType'] || '',
@@ -414,7 +432,10 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
         return `${Math.round(y * 100)}%`;
       },
     },
-    { title: t('products.unitPrice'), dataIndex: 'unitPrice', key: 'unitPrice', width: 80, render: (v: number) => `$${v?.toFixed(1)}` },
+    {
+      title: t('products.unitPrice'), dataIndex: 'unitPrice', key: 'unitPrice', width: 110,
+      render: (v: number, r: SKU) => `${v?.toFixed(2)} ${r.unitPriceCurrency ?? 'USD'}`,
+    },
     { title: t('products.coreType'), dataIndex: 'coreType', key: 'coreType', width: 90, render: (v: string) => v || '-' },
     { title: t('products.coreThickness').replace(' (mm)', ''), key: 'coreThick', width: 80, render: (_: any, r: SKU) => r.coreThicknessMm ? `${r.coreThicknessMm}mm` : '-' },
     { title: t('products.abfType'), dataIndex: 'abfType', key: 'abfType', width: 80, render: (v: string) => v || '-' },
@@ -512,6 +533,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
               <Col span={1}><Form.Item name="chipWidthMm" style={{ margin: 0 }} rules={[{ required: true }]}><InputNumber size="small" min={0.01} step={0.1} placeholder="W" style={{ width: '100%' }} /></Form.Item></Col>
               <Col span={1}><Form.Item name="layerCount" style={{ margin: 0 }} rules={[{ required: true }]}><InputNumber size="small" min={2} step={2} placeholder={t('products.layerCount')} style={{ width: '100%' }} /></Form.Item></Col>
               <Col span={1}><Form.Item name="unitPrice" style={{ margin: 0 }} rules={[{ required: true }]}><InputNumber size="small" min={0} step={0.01} precision={4} placeholder={t('products.unitPrice')} style={{ width: '100%' }} /></Form.Item></Col>
+              <Col span={1.5}><Form.Item name="unitPriceCurrency" initialValue="USD" style={{ margin: 0 }}><Select size="small" options={CURRENCY_OPTIONS} style={{ width: '100%' }} /></Form.Item></Col>
               <Col span={1}>
                 <Form.Item noStyle shouldUpdate={(prev, cur) => prev.chipLengthMm !== cur.chipLengthMm || prev.chipWidthMm !== cur.chipWidthMm}>
                   {({ getFieldValue }) => {
@@ -602,7 +624,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
           </div>
           <div>
             <Text strong>{t('products.import')} {t('common.template')}: </Text>
-            <Text type="secondary">Excel/CSV — SKU Code, Customer, Device, OSAT, Application, Grade, Size (small/medium/large/xlarge), Chip Length, Chip Width, Layers, Price</Text>
+            <Text type="secondary">Excel/CSV — SKU Code, Customer, Device, OSAT, Application, Grade, Size (small/medium/large/xlarge), Chip Length, Chip Width, Layers, Price, Currency</Text>
           </div>
           <div>
             <Text strong>{t('products.upp')} & {t('products.yieldRate')}: </Text>
@@ -650,7 +672,8 @@ const EditFormRow: React.FC<{
           <Col span={3}><Form.Item name="layerCount" label={t('products.layerCount')} rules={[{ required: true, message: t('common.required') }]}><InputNumber min={2} step={2} style={{ width: '100%' }} /></Form.Item></Col>
           <Col span={3}><Form.Item name="yieldEstimate" label={t('products.yieldRate')}><InputNumber min={0} max={1} step={0.01} precision={3} style={{ width: '100%' }} addonAfter="%" /></Form.Item></Col>
           <Col span={3}><Form.Item name="unitPrice" label={t('products.unitPrice')} rules={[{ required: true, message: t('common.required') }]}><InputNumber min={0} step={0.01} precision={1} style={{ width: '100%' }} /></Form.Item></Col>
-          <Col span={9}></Col>
+          <Col span={3}><Form.Item name="unitPriceCurrency" label={t('products.unitPriceCurrency')} initialValue={sku.unitPriceCurrency ?? 'USD'}><Select options={CURRENCY_OPTIONS} /></Form.Item></Col>
+          <Col span={6}></Col>
         </Row>
         <Row gutter={16}>
           {/* Row 3: Material Info */}

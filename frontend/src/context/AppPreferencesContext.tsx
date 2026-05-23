@@ -25,7 +25,7 @@ function loadPrefs(): AppPreferences {
       const parsed = JSON.parse(stored);
       return {
         language: parsed.language === 'zh-TW' ? 'zh-TW' : 'en',
-        displayCurrency: parsed.displayCurrency === 'TWD' ? 'TWD' : 'USD',
+        displayCurrency: parsed.displayCurrency === 'TWD' || parsed.displayCurrency === 'CNY' ? parsed.displayCurrency : 'USD',
       };
     }
   } catch { /* localStorage unavailable — use defaults */ }

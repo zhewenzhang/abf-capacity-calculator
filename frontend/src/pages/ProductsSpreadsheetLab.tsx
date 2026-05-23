@@ -7,6 +7,7 @@ import { getSKUs, batchSaveSKUs } from '../services/skuService';
 import { ExperimentalBanner } from '../components/common';
 import { validateSKU } from '../core/validation';
 import { calculateSkuUpp, calculateSkuYieldEstimate, normalizeSkuDraft } from '../core/skuDerived';
+import { currencyOrUsd, normalizeCurrencyCode } from '../core/currency';
 import type { SizeCategory } from '../types';
 
 const { Text } = Typography;
@@ -25,6 +26,7 @@ interface SheetRow {
   chipWidthMm: number | null;
   layerCount: number | null;
   unitPrice: number | null;
+  unitPriceCurrency: string | null;
   coreType: string | null;
   coreThicknessMm: number | null;
   abfType: string | null;
@@ -38,7 +40,7 @@ const EMPTY_ROW: SheetRow = {
   skuCode: null, customer: null, deviceName: null, osat: null,
   application: null, productGrade: null, sizeCategory: null,
   chipLengthMm: null, chipWidthMm: null, layerCount: null,
-  unitPrice: null, coreType: null, coreThicknessMm: null, abfType: null,
+  unitPrice: null, unitPriceCurrency: 'USD', coreType: null, coreThicknessMm: null, abfType: null,
 };
 
 function createBlankRows(count: number): SheetRow[] {
@@ -58,7 +60,8 @@ function deriveRow(row: SheetRow): SheetRow {
 
 function validateRow(row: SheetRow): string {
   if (!row.skuCode && !row.customer && !row.deviceName && !row.chipLengthMm) return '';
-  const normalized = normalizeSkuDraft(row as any);
+  if (row.unitPriceCurrency && !normalizeCurrencyCode(row.unitPriceCurrency)) return `Invalid currency: ${row.unitPriceCurrency}`;
+  const normalized = normalizeSkuDraft({ ...row, unitPriceCurrency: currencyOrUsd(row.unitPriceCurrency) } as any);
   const errors = validateSKU(normalized);
   if (errors.length > 0) return errors.map(e => e.message).join('; ');
   return '';
@@ -77,6 +80,7 @@ function rowToFirestore(sku: SheetRow): any {
   if (sku.chipWidthMm != null) data.chipWidthMm = sku.chipWidthMm;
   if (sku.layerCount != null) data.layerCount = sku.layerCount;
   if (sku.unitPrice != null) data.unitPrice = sku.unitPrice;
+  data.unitPriceCurrency = currencyOrUsd(sku.unitPriceCurrency);
   if (sku.coreType != null) data.coreType = sku.coreType;
   if (sku.coreThicknessMm != null) data.coreThicknessMm = sku.coreThicknessMm;
   if (sku.abfType != null) data.abfType = sku.abfType;
@@ -119,6 +123,7 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ userId,
         chipWidthMm: s.chipWidthMm ?? null,
         layerCount: s.layerCount ?? null,
         unitPrice: s.unitPrice ?? null,
+        unitPriceCurrency: currencyOrUsd(s.unitPriceCurrency),
         coreType: s.coreType || null,
         coreThicknessMm: s.coreThicknessMm ?? null,
         abfType: s.abfType || null,
@@ -201,14 +206,14 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ userId,
   }, [savedSnapshot]);
 
   const handleExportCSV = useCallback(() => {
-    const headers = ['SKU Code', 'Customer', 'Device', 'OSAT', 'Application', 'Grade', 'Size', 'Chip L', 'Chip W', 'Layers', 'Price', 'Core', 'Thick', 'ABF', 'UPP', 'Yield'];
+    const headers = ['SKU Code', 'Customer', 'Device', 'OSAT', 'Application', 'Grade', 'Size', 'Chip L', 'Chip W', 'Layers', 'Price', 'Currency', 'Core', 'Thick', 'ABF', 'UPP', 'Yield'];
     const csvRows = [headers.join(',')];
     const dataRows = rows.filter(r => !isRowEmpty(r));
     for (const r of dataRows) {
       csvRows.push([
         r.skuCode, r.customer, r.deviceName, r.osat, r.application, r.productGrade,
         r.sizeCategory, r.chipLengthMm ?? '', r.chipWidthMm ?? '', r.layerCount ?? '',
-        r.unitPrice ?? '', r.coreType, r.coreThicknessMm ?? '', r.abfType,
+        r.unitPrice ?? '', currencyOrUsd(r.unitPriceCurrency), r.coreType, r.coreThicknessMm ?? '', r.abfType,
         r.upp ?? '', r.yieldEstimate != null ? `${(r.yieldEstimate * 100).toFixed(0)}%` : '',
       ].map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','));
     }
@@ -237,7 +242,8 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ userId,
       keyColumn<SheetRow, 'chipLengthMm'>('chipLengthMm', { ...fc, title: 'Chip L (mm)', width: 80 }),
       keyColumn<SheetRow, 'chipWidthMm'>('chipWidthMm', { ...fc, title: 'Chip W (mm)', width: 80 }),
       keyColumn<SheetRow, 'layerCount'>('layerCount', { ...ic, title: 'Layers', width: 60 }),
-      keyColumn<SheetRow, 'unitPrice'>('unitPrice', { ...fc, title: 'Price (USD)', width: 80 }),
+      keyColumn<SheetRow, 'unitPrice'>('unitPrice', { ...fc, title: 'Price', width: 80 }),
+      keyColumn<SheetRow, 'unitPriceCurrency'>('unitPriceCurrency', { ...tc, title: 'Currency', width: 80 }),
       keyColumn<SheetRow, 'coreType'>('coreType', { ...tc, title: 'Core', width: 80 }),
       keyColumn<SheetRow, 'coreThicknessMm'>('coreThicknessMm', { ...fc, title: 'Thick (mm)', width: 75 }),
       keyColumn<SheetRow, 'abfType'>('abfType', { ...tc, title: 'ABF', width: 60 }),

@@ -1,4 +1,9 @@
 {
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "3f7d3f36-e354-4576-89c3-b214e146f7a3",
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:9999/v1",
+    "ANTHROPIC_MODEL": "ark-code-latest"
+  },
   "permissions": {
     "allow": [
       "Bash(cd frontend && npm run lint:*)",
@@ -10,16 +15,19 @@
     ]
   },
   "hooks": {
-    "postToolUse": [
+    "PostToolUse": [
       {
-        "if": "tool == 'Edit' or tool == 'Write'",
-        "run": "cd frontend && npm run lint -- --quiet 2>&1 | head -30",
-        "description": "ESLint check after code edits"
-      },
-      {
-        "if": "tool == 'Edit' or tool == 'Write' and path matches /frontend\\/src\\/core\\//",
-        "run": "cd frontend && npm test -- --run src/core/ 2>&1 | tail -20",
-        "description": "Run core tests after business logic changes"
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd frontend && npm run lint -- --quiet 2>&1 | head -30"
+          },
+          {
+            "type": "command",
+            "command": "cd frontend && npm test -- --run src/core/ 2>&1 | tail -20"
+          }
+        ]
       }
     ]
   }

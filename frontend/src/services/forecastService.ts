@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import type { Forecast } from '../types';
+import { currencyOrUsd } from '../core/currency';
 
 if (!db) {
   throw new Error('Firestore not initialized. Check your .env configuration.');
@@ -20,10 +21,14 @@ function forecastPath(userId: string, projectId: string) {
   return `users/${userId}/projects/${projectId}/forecasts`;
 }
 
+function normalizeForecast(id: string, data: Record<string, unknown>): Forecast {
+  return { id, ...data, unitPriceCurrency: currencyOrUsd(data.unitPriceCurrency) } as Forecast;
+}
+
 export async function getForecasts(userId: string, projectId: string): Promise<Forecast[]> {
   const q = query(collection(db!, forecastPath(userId, projectId)), orderBy('month', 'asc'));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Forecast));
+  return snapshot.docs.map((d) => normalizeForecast(d.id, d.data()));
 }
 
 export async function getForecastsBySku(userId: string, projectId: string, skuId: string): Promise<Forecast[]> {
@@ -33,7 +38,7 @@ export async function getForecastsBySku(userId: string, projectId: string, skuId
     orderBy('month', 'asc')
   );
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Forecast));
+  return snapshot.docs.map((d) => normalizeForecast(d.id, d.data()));
 }
 
 export async function saveForecast(userId: string, projectId: string, forecast: Omit<Forecast, 'id'> & { id?: string }): Promise<string> {

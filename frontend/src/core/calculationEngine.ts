@@ -9,6 +9,7 @@ import type {
 } from '../types';
 import { getYieldRate } from './yieldMatrix';
 import { calculatePanelLayout } from './panelLayout';
+import { DEFAULT_CURRENCY_SETTINGS, currencyOrUsd, normalizeCurrencySettings, normalizePriceToUsd } from './currency';
 
 export function calculateSteps(layerCount: number): { coreSteps: number; buSteps: number } {
   const coreSteps = 1;
@@ -34,14 +35,25 @@ export function calculateSkuMonth(
   const { coreSteps, buSteps } = calculateSteps(sku.layerCount);
   const corePanelDemand = requiredPanels * coreSteps;
   const buPanelDemand = requiredPanels * buSteps;
-  const revenue = forecast.forecastPcs * forecast.unitPrice;
+  const currencySettings = normalizeCurrencySettings(params.currencySettings ?? DEFAULT_CURRENCY_SETTINGS);
+  const sourceUnitPriceCurrency = currencyOrUsd(forecast.unitPriceCurrency);
+  const unitPriceUsd = normalizePriceToUsd(
+    forecast.unitPrice,
+    sourceUnitPriceCurrency,
+    currencySettings,
+    forecast.month.substring(0, 4)
+  );
+  const revenue = forecast.forecastPcs * unitPriceUsd;
 
   return {
     skuId: sku.id,
     skuCode: sku.skuCode,
     month: forecast.month,
     forecastPcs: forecast.forecastPcs,
-    unitPrice: forecast.unitPrice,
+    unitPrice: unitPriceUsd,
+    unitPriceCurrency: 'USD',
+    sourceUnitPrice: forecast.unitPrice,
+    sourceUnitPriceCurrency,
     yieldRate,
     requiredInputPcs,
     pcsPerPanel,

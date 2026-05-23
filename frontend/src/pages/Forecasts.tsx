@@ -222,6 +222,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
           month,
           forecastPcs: value,
           unitPrice: sku?.unitPrice ?? 0,
+          unitPriceCurrency: sku?.unitPriceCurrency ?? 'USD',
         });
       }
 
@@ -302,6 +303,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
             month,
             forecastPcs: Math.round(targetValueK * 1000),
             unitPrice: sku?.unitPrice ?? 0,
+            unitPriceCurrency: sku?.unitPriceCurrency ?? 'USD',
           });
         }
       }
@@ -346,6 +348,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
             month,
             forecastPcs: Math.round(current * multiplier),
             unitPrice: sku?.unitPrice ?? 0,
+            unitPriceCurrency: sku?.unitPriceCurrency ?? 'USD',
           });
         }
       }
@@ -463,6 +466,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
             month,
             forecastPcs: lastValue,
             unitPrice: sku?.unitPrice ?? 0,
+            unitPriceCurrency: sku?.unitPriceCurrency ?? 'USD',
           });
           // Also update editing cells so UI updates immediately
           setEditingCells(prev => ({ ...prev, [`${skuId}::${month}`]: lastValue }));
@@ -599,6 +603,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
               month,
               forecastPcs: Math.round(rawVal * 1000), // K PCS → PCS
               unitPrice: sku.unitPrice,
+              unitPriceCurrency: sku.unitPriceCurrency ?? 'USD',
             });
           }
         }

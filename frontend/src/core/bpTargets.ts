@@ -13,7 +13,7 @@
 
 import type { SkuCalculationResult, MonthlyCapacitySummary, SKU } from '../types';
 import type { CurrencySettings } from './currency';
-import { convertCurrency } from './currency';
+import { convertFromUsd, normalizeCurrencySettings } from './currency';
 
 // --- Types ---
 
@@ -102,7 +102,7 @@ export function buildBpAnalysis(
   const monthlyRevenueTwd = new Map<string, number>();
   monthlyRevenueUsd.forEach((usd, month) => {
     const year = month.substring(0, 4);
-    monthlyRevenueTwd.set(month, convertCurrency(usd, currencySettings, year));
+    monthlyRevenueTwd.set(month, convertFromUsd(usd, 'TWD', normalizeCurrencySettings(currencySettings), year));
   });
 
   // Get all periods from skuResults (not monthlySummaries)
@@ -195,7 +195,7 @@ function buildDimensionMatrix(
     const dim = dimensionFn(sku);
     const time = timeFn(r.month);
     const year = r.month.substring(0, 4);
-    const twdRevenue = convertCurrency(valueFn(r), currencySettings, year) / 1_000_000;
+    const twdRevenue = convertFromUsd(valueFn(r), 'TWD', normalizeCurrencySettings(currencySettings), year) / 1_000_000;
     if (!dimMap.has(dim)) dimMap.set(dim, new Map());
     const timeMap = dimMap.get(dim)!;
     timeMap.set(time, (timeMap.get(time) || 0) + twdRevenue);
@@ -242,7 +242,7 @@ function buildSkuDimensionMatrix(
     const dim = `${r.skuCode} / ${sku.customer}`;
     const time = timeFn(r.month);
     const year = r.month.substring(0, 4);
-    const twdRevenue = convertCurrency(valueFn(r), currencySettings, year) / 1_000_000;
+    const twdRevenue = convertFromUsd(valueFn(r), 'TWD', normalizeCurrencySettings(currencySettings), year) / 1_000_000;
     if (!dimMap.has(dim)) dimMap.set(dim, new Map());
     const timeMap = dimMap.get(dim)!;
     timeMap.set(time, (timeMap.get(time) || 0) + twdRevenue);

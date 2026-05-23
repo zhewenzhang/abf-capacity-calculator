@@ -18,7 +18,7 @@ import type { ProjectParameters, SizeCategory, LayerBucket } from '../types';
 import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_WORKING_DAYS } from '../core/defaults';
 import { useI18n } from '../i18n';
 import { useAppPrefs } from '../context/AppPreferencesContext';
-import { DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
+import { DEFAULT_CURRENCY_SETTINGS, type CurrencySettings, normalizeCurrencySettings } from '../core/currency';
 
 const { Text } = Typography;
 
@@ -57,13 +57,10 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
       });
       const cs = data.currencySettings;
       if (cs) {
-        setCurrencySettings({
-          baseCurrency: 'USD',
+        setCurrencySettings(normalizeCurrencySettings({
+          ...cs,
           displayCurrency: prefs.displayCurrency, // Use user preference
-          exchangeRateMode: cs.exchangeRateMode,
-          constantUsdToTwdRate: cs.constantUsdToTwdRate,
-          yearlyUsdToTwdRates: cs.yearlyUsdToTwdRates,
-        });
+        }));
       }
       // Load BP targets
       const bp = data.bpTargets;
@@ -199,6 +196,41 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([year, rate]) => ({ year, rate }));
 
+  const yearlyCnyRateColumns = [
+    {
+      title: t('parameters.year'),
+      dataIndex: 'year',
+      key: 'year',
+      width: 100,
+    },
+    {
+      title: t('parameters.rate'),
+      dataIndex: 'rate',
+      key: 'rate',
+      render: (value: number, record: { year: string }) => (
+        <InputNumber
+          min={0}
+          step={0.1}
+          precision={2}
+          value={value}
+          onChange={(v) => {
+            if (v !== null) {
+              setCurrencySettings((prev) => ({
+                ...prev,
+                yearlyUsdToCnyRates: { ...prev.yearlyUsdToCnyRates, [record.year]: v },
+              }));
+            }
+          }}
+          style={{ width: 100 }}
+        />
+      ),
+    },
+  ];
+
+  const yearlyCnyRateData = Object.entries(currencySettings.yearlyUsdToCnyRates || {})
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([year, rate]) => ({ year, rate }));
+
   return (
     <div>
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
@@ -253,13 +285,14 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
             <Radio.Group
               value={currencySettings.displayCurrency}
               onChange={(e) => {
-                const newCurrency = e.target.value as 'USD' | 'TWD';
+                const newCurrency = e.target.value as any;
                 setCurrencySettings((prev) => ({ ...prev, displayCurrency: newCurrency }));
                 setCurrency(newCurrency); // Sync with app preferences
               }}
             >
               <Radio.Button value="USD">USD</Radio.Button>
               <Radio.Button value="TWD">TWD</Radio.Button>
+              <Radio.Button value="CNY">CNY</Radio.Button>
             </Radio.Group>
           </Form.Item>
           <Form.Item label={t('parameters.exchangeRateMode')}>
@@ -274,30 +307,60 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
             </Radio.Group>
           </Form.Item>
           {currencySettings.exchangeRateMode === 'constant' && (
-            <Form.Item label={t('parameters.usdToTwd')}>
-              <InputNumber
-                min={0}
-                step={0.1}
-                precision={2}
-                value={currencySettings.constantUsdToTwdRate}
-                onChange={(v) =>
-                  setCurrencySettings((prev) => ({
-                    ...prev,
-                    constantUsdToTwdRate: v ?? prev.constantUsdToTwdRate,
-                  }))
-                }
-              />
-            </Form.Item>
+            <>
+              <Form.Item label={t('parameters.usdToTwd')}>
+                <InputNumber
+                  min={0}
+                  step={0.1}
+                  precision={2}
+                  value={currencySettings.constantUsdToTwdRate}
+                  onChange={(v) =>
+                    setCurrencySettings((prev) => ({
+                      ...prev,
+                      constantUsdToTwdRate: v ?? prev.constantUsdToTwdRate,
+                    }))
+                  }
+                />
+              </Form.Item>
+              <Form.Item label={t('parameters.usdToCny')}>
+                <InputNumber
+                  min={0}
+                  step={0.1}
+                  precision={2}
+                  value={currencySettings.constantUsdToCnyRate}
+                  onChange={(v) =>
+                    setCurrencySettings((prev) => ({
+                      ...prev,
+                      constantUsdToCnyRate: v ?? prev.constantUsdToCnyRate,
+                    }))
+                  }
+                />
+              </Form.Item>
+            </>
           )}
           {currencySettings.exchangeRateMode === 'yearly' && (
-            <Table
-              columns={yearlyRateColumns}
-              dataSource={yearlyRateData}
-              rowKey="year"
-              size="small"
-              pagination={false}
-              style={{ marginTop: 8 }}
-            />
+            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', width: '100%', marginTop: 12 }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>{t('parameters.usdToTwd')}</Typography.Text>
+                <Table
+                  columns={yearlyRateColumns}
+                  dataSource={yearlyRateData}
+                  rowKey="year"
+                  size="small"
+                  pagination={false}
+                />
+              </div>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>{t('parameters.usdToCny')}</Typography.Text>
+                <Table
+                  columns={yearlyCnyRateColumns}
+                  dataSource={yearlyCnyRateData}
+                  rowKey="year"
+                  size="small"
+                  pagination={false}
+                />
+              </div>
+            </div>
           )}
         </Form>
       </Card>

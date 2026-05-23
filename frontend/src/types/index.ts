@@ -4,6 +4,8 @@ export type SizeCategory = 'small' | 'medium' | 'large' | 'xlarge';
 // Capacity metric type for spreadsheet
 export type CapacityMetric = 'core' | 'bu';
 
+export type CurrencyCode = 'USD' | 'TWD' | 'CNY';
+
 // Layer buckets for yield matrix
 export type LayerBucket = '4-8L' | '10-14L' | '16-20L' | '20L+';
 
@@ -21,6 +23,7 @@ export interface SKU {
   chipWidthMm: number;
   layerCount: number;
   unitPrice: number;
+  unitPriceCurrency?: CurrencyCode;
   upp?: number;           // units per panel, auto-calculated
   yieldEstimate?: number; // estimated yield rate from matrix
   coreType?: string;      // Core material type: E705G/E795G/E705GLH/E795GLH
@@ -37,6 +40,7 @@ export interface Forecast {
   month: string; // YYYY-MM
   forecastPcs: number;
   unitPrice: number;
+  unitPriceCurrency?: CurrencyCode;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -83,10 +87,12 @@ export interface ProjectParameters {
   factories?: FactoryDef[];
   currencySettings?: {
     baseCurrency: 'USD';
-    displayCurrency: 'USD' | 'TWD';
+    displayCurrency: CurrencyCode;
     exchangeRateMode: 'constant' | 'yearly';
     constantUsdToTwdRate: number;
     yearlyUsdToTwdRates: Record<string, number>;
+    constantUsdToCnyRate: number;
+    yearlyUsdToCnyRates: Record<string, number>;
   };
   bpTargets?: {
     mode: 'yearly' | 'monthly';
@@ -103,6 +109,9 @@ export interface SkuCalculationResult {
   month: string;
   forecastPcs: number;
   unitPrice: number;
+  unitPriceCurrency?: CurrencyCode;
+  sourceUnitPrice?: number;
+  sourceUnitPriceCurrency?: CurrencyCode;
   yieldRate: number;
   requiredInputPcs: number;
   pcsPerPanel: number;

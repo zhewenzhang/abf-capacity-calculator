@@ -5,6 +5,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { DEFAULT_WORKING_DAYS } from '../core/defaults';
+import { normalizeCurrencySettings } from '../core/currency';
 import type { ProjectParameters, YieldMatrix, PanelParams } from '../types';
 
 if (!db) {
@@ -31,18 +32,24 @@ const DEFAULT_PANEL: PanelParams = {
   toleranceMm: 0,
 };
 
+function normalizeParameters(params: ProjectParameters): ProjectParameters {
+  return {
+    ...params,
+    currencySettings: normalizeCurrencySettings(params.currencySettings),
+  };
+}
+
 export async function getParameters(userId: string, projectId: string): Promise<ProjectParameters> {
   const ref = doc(db!, paramPath(userId, projectId));
   const snap = await getDoc(ref);
   if (snap.exists()) {
-    return snap.data() as ProjectParameters;
+    return normalizeParameters(snap.data() as ProjectParameters);
   }
-  // Return defaults
-  return {
+  return normalizeParameters({
     yieldMatrix: DEFAULT_YIELD,
     panelParams: DEFAULT_PANEL,
     defaultWorkingDays: DEFAULT_WORKING_DAYS,
-  };
+  });
 }
 
 export async function saveParameters(userId: string, projectId: string, params: ProjectParameters): Promise<void> {

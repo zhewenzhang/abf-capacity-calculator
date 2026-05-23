@@ -55,6 +55,7 @@ const sku: Omit<SKU, 'id'> = {
   chipWidthMm: 8,
   layerCount: 10,
   unitPrice: 2,
+  unitPriceCurrency: 'USD',
 };
 
 const forecast: Omit<Forecast, 'id'> = {
@@ -62,6 +63,7 @@ const forecast: Omit<Forecast, 'id'> = {
   month: '2026-01',
   forecastPcs: 1000,
   unitPrice: 2,
+  unitPriceCurrency: 'USD',
 };
 
 const parameters: ProjectParameters = {

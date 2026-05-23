@@ -40,7 +40,7 @@ const CalculationResultsPage = lazy(() => import('./pages/CalculationResults'));
 const { Sider, Content } = Layout;
 const { Title } = Typography;
 
-const APP_VERSION = 'v1.14.9';
+const APP_VERSION = 'v1.15.0';
 
 // --- Sidebar with i18n ---
 const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }> = ({ current, onMenuClick }) => {
@@ -133,6 +133,7 @@ const AppHeader: React.FC<{
           >
             <Radio.Button value="USD">USD</Radio.Button>
             <Radio.Button value="TWD">TWD</Radio.Button>
+            <Radio.Button value="CNY">CNY</Radio.Button>
           </Radio.Group>
         </Space>
 
