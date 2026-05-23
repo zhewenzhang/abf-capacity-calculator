@@ -33,6 +33,7 @@ A browser-based ABF (Ajinomoto Build-up Film) substrate capacity planning tool b
 12. **Analytics Layout** — Yearly analysis tables read horizontally (metrics as rows, years left-to-right), Dashboard KPI cards with consistent height, unified table styling across pages.
 13. **Decision-Grade Risk Brief** — Calibrated risk brief with clear sections: Executive Summary, Facts, Top Risk Periods (scored), Driver Analysis (revenue/core/BU/shortage/BP with share %), BP Risk, Data Confidence & Caveats (top 5), Assumptions, Role-Based Attention. Deterministic, no AI.
 14. **Risk Driver Attribution (v1.17.0)** — Shortage-month attribution layer separating "who is biggest overall" from "who drives pressure during shortage months." Aggregates demand by customer / SKU / size / application / layer bucket / product grade restricted to shortage months. Includes SKU Health Signals MVP (`strategicGrowth` / `cashCow` / `capacityDrainer` / `lowValueHighLoad` / `watchList` / `dataIncomplete`) with documented thresholds (`HIGH_SHARE = 15%`, `LOW_SHARE = 5%`). Deterministic, no AI.
+15. **Shared Workspace Collaboration (v1.18.0)** — Two or more Google accounts can share a single ABF dataset. Roles: `owner` / `editor` / `viewer`. Workspace switcher lives in the header; UID-based invite (no email magic link). Personal data path (`users/{uid}/...`) is preserved; shared data lives under `workspaces/{wid}/projects/{projectId}/...`. See [docs/WORKSPACE_COLLABORATION.md](docs/WORKSPACE_COLLABORATION.md).
 
 ## Project Documentation
 
@@ -42,6 +43,7 @@ A browser-based ABF (Ajinomoto Build-up Film) substrate capacity planning tool b
 | [FIREBASE_ARCHITECTURE.md](FIREBASE_ARCHITECTURE.md) | Firestore paths, service module responsibilities, Auth/Hosting setup, security rules |
 | [UI_GUIDELINES.md](UI_GUIDELINES.md) | Ant Design theme tokens, shared components, table standards, severity coloring, language/currency conventions |
 | [ANALYTICS_GUIDE.md](ANALYTICS_GUIDE.md) | Dashboard/Results purpose, key metrics, matrix layout standard, AnalyticsModel structure |
+| [docs/WORKSPACE_COLLABORATION.md](docs/WORKSPACE_COLLABORATION.md) | Workspace data model, roles, Firestore paths, invite flow, security rules |
 
 ## Firebase Setup
 
@@ -158,12 +160,27 @@ bottleneck      = Core / BU / None
 ## Firestore Data Model
 
 ```
+# Personal (private) — unchanged backward-compatible path:
 users/{userId}/projects/{projectId}/
   skus/{skuId}
   forecasts/{forecastId}
   capacityPlans/{month}-{factoryId}
   parameters/default
   capacityVersions/{versionId}
+  skuVersions/{versionId}
+
+# Shared workspaces (v1.18.0+):
+workspaces/{workspaceId}                              # name, ownerId, members map
+workspaces/{workspaceId}/projects/{projectId}/
+  skus/{skuId}
+  forecasts/{forecastId}
+  capacityPlans/{month}-{factoryId}
+  parameters/default
+  capacityVersions/{versionId}
+  skuVersions/{versionId}
+
+# Per-user index of accessible workspaces:
+userWorkspaces/{userId}/workspaces/{workspaceId}      # role, defaultProjectId
 ```
 
 ## Project Structure
@@ -218,6 +235,7 @@ frontend/src/
 
 ## Version History
 
+- **2026-05-23 v1.18.0**: Shared Workspace Collaboration MVP — added shared workspace data model (`workspaces/{wid}/projects/{projectId}/...`) so multiple Google accounts can co-edit one ABF dataset; introduced roles (`owner` / `editor` / `viewer`); WorkspaceContext + WorkspaceProvider drive an active scope, with `ProjectScope` plumbed through every service signature; Workspace switcher in header (Personal vs Shared) + UID copy affordance; Workspace Settings panel on Parameters page (create-from-personal, add member by Google UID, role select, member remove); `assertCanWrite` enforces viewer read-only at service layer plus disabled buttons + read-only Alert on Products / Forecasts / CapacityPlan / Parameters / CapacitySpreadsheet / ProductsSpreadsheetLab / Dashboard; `firestore.rules` and `firebase.json` added (members read business data, owner/editor write, only owner manages members, personal path remains user-private); migration is copy-not-move (personal data preserved); no AI, no backend, no Cloud Functions, no Refine, no calculation formula changes, multi-currency / BP TWD logic intact. See [docs/WORKSPACE_COLLABORATION.md](docs/WORKSPACE_COLLABORATION.md).
 - **2026-05-23 v1.17.0**: Phase 5.2 Risk Driver Attribution Upgrade — added `riskAttribution.ts` separating risk-period attribution from overall contribution; shortage-month aggregation by customer / SKU / size / application / layer bucket / product grade; introduced `capacityPressureIndex` MVP (`shortageCoreDemand + shortageBuDemand`); added SKU Health Signals MVP with deterministic classification (`strategicGrowth`, `cashCow`, `capacityDrainer`, `lowValueHighLoad`, `watchList`, `dataIncomplete`) and documented thresholds (HIGH_SHARE=15%, LOW_SHARE=5%); extended `AnalysisContractPayload.riskAttribution`; Risk Brief now exposes `attributionDrivers`, `shortageMonths`, `skuHealthSignals` and uses them in role-based attention; Results page renders three separated panels (Risk Period Attribution / SKU Health Signals / Overall Contribution); no AI integration, no formula changes, no Firebase changes, no multi-currency / BP TWD regressions, Refine not restored.
 - **2026-05-23 v1.16.1**: Phase 5.1 Risk Brief Calibration — calibrated deterministic Risk Brief on Results tab with explicit Facts, Drivers, Assumptions, Data Caveats, and Role-Based Attention sections; separated Driver Analysis into revenue, Core pressure, BU pressure, shortage exposure, and BP risk groups with share %; added confidence explanation and top-caveat limit (top 5); kept AI/API integration out of scope (deterministic only); verified test/lint/build gates.
 - **2026-05-23 v1.16.0**: Decision-Grade Analysis Foundation MVP — established Metric Registry defining 15 core decision KPIs; built Data Quality Checker assessing errors, warnings, and info across domains; integrated standardized AnalysisContract payload; engineered deterministic Capacity Bottleneck & BP Risk Brief on Results tab; upgraded Dashboard with live data trust Alert/Confidence tag; physically purged Refine Lab module (`/products-refine-lab`) along with related npm dependencies while maintaining Products Spreadsheet Lab as experimental; documented that generated forecast in bulk growth generation prioritizes SKU unit prices, falling back to previous year forecasts if undefined.

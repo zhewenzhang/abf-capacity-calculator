@@ -9,25 +9,27 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import type { CapacityPlan } from '../types';
+import type { CapacityPlan, ProjectScope } from '../types';
+import { collectionPath, assertCanWrite } from './projectScope';
 
 if (!db) {
   throw new Error('Firestore not initialized. Check your .env configuration.');
 }
 
-function capacityPath(userId: string, projectId: string) {
-  return `users/${userId}/projects/${projectId}/capacityPlans`;
+function capacityPath(scope: ProjectScope) {
+  return collectionPath(scope, 'capacityPlans');
 }
 
-export async function getCapacityPlans(userId: string, projectId: string): Promise<CapacityPlan[]> {
-  const q = query(collection(db!, capacityPath(userId, projectId)), orderBy('month', 'asc'));
+export async function getCapacityPlans(scope: ProjectScope): Promise<CapacityPlan[]> {
+  const q = query(collection(db!, capacityPath(scope)), orderBy('month', 'asc'));
   const snapshot = await getDocs(q);
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as CapacityPlan));
 }
 
-export async function saveCapacityPlan(userId: string, projectId: string, plan: Omit<CapacityPlan, 'id'> & { id?: string }): Promise<string> {
+export async function saveCapacityPlan(scope: ProjectScope, plan: Omit<CapacityPlan, 'id'> & { id?: string }): Promise<string> {
+  assertCanWrite(scope);
   const id = plan.id || `${plan.month}-${plan.factoryId}`;
-  const ref = doc(db!, capacityPath(userId, projectId), id);
+  const ref = doc(db!, capacityPath(scope), id);
   const now = new Date();
   const data = {
     ...plan,
@@ -39,20 +41,21 @@ export async function saveCapacityPlan(userId: string, projectId: string, plan: 
   return id;
 }
 
-export async function deleteCapacityPlan(userId: string, projectId: string, planId: string): Promise<void> {
-  const ref = doc(db!, capacityPath(userId, projectId), planId);
+export async function deleteCapacityPlan(scope: ProjectScope, planId: string): Promise<void> {
+  assertCanWrite(scope);
+  const ref = doc(db!, capacityPath(scope), planId);
   await deleteDoc(ref);
 }
 
 // Batch save: deletes old docs for the months being updated, then writes new ones
 export async function batchSaveCapacityPlans(
-  userId: string,
-  projectId: string,
+  scope: ProjectScope,
   updates: Array<{ month: string; factoryId: string; corePanelPerDay: number; buPanelPerDay: number }>,
   workingDays: number
 ): Promise<void> {
+  assertCanWrite(scope);
   const batch = writeBatch(db!);
-  const colRef = collection(db!, capacityPath(userId, projectId));
+  const colRef = collection(db!, capacityPath(scope));
 
   // Delete existing docs for these month-factory combos
   const snapshot = await getDocs(colRef);
@@ -67,7 +70,7 @@ export async function batchSaveCapacityPlans(
   for (const [key, docId] of existingMap) {
     const [month] = key.split('-');
     if (monthSet.has(month)) {
-      batch.delete(doc(db!, capacityPath(userId, projectId), docId));
+      batch.delete(doc(db!, capacityPath(scope), docId));
     }
   }
 
@@ -75,7 +78,7 @@ export async function batchSaveCapacityPlans(
   const now = new Date();
   for (const u of updates) {
     const id = `${u.month}-${u.factoryId}`;
-    const ref = doc(db!, capacityPath(userId, projectId), id);
+    const ref = doc(db!, capacityPath(scope), id);
     batch.set(ref, {
       id,
       month: u.month,

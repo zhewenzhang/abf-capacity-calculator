@@ -30,15 +30,15 @@ import type { ColumnsType } from 'antd/es/table';
 import * as XLSX from 'xlsx';
 import { getForecasts, batchSaveForecasts, deleteForecast } from '../services/forecastService';
 import { getSKUs } from '../services/skuService';
-import type { Forecast, SKU } from '../types';
+import type { Forecast, SKU, ProjectScope } from '../types';
+import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
 import { buildYearlyGrowthForecasts } from '../core/forecastGrowth';
 
 const { Text } = Typography;
 
 interface ForecastsPageProps {
-  userId: string;
-  projectId: string;
+  scope: ProjectScope;
 }
 
 // --- Period helpers ---
@@ -107,8 +107,9 @@ function monthsToYears(months: string[]): string[] {
   return Array.from(set).sort();
 }
 
-const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
+const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
   const { t } = useI18n();
+  const writable = canEdit(scope.role);
   const [skus, setSkus] = useState<SKU[]>([]);
   const [forecasts, setForecasts] = useState<Forecast[]>([]);
   const [loading, setLoading] = useState(false);
@@ -143,8 +144,8 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
     setError(null);
     try {
       const [skuData, fcData] = await Promise.all([
-        getSKUs(userId, projectId),
-        getForecasts(userId, projectId),
+        getSKUs(scope),
+        getForecasts(scope),
       ]);
       setSkus(skuData);
       setForecasts(fcData);
@@ -153,7 +154,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
     } finally {
       setLoading(false);
     }
-  }, [userId, projectId]);
+  }, [scope]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -229,7 +230,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
       // Batch save in chunks of 500
       const BATCH_SIZE = 500;
       for (let i = 0; i < toSave.length; i += BATCH_SIZE) {
-        await batchSaveForecasts(userId, projectId, toSave.slice(i, i + BATCH_SIZE));
+        await batchSaveForecasts(scope, toSave.slice(i, i + BATCH_SIZE));
       }
 
       message.success(`Saved ${changed.length} forecast values`);
@@ -310,7 +311,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
 
       const BATCH_SIZE = 500;
       for (let i = 0; i < toSave.length; i += BATCH_SIZE) {
-        await batchSaveForecasts(userId, projectId, toSave.slice(i, i + BATCH_SIZE));
+        await batchSaveForecasts(scope, toSave.slice(i, i + BATCH_SIZE));
       }
 
       message.success(`Batch set ${toSave.length} values for ${selectedRowKeys.length} SKUs`);
@@ -355,7 +356,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
 
       const BATCH_SIZE = 500;
       for (let i = 0; i < toSave.length; i += BATCH_SIZE) {
-        await batchSaveForecasts(userId, projectId, toSave.slice(i, i + BATCH_SIZE));
+        await batchSaveForecasts(scope, toSave.slice(i, i + BATCH_SIZE));
       }
 
       message.success(`Multiplied ${toSave.length} values for ${selectedRowKeys.length} SKUs`);
@@ -399,7 +400,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
       setSaving(true);
       const BATCH_SIZE = 500;
       for (let i = 0; i < result.generated.length; i += BATCH_SIZE) {
-        await batchSaveForecasts(userId, projectId, result.generated.slice(i, i + BATCH_SIZE));
+        await batchSaveForecasts(scope, result.generated.slice(i, i + BATCH_SIZE));
       }
 
       message.success(
@@ -481,7 +482,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
       // Batch save
       const BATCH_SIZE = 500;
       for (let i = 0; i < toSave.length; i += BATCH_SIZE) {
-        await batchSaveForecasts(userId, projectId, toSave.slice(i, i + BATCH_SIZE));
+        await batchSaveForecasts(scope, toSave.slice(i, i + BATCH_SIZE));
       }
 
       message.success(`Filled forward for ${targetSkus.length} SKUs (${toSave.length} values)`);
@@ -511,7 +512,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
       }
 
       // Delete in parallel
-      await Promise.all(toDelete.map(id => deleteForecast(userId, projectId, id)));
+      await Promise.all(toDelete.map(id => deleteForecast(scope, id)));
 
       message.success(`Cleared ${toDelete.length} forecast values for ${selectedRowKeys.length} SKUs`);
       setSelectedRowKeys([]);
@@ -616,7 +617,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
         // Batch save in chunks of 500
         const BATCH_SIZE = 500;
         for (let i = 0; i < toSave.length; i += BATCH_SIZE) {
-          await batchSaveForecasts(userId, projectId, toSave.slice(i, i + BATCH_SIZE));
+          await batchSaveForecasts(scope, toSave.slice(i, i + BATCH_SIZE));
         }
 
         if (skipped > 0) {
@@ -772,6 +773,9 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
   return (
     <div>
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
+      {!writable && (
+        <Alert message="Read-only mode" description="You are a viewer in this workspace — editing is disabled." type="info" showIcon style={{ marginBottom: 16 }} />
+      )}
 
       {/* Toolbar */}
       <Card size="small" style={{ marginBottom: 16 }}>
@@ -781,14 +785,14 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ userId, projectId }) => {
             <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>{t('forecasts.template')}</Button>
           </Col>
           <Col>
-            <Button icon={<UploadOutlined />} onClick={() => fileInputRef.current?.click()}>{t('forecasts.import')}</Button>
+            <Button icon={<UploadOutlined />} onClick={() => fileInputRef.current?.click()} disabled={!writable}>{t('forecasts.import')}</Button>
           </Col>
           <Col>
             <Button
               type="primary"
               icon={<SaveOutlined />}
               onClick={handleSaveAll}
-              disabled={!hasChanges}
+              disabled={!writable || !hasChanges}
               loading={saving}
             >
               {t('forecasts.save')} ({Object.keys(editingCells).length})

@@ -25,6 +25,8 @@ import { useAppPrefs } from '../context/AppPreferencesContext';
 import { formatCurrency, formatCurrencyShort, DEFAULT_CURRENCY_SETTINGS, normalizeCurrencySettings } from '../core/currency';
 import type { CurrencySettings } from '../core/currency';
 import { buildBpAnalysis, computeBpKpi, formatAttainment, formatBpAmount, type BpPeriodRecord } from '../core/bpTargets';
+import type { ProjectScope } from '../types';
+import { canEdit } from '../services/projectScope';
 
 const { Text } = Typography;
 
@@ -35,11 +37,11 @@ type BpDashboardRow = {
 };
 
 interface DashboardPageProps {
-  userId: string;
-  projectId: string;
+  scope: ProjectScope;
 }
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
+const DashboardPage: React.FC<DashboardPageProps> = ({ scope }) => {
+  const writable = canEdit(scope.role);
   const { t } = useI18n();
   const { prefs } = useAppPrefs();
   const { token } = theme.useToken();
@@ -58,10 +60,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
     setError(null);
     try {
       const [skus, forecasts, capacityPlans, paramsData] = await Promise.all([
-        getSKUs(userId, projectId),
-        getForecasts(userId, projectId),
-        getCapacityPlans(userId, projectId),
-        getParameters(userId, projectId),
+        getSKUs(scope),
+        getForecasts(scope),
+        getCapacityPlans(scope),
+        getParameters(scope),
       ]);
 
       setTotalSkus(skus.length);
@@ -95,7 +97,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
     }
   };
 
-  useEffect(() => { loadData(); }, [userId, projectId]);
+  useEffect(() => { loadData(); }, [scope]);
 
   useEffect(() => {
     setCurrencySettings(prev => ({ ...prev, displayCurrency: prefs.displayCurrency }));
@@ -105,7 +107,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
     setLoadingDemo(true);
     setError(null);
     try {
-      const result = await loadDemoData(userId, projectId);
+      const result = await loadDemoData(scope);
       (window as any).message?.success?.(result);
       await loadData();
     } catch (e: any) {
@@ -257,8 +259,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ userId, projectId }) => {
               title={t('dashboard.loadDemoTitle')}
               description={t('dashboard.loadDemoDesc')}
               onConfirm={handleLoadDemo}
+              disabled={!writable}
             >
-              <Button type="primary" icon={<ThunderboltOutlined />} loading={loadingDemo} aria-label={t('dashboard.loadDemo')}>
+              <Button type="primary" icon={<ThunderboltOutlined />} loading={loadingDemo} disabled={!writable} aria-label={t('dashboard.loadDemo')}>
                 {t('dashboard.loadDemo')}
               </Button>
             </Popconfirm>

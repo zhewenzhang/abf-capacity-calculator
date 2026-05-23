@@ -21,6 +21,8 @@ import SetupPage from './pages/SetupPage';
 import PageLoading from './components/common/PageLoading';
 import { I18nProvider, useI18n, type Language } from './i18n';
 import { AppPrefsProvider, useAppPrefs } from './context/AppPreferencesContext';
+import { WorkspaceProvider, useActiveScope } from './context/WorkspaceContext';
+import WorkspaceSwitcher from './components/workspace/WorkspaceSwitcher';
 import type { DisplayCurrency } from './core/currency';
 import { antdTheme } from './theme/antdTheme';
 import enUS from 'antd/locale/en_US';
@@ -38,7 +40,7 @@ const CalculationResultsPage = lazy(() => import('./pages/CalculationResults'));
 const { Sider, Content } = Layout;
 const { Title } = Typography;
 
-const APP_VERSION = 'v1.17.0';
+const APP_VERSION = 'v1.18.0';
 
 // --- Sidebar with i18n ---
 const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }> = ({ current, onMenuClick }) => {
@@ -105,6 +107,9 @@ const AppHeader: React.FC<{
     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
       <Title level={3} style={{ margin: 0 }}>{pageTitle}</Title>
       <Space wrap>
+        {/* Workspace switcher */}
+        <WorkspaceSwitcher />
+
         {/* Language switch */}
         <Space size={4}>
           <GlobalOutlined />
@@ -149,6 +154,7 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useI18n();
+  const scope = useActiveScope();
 
   // Derive current menu key from URL path
   const current = useMemo(() => {
@@ -176,6 +182,9 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
     await signOutUser();
   }, []);
 
+  // Force-remount page subtrees when scope changes so per-scope loaders re-run cleanly.
+  const routeKey = scope.mode === 'workspace' ? `ws:${scope.workspaceId}` : `user:${scope.userId}`;
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <AppSider current={current} onMenuClick={handleMenuClick} />
@@ -188,14 +197,14 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
           />
           <Suspense fallback={<PageLoading />}>
             <Routes>
-              <Route path="/dashboard" element={<DashboardPage userId={user.uid} projectId="default" />} />
-              <Route path="/products" element={<ProductsPage userId={user.uid} projectId="default" />} />
-              <Route path="/products-sheet-lab" element={<ProductsSpreadsheetLab userId={user.uid} projectId="default" />} />
-              <Route path="/forecasts" element={<ForecastsPage userId={user.uid} projectId="default" />} />
-              <Route path="/capacity" element={<CapacityPlanPage userId={user.uid} projectId="default" />} />
-              <Route path="/capacity-lab" element={<CapacitySpreadsheetPage userId={user.uid} projectId="default" />} />
-              <Route path="/parameters" element={<ParametersPage userId={user.uid} projectId="default" />} />
-              <Route path="/results" element={<CalculationResultsPage userId={user.uid} projectId="default" />} />
+              <Route path="/dashboard" element={<DashboardPage key={routeKey} scope={scope} />} />
+              <Route path="/products" element={<ProductsPage key={routeKey} scope={scope} />} />
+              <Route path="/products-sheet-lab" element={<ProductsSpreadsheetLab key={routeKey} scope={scope} />} />
+              <Route path="/forecasts" element={<ForecastsPage key={routeKey} scope={scope} />} />
+              <Route path="/capacity" element={<CapacityPlanPage key={routeKey} scope={scope} />} />
+              <Route path="/capacity-lab" element={<CapacitySpreadsheetPage key={routeKey} scope={scope} />} />
+              <Route path="/parameters" element={<ParametersPage key={routeKey} scope={scope} />} />
+              <Route path="/results" element={<CalculationResultsPage key={routeKey} scope={scope} />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </Suspense>
@@ -233,9 +242,11 @@ const AuthRouter: React.FC = () => {
   }
 
   return (
-    <BrowserRouter>
-      <AppContent user={user} />
-    </BrowserRouter>
+    <WorkspaceProvider user={user}>
+      <BrowserRouter>
+        <AppContent user={user} />
+      </BrowserRouter>
+    </WorkspaceProvider>
   );
 };
 

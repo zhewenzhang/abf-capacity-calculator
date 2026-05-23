@@ -5,7 +5,8 @@ import { DataSheetGrid, textColumn, intColumn, keyColumn } from 'react-datasheet
 import 'react-datasheet-grid/dist/style.css';
 import { getCapacityPlans, batchSaveCapacityPlans } from '../services/capacityService';
 import { getParameters } from '../services/parameterService';
-import type { CapacityMetric } from '../types';
+import type { CapacityMetric, ProjectScope } from '../types';
+import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
 import { ExperimentalBanner } from '../components/common';
 
@@ -57,11 +58,11 @@ function computeDirty(
 }
 
 interface CapacitySpreadsheetProps {
-  userId: string;
-  projectId: string;
+  scope: ProjectScope;
 }
 
-const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ userId, projectId }) => {
+const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ scope }) => {
+  const writable = canEdit(scope.role);
   const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,8 +88,8 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ userId, proje
     setError(null);
     try {
       const [planData, params] = await Promise.all([
-        getCapacityPlans(userId, projectId),
-        getParameters(userId, projectId),
+        getCapacityPlans(scope),
+        getParameters(scope),
       ]);
       const factoryList = params.factories ?? [];
       setFactories(factoryList);
@@ -118,7 +119,7 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ userId, proje
     } finally {
       setLoading(false);
     }
-  }, [userId, projectId]);
+  }, [scope]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -223,7 +224,7 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ userId, proje
     const updates = Array.from(updatesMap.values());
 
     try {
-      await batchSaveCapacityPlans(userId, projectId, updates, workingDays);
+      await batchSaveCapacityPlans(scope, updates, workingDays);
       message.success(`${t('capacityLab.saved')} ${dirtySet.size} ${t('capacityLab.changedCells')} (${updates.length} ${t('capacityLab.planRecords')})`);
       await loadData();
     } catch (e: any) {
@@ -338,7 +339,7 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ userId, proje
               icon={<SaveOutlined />}
               type="primary"
               onClick={handleSaveAll}
-              disabled={dirtySet.size === 0}
+              disabled={!writable || dirtySet.size === 0}
             >
               {t('capacityLab.saveAll')} ({dirtySet.size})
             </Button>

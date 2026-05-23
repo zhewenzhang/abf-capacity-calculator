@@ -17,7 +17,9 @@
 
 ## Firestore Data Model
 
-All data is scoped under per-user, per-project paths:
+Two parallel scopes exist as of v1.18.0:
+
+### Personal scope (per user) — unchanged backward-compatible path
 
 ```
 users/{userId}/
@@ -29,6 +31,24 @@ users/{userId}/
     capacityVersions/{versionId}            ← Named snapshots of capacity plans
     skuVersions/{versionId}                 ← Named snapshots of SKU definitions
 ```
+
+### Shared workspace scope (v1.18.0)
+
+```
+workspaces/{workspaceId}                    ← name, ownerId, members map
+  projects/{projectId}/
+    skus/{skuId}
+    forecasts/{forecastId}
+    capacityPlans/{month}-{factoryId}
+    parameters/default
+    capacityVersions/{versionId}
+    skuVersions/{versionId}
+
+userWorkspaces/{userId}/                    ← per-user index for listing
+  workspaces/{workspaceId}                  ← role, defaultProjectId
+```
+
+Both scopes resolve through `frontend/src/services/projectScope.ts`. See [docs/WORKSPACE_COLLABORATION.md](docs/WORKSPACE_COLLABORATION.md) for the data model, role rules, invite flow, and security rules.
 
 ### Collection Details
 
@@ -47,14 +67,16 @@ All Firestore access goes through service modules in `frontend/src/services/`:
 
 | Module | Responsibility |
 |--------|---------------|
+| `projectScope.ts` | Resolves Firestore paths from a `ProjectScope` (personal vs workspace); role helpers (`canEdit`, `assertCanWrite`) |
+| `workspaceService.ts` | Workspace CRUD: create, list, add/remove member, change role, copy-from-personal |
 | `projectService.ts` | Create/list/delete projects; ensure default project |
-| `skuService.ts` | CRUD for SKUs; batch save |
-| `forecastService.ts` | CRUD for forecasts; batch save; query by SKU |
-| `capacityService.ts` | CRUD for capacity plans; batch save with month-based delete/replace |
-| `parameterService.ts` | Get/save project parameters (single doc at `parameters/default`) |
-| `versionService.ts` | Save/list/delete/restore capacity plan versions |
-| `skuVersionService.ts` | Save/list/delete/restore SKU definition versions |
-| `demoDataService.ts` | Load sample data for quick testing |
+| `skuService.ts` | CRUD for SKUs; batch save (scope-aware) |
+| `forecastService.ts` | CRUD for forecasts; batch save; query by SKU (scope-aware) |
+| `capacityService.ts` | CRUD for capacity plans; batch save with month-based delete/replace (scope-aware) |
+| `parameterService.ts` | Get/save project parameters (single doc at `parameters/default`, scope-aware) |
+| `versionService.ts` | Save/list/delete/restore capacity plan versions (scope-aware) |
+| `skuVersionService.ts` | Save/list/delete/restore SKU definition versions (scope-aware) |
+| `demoDataService.ts` | Load sample data for quick testing (scope-aware) |
 
 ### Service Pattern
 

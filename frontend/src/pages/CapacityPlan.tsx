@@ -44,7 +44,8 @@ import { getCapacityPlans, batchSaveCapacityPlans } from '../services/capacitySe
 import { getParameters, saveParameters } from '../services/parameterService';
 import { saveVersion, getVersions, deleteVersion, restoreVersion } from '../services/versionService';
 import { generateDefaultCapacityPlans, generateMonths } from '../core/defaults';
-import type { CapacityPlan, FactoryDef, ProjectParameters } from '../types';
+import type { CapacityPlan, FactoryDef, ProjectParameters, ProjectScope } from '../types';
+import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
 
 const { Text } = Typography;
@@ -52,8 +53,7 @@ const { Text } = Typography;
 type ViewMode = 'month' | 'quarter' | 'year';
 
 interface CapacityPlanPageProps {
-  userId: string;
-  projectId: string;
+  scope: ProjectScope;
 }
 
 interface CellData {
@@ -78,7 +78,8 @@ function getLastMonthOfYear(year: number): string {
   return `${year}-12`;
 }
 
-const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }) => {
+const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ scope }) => {
+  const writable = canEdit(scope.role);
   const { t } = useI18n();
   const [plans, setPlans] = useState<CapacityPlan[]>([]);
   const [workingDays, setWorkingDays] = useState(28);
@@ -147,8 +148,8 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
     setError(null);
     try {
       const [planData, params] = await Promise.all([
-        getCapacityPlans(userId, projectId),
-        getParameters(userId, projectId),
+        getCapacityPlans(scope),
+        getParameters(scope),
       ]);
       setPlans(planData);
       setWorkingDays(params.defaultWorkingDays || 28);
@@ -163,7 +164,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
           { id: 'fab-c', name: 'Fab C' },
         ];
         setFactories(defaults);
-        await saveParameters(userId, projectId, {
+        await saveParameters(scope, {
           ...params,
           factories: defaults,
         } as unknown as ProjectParameters);
@@ -184,7 +185,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
 
   useEffect(() => {
     loadPlans();
-  }, [userId, projectId]);
+  }, [scope]);
 
   const getCell = useCallback(
     (month: string, factoryId: string): CellData => {
@@ -360,12 +361,12 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
           updates.push({ month, factoryId: factory.id, corePanelPerDay: cell.core, buPanelPerDay: cell.bu });
         }
       }
-      const params = await getParameters(userId, projectId);
-      await saveParameters(userId, projectId, {
+      const params = await getParameters(scope);
+      await saveParameters(scope, {
         ...params,
         factories: factories,
       } as unknown as ProjectParameters);
-      await batchSaveCapacityPlans(userId, projectId, updates, workingDays);
+      await batchSaveCapacityPlans(scope, updates, workingDays);
       message.success(`${t('capacity.savedRows')} ${updates.length} ${t('capacity.rowsFactories')} ${factories.length} ${t('capacity.factoriesLabel')}`);
       loadPlans();
     } catch (e: any) {
@@ -573,7 +574,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
   const loadVersions = async () => {
     setVersionsLoading(true);
     try {
-      const v = await getVersions(userId, projectId);
+      const v = await getVersions(scope);
       setVersions(v);
     } catch {
       // ignore
@@ -582,12 +583,12 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
     }
   };
 
-  useEffect(() => { loadVersions(); }, [userId, projectId]);
+  useEffect(() => { loadVersions(); }, [scope]);
 
   const handleSaveVersion = async () => {
     const name = versionName.trim() || `v${versions.length + 1}`;
     try {
-      await saveVersion(userId, projectId, name, gridData, factories, workingDays);
+      await saveVersion(scope, name, gridData, factories, workingDays);
       message.success(`Version "${name}" saved`);
       setVersionName('');
       loadVersions();
@@ -598,7 +599,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
 
   const handleRestoreVersion = async (versionId: string) => {
     try {
-      const vList = await getVersions(userId, projectId);
+      const vList = await getVersions(scope);
       const ver = vList.find((v) => v.id === versionId);
       if (!ver) return;
       const restored = restoreVersion(ver);
@@ -613,7 +614,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
 
   const handleDeleteVersion = async (versionId: string) => {
     try {
-      await deleteVersion(userId, projectId, versionId);
+      await deleteVersion(scope, versionId);
       message.success('Version deleted');
       loadVersions();
     } catch (e: any) {
@@ -624,6 +625,9 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
   return (
     <div>
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
+      {!writable && (
+        <Alert message="Read-only mode" description="You are a viewer in this workspace — editing is disabled." type="info" showIcon style={{ marginBottom: 16 }} />
+      )}
 
       {/* View mode + toolbar */}
       <Card size="small" style={{ marginBottom: 16 }}>
@@ -651,8 +655,8 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ userId, projectId }
               <Button icon={<PlusOutlined />} onClick={handleAddMonth} disabled={viewMode !== 'month'}>
                 {t('capacity.addMonth')}
               </Button>
-              <Popconfirm title={t('capacity.saveChanges')} onConfirm={handleSaveAll}>
-                <Button type="primary" icon={<SaveOutlined />} loading={saving}>
+              <Popconfirm title={t('capacity.saveChanges')} onConfirm={handleSaveAll} disabled={!writable}>
+                <Button type="primary" icon={<SaveOutlined />} loading={saving} disabled={!writable}>
                   {t('capacity.saveAll')} ({months.length} {t('capacity.months')} × {factories.length} {t('capacity.factoriesLabel')})
                 </Button>
               </Popconfirm>

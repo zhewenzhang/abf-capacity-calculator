@@ -1,0 +1,197 @@
+/**
+ * Lightweight workspaceService tests with mocked Firestore — keeps the suite fast,
+ * focuses on routing + role rules. The real owner/member rule enforcement happens
+ * in firestore.rules; here we cover the client-side guardrails.
+ */
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Workspace, WorkspaceRole } from '../types';
+
+const firestoreMock = vi.hoisted(() => ({
+  collection: vi.fn(),
+  doc: vi.fn(),
+  getDocs: vi.fn(),
+  getDoc: vi.fn(),
+  setDoc: vi.fn(),
+  deleteDoc: vi.fn(),
+  query: vi.fn(),
+  orderBy: vi.fn(),
+  where: vi.fn(),
+  writeBatch: vi.fn(),
+  serverTimestamp: vi.fn(),
+  batchSet: vi.fn(),
+  batchUpdate: vi.fn(),
+  batchDelete: vi.fn(),
+  batchCommit: vi.fn(),
+}));
+
+vi.mock('../firebase/config', () => ({
+  db: { kind: 'mock-db' },
+  isConfigured: true,
+}));
+
+vi.mock('firebase/firestore', () => ({
+  collection: firestoreMock.collection,
+  doc: firestoreMock.doc,
+  getDocs: firestoreMock.getDocs,
+  getDoc: firestoreMock.getDoc,
+  setDoc: firestoreMock.setDoc,
+  deleteDoc: firestoreMock.deleteDoc,
+  query: firestoreMock.query,
+  orderBy: firestoreMock.orderBy,
+  where: firestoreMock.where,
+  writeBatch: firestoreMock.writeBatch,
+  serverTimestamp: firestoreMock.serverTimestamp,
+}));
+
+function makeWorkspaceDoc(workspace: Workspace) {
+  return {
+    exists: () => true,
+    data: () => ({
+      name: workspace.name,
+      ownerId: workspace.ownerId,
+      members: workspace.members,
+    }),
+  };
+}
+
+describe('workspaceService', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    firestoreMock.collection.mockImplementation((_db, path: string) => ({ type: 'collection', path }));
+    firestoreMock.doc.mockImplementation((_db: unknown, pathOrId: string, maybeId?: string) => {
+      const path = maybeId ? `${pathOrId}/${maybeId}` : pathOrId;
+      return { type: 'doc', path };
+    });
+    firestoreMock.serverTimestamp.mockReturnValue('SERVER_TIMESTAMP');
+    firestoreMock.writeBatch.mockReturnValue({
+      set: firestoreMock.batchSet,
+      update: firestoreMock.batchUpdate,
+      delete: firestoreMock.batchDelete,
+      commit: firestoreMock.batchCommit,
+    });
+    firestoreMock.batchCommit.mockResolvedValue(undefined);
+    firestoreMock.setDoc.mockResolvedValue(undefined);
+    firestoreMock.deleteDoc.mockResolvedValue(undefined);
+  });
+
+  it('getUserWorkspaces returns parsed UserWorkspaceRef entries', async () => {
+    firestoreMock.getDocs.mockResolvedValue({
+      docs: [
+        {
+          id: 'ws-1',
+          data: () => ({
+            workspaceName: 'Team Alpha',
+            role: 'editor',
+            ownerId: 'owner-uid',
+            defaultProjectId: 'default',
+          }),
+        },
+      ],
+    });
+    const { getUserWorkspaces } = await import('./workspaceService');
+    const out = await getUserWorkspaces('user-1');
+    expect(out).toEqual([
+      {
+        workspaceId: 'ws-1',
+        workspaceName: 'Team Alpha',
+        role: 'editor',
+        ownerId: 'owner-uid',
+        defaultProjectId: 'default',
+        updatedAt: undefined,
+      },
+    ]);
+    expect(firestoreMock.collection).toHaveBeenCalledWith({ kind: 'mock-db' }, 'userWorkspaces/user-1/workspaces');
+  });
+
+  it('createWorkspace writes both workspace doc and owner index entry in a batch', async () => {
+    const { createWorkspace } = await import('./workspaceService');
+    const wsId = await createWorkspace('owner-uid', 'owner@example.com', 'Team Alpha');
+
+    expect(wsId).toMatch(/^ws-\d+-/);
+    expect(firestoreMock.writeBatch).toHaveBeenCalledTimes(1);
+    expect(firestoreMock.batchSet).toHaveBeenCalledTimes(2);
+    expect(firestoreMock.batchSet.mock.calls[0][1]).toMatchObject({
+      ownerId: 'owner-uid',
+      ownerEmail: 'owner@example.com',
+      name: 'Team Alpha',
+      members: { 'owner-uid': 'owner' as WorkspaceRole },
+    });
+    expect(firestoreMock.batchSet.mock.calls[1][1]).toMatchObject({
+      workspaceId: wsId,
+      workspaceName: 'Team Alpha',
+      role: 'owner',
+      ownerId: 'owner-uid',
+      defaultProjectId: 'default',
+    });
+    expect(firestoreMock.batchCommit).toHaveBeenCalledTimes(1);
+  });
+
+  it('addWorkspaceMember rejects owner role to prevent accidental ownership grants', async () => {
+    const { addWorkspaceMember } = await import('./workspaceService');
+    await expect(addWorkspaceMember('ws-1', 'new-user', 'owner')).rejects.toThrow(/owner/);
+  });
+
+  it('addWorkspaceMember writes members map + index entry when role is editor', async () => {
+    firestoreMock.getDoc.mockResolvedValue(makeWorkspaceDoc({
+      id: 'ws-1', name: 'Alpha', ownerId: 'owner', members: { 'owner': 'owner' },
+    }));
+    const { addWorkspaceMember } = await import('./workspaceService');
+    await addWorkspaceMember('ws-1', 'colleague-uid', 'editor');
+
+    expect(firestoreMock.batchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'workspaces/ws-1' }),
+      expect.objectContaining({
+        members: { 'owner': 'owner', 'colleague-uid': 'editor' },
+      })
+    );
+    expect(firestoreMock.batchSet).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'userWorkspaces/colleague-uid/workspaces/ws-1' }),
+      expect.objectContaining({
+        workspaceId: 'ws-1',
+        workspaceName: 'Alpha',
+        role: 'editor',
+        ownerId: 'owner',
+      })
+    );
+    expect(firestoreMock.batchCommit).toHaveBeenCalledTimes(1);
+  });
+
+  it('updateWorkspaceMemberRole refuses to demote/promote the owner', async () => {
+    firestoreMock.getDoc.mockResolvedValue(makeWorkspaceDoc({
+      id: 'ws-1', name: 'Alpha', ownerId: 'owner', members: { 'owner': 'owner', 'mem': 'editor' },
+    }));
+    const { updateWorkspaceMemberRole } = await import('./workspaceService');
+    await expect(updateWorkspaceMemberRole('ws-1', 'owner', 'editor')).rejects.toThrow(/owner/);
+  });
+
+  it('removeWorkspaceMember refuses to remove the owner', async () => {
+    firestoreMock.getDoc.mockResolvedValue(makeWorkspaceDoc({
+      id: 'ws-1', name: 'Alpha', ownerId: 'owner', members: { 'owner': 'owner', 'mem': 'editor' },
+    }));
+    const { removeWorkspaceMember } = await import('./workspaceService');
+    await expect(removeWorkspaceMember('ws-1', 'owner')).rejects.toThrow(/owner/);
+  });
+
+  it('removeWorkspaceMember deletes members entry + userWorkspaces index for non-owners', async () => {
+    firestoreMock.getDoc.mockResolvedValue(makeWorkspaceDoc({
+      id: 'ws-1', name: 'Alpha', ownerId: 'owner', members: { 'owner': 'owner', 'mem': 'editor' },
+    }));
+    const { removeWorkspaceMember } = await import('./workspaceService');
+    await removeWorkspaceMember('ws-1', 'mem');
+
+    expect(firestoreMock.batchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'workspaces/ws-1' }),
+      expect.objectContaining({ members: { 'owner': 'owner' } })
+    );
+    expect(firestoreMock.batchDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'userWorkspaces/mem/workspaces/ws-1' })
+    );
+  });
+
+  it('getWorkspace returns null when document does not exist', async () => {
+    firestoreMock.getDoc.mockResolvedValue({ exists: () => false });
+    const { getWorkspace } = await import('./workspaceService');
+    const out = await getWorkspace('ws-missing');
+    expect(out).toBeNull();
+  });
+});

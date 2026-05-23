@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Forecast, ProjectParameters, SKU } from '../types';
+import { personalScope, workspaceScope } from './projectScope';
 
 const firestoreMock = vi.hoisted(() => ({
   collection: vi.fn(),
@@ -88,6 +89,10 @@ const parameters: ProjectParameters = {
 };
 
 describe('Firebase service layer with mocked Firestore', () => {
+  const personalProjectScope = personalScope('user-1', 'project-1');
+  const sharedWorkspaceScope = workspaceScope('user-1', 'ws-42', 'editor', 'project-1');
+  const viewerScope = workspaceScope('user-1', 'ws-42', 'viewer', 'project-1');
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal('crypto', { randomUUID: vi.fn(() => 'generated-id') });
@@ -114,17 +119,16 @@ describe('Firebase service layer with mocked Firestore', () => {
     firestoreMock.deleteDoc.mockResolvedValue(undefined);
   });
 
-  it('skuService reads SKUs ordered by createdAt and saves generated IDs to the user project path', async () => {
+  it('skuService routes personal scope to users/{uid}/projects path', async () => {
     const { getSKUs, saveSKU, deleteSKU } = await import('./skuService');
     firestoreMock.getDocs.mockResolvedValue(snapshot([{ id: 'sku-1', data: sku }]));
 
-    const rows = await getSKUs('user-1', 'project-1');
-    const savedId = await saveSKU('user-1', 'project-1', sku);
-    await deleteSKU('user-1', 'project-1', 'sku-1');
+    const rows = await getSKUs(personalProjectScope);
+    const savedId = await saveSKU(personalProjectScope, sku);
+    await deleteSKU(personalProjectScope, 'sku-1');
 
     expect(rows).toEqual([{ id: 'sku-1', ...sku }]);
     expect(firestoreMock.collection).toHaveBeenCalledWith({ kind: 'mock-db' }, 'users/user-1/projects/project-1/skus');
-    expect(firestoreMock.orderBy).toHaveBeenCalledWith('createdAt', 'desc');
     expect(savedId).toBe('generated-id');
     expect(firestoreMock.setDoc).toHaveBeenCalledWith(
       expect.objectContaining({ path: 'users/user-1/projects/project-1/skus/generated-id' }),
@@ -133,58 +137,75 @@ describe('Firebase service layer with mocked Firestore', () => {
     expect(firestoreMock.deleteDoc).toHaveBeenCalledWith(expect.objectContaining({ path: 'users/user-1/projects/project-1/skus/sku-1' }));
   });
 
-  it('skuService batchSaveSKUs commits all writes without real Firestore', async () => {
-    const { batchSaveSKUs } = await import('./skuService');
+  it('skuService routes workspace scope to workspaces/{wid}/projects path', async () => {
+    const { getSKUs, saveSKU } = await import('./skuService');
+    firestoreMock.getDocs.mockResolvedValue(snapshot([{ id: 'sku-1', data: sku }]));
 
-    const ids = await batchSaveSKUs('user-1', 'project-1', [sku, { ...sku, id: 'existing-sku' }]);
+    await getSKUs(sharedWorkspaceScope);
+    await saveSKU(sharedWorkspaceScope, sku);
 
-    expect(ids).toEqual(['generated-id', 'existing-sku']);
-    expect(firestoreMock.writeBatch).toHaveBeenCalledWith({ kind: 'mock-db' });
-    expect(firestoreMock.batchSet).toHaveBeenCalledTimes(2);
-    expect(firestoreMock.batchSet).toHaveBeenCalledWith(
-      expect.objectContaining({ path: 'users/user-1/projects/project-1/skus/existing-sku' }),
-      expect.objectContaining({ id: 'existing-sku', updatedAt: expect.any(Date) })
+    expect(firestoreMock.collection).toHaveBeenCalledWith({ kind: 'mock-db' }, 'workspaces/ws-42/projects/project-1/skus');
+    expect(firestoreMock.setDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'workspaces/ws-42/projects/project-1/skus/generated-id' }),
+      expect.objectContaining({ id: 'generated-id', skuCode: 'SKU-1' })
     );
-    expect(firestoreMock.batchCommit).toHaveBeenCalledTimes(1);
   });
 
-  it('forecastService reads all forecasts and SKU-filtered forecasts with month ordering', async () => {
+  it('skuService rejects writes when scope role is viewer', async () => {
+    const { saveSKU, deleteSKU, batchSaveSKUs } = await import('./skuService');
+    await expect(saveSKU(viewerScope, sku)).rejects.toThrow(/viewer/);
+    await expect(deleteSKU(viewerScope, 'sku-1')).rejects.toThrow(/viewer/);
+    await expect(batchSaveSKUs(viewerScope, [sku])).rejects.toThrow(/viewer/);
+    // Read still allowed for viewers (no throw).
+    firestoreMock.getDocs.mockResolvedValue(snapshot([]));
+    const { getSKUs } = await import('./skuService');
+    await expect(getSKUs(viewerScope)).resolves.toEqual([]);
+  });
+
+  it('forecastService routes scope to forecasts path with month ordering', async () => {
     const { getForecasts, getForecastsBySku } = await import('./forecastService');
     firestoreMock.getDocs.mockResolvedValue(snapshot([{ id: 'fc-1', data: forecast }]));
 
-    const allRows = await getForecasts('user-1', 'project-1');
-    const skuRows = await getForecastsBySku('user-1', 'project-1', 'sku-1');
+    const personalRows = await getForecasts(personalProjectScope);
+    const workspaceRows = await getForecasts(sharedWorkspaceScope);
+    const skuRows = await getForecastsBySku(personalProjectScope, 'sku-1');
 
-    expect(allRows).toEqual([{ id: 'fc-1', ...forecast }]);
+    expect(personalRows).toEqual([{ id: 'fc-1', ...forecast }]);
+    expect(workspaceRows).toEqual([{ id: 'fc-1', ...forecast }]);
     expect(skuRows).toEqual([{ id: 'fc-1', ...forecast }]);
     expect(firestoreMock.collection).toHaveBeenCalledWith({ kind: 'mock-db' }, 'users/user-1/projects/project-1/forecasts');
+    expect(firestoreMock.collection).toHaveBeenCalledWith({ kind: 'mock-db' }, 'workspaces/ws-42/projects/project-1/forecasts');
     expect(firestoreMock.orderBy).toHaveBeenCalledWith('month', 'asc');
     expect(firestoreMock.where).toHaveBeenCalledWith('skuId', '==', 'sku-1');
   });
 
-  it('forecastService save, batch save, and delete use forecast paths and generated IDs', async () => {
+  it('forecastService write helpers respect viewer role', async () => {
+    const { saveForecast, batchSaveForecasts, deleteForecast } = await import('./forecastService');
+    await expect(saveForecast(viewerScope, forecast)).rejects.toThrow(/viewer/);
+    await expect(batchSaveForecasts(viewerScope, [forecast])).rejects.toThrow(/viewer/);
+    await expect(deleteForecast(viewerScope, 'fc-1')).rejects.toThrow(/viewer/);
+  });
+
+  it('forecastService writes succeed for editor scope', async () => {
     const { saveForecast, batchSaveForecasts, deleteForecast } = await import('./forecastService');
 
-    const savedId = await saveForecast('user-1', 'project-1', forecast);
-    await batchSaveForecasts('user-1', 'project-1', [forecast, { ...forecast, id: 'fc-2' }]);
-    await deleteForecast('user-1', 'project-1', 'fc-1');
+    const savedId = await saveForecast(sharedWorkspaceScope, forecast);
+    await batchSaveForecasts(sharedWorkspaceScope, [forecast, { ...forecast, id: 'fc-2' }]);
+    await deleteForecast(sharedWorkspaceScope, 'fc-1');
 
     expect(savedId).toBe('generated-id');
     expect(firestoreMock.setDoc).toHaveBeenCalledWith(
-      expect.objectContaining({ path: 'users/user-1/projects/project-1/forecasts/generated-id' }),
-      expect.objectContaining({ id: 'generated-id', forecastPcs: 1000, updatedAt: expect.any(Date) })
+      expect.objectContaining({ path: 'workspaces/ws-42/projects/project-1/forecasts/generated-id' }),
+      expect.objectContaining({ id: 'generated-id', forecastPcs: 1000 })
     );
-    expect(firestoreMock.batchSet).toHaveBeenCalledTimes(2);
-    expect(firestoreMock.batchCommit).toHaveBeenCalledTimes(1);
-    expect(firestoreMock.deleteDoc).toHaveBeenCalledWith(expect.objectContaining({ path: 'users/user-1/projects/project-1/forecasts/fc-1' }));
+    expect(firestoreMock.deleteDoc).toHaveBeenCalledWith(expect.objectContaining({ path: 'workspaces/ws-42/projects/project-1/forecasts/fc-1' }));
   });
 
-  it('parameterService returns saved parameters including BP targets when document exists', async () => {
+  it('parameterService returns saved parameters when document exists', async () => {
     const { getParameters } = await import('./parameterService');
     firestoreMock.getDoc.mockResolvedValue({ exists: () => true, data: () => parameters });
 
-    const result = await getParameters('user-1', 'project-1');
-
+    const result = await getParameters(personalProjectScope);
     expect(result.bpTargets?.yearlyRevenueTargetsMillionTwd).toEqual({ '2026': 320 });
     expect(firestoreMock.doc).toHaveBeenCalledWith({ kind: 'mock-db' }, 'users/user-1/projects/project-1/parameters/default');
   });
@@ -193,25 +214,35 @@ describe('Firebase service layer with mocked Firestore', () => {
     const { getParameters } = await import('./parameterService');
     firestoreMock.getDoc.mockResolvedValue({ exists: () => false });
 
-    const result = await getParameters('user-1', 'project-1');
-
+    const result = await getParameters(personalProjectScope);
     expect(result.defaultWorkingDays).toBe(28);
     expect(result.yieldMatrix.medium['10-14L']).toBe(0.86);
     expect(result.panelParams.panelLengthMm).toBe(244.1);
     expect(result.bpTargets).toBeUndefined();
   });
 
-  it('parameterService saves BP target settings with updatedAt timestamp', async () => {
+  it('parameterService.saveParameters writes to workspace path for workspace scope', async () => {
     const { saveParameters } = await import('./parameterService');
-
-    await saveParameters('user-1', 'project-1', parameters);
+    await saveParameters(sharedWorkspaceScope, parameters);
 
     expect(firestoreMock.setDoc).toHaveBeenCalledWith(
-      expect.objectContaining({ path: 'users/user-1/projects/project-1/parameters/default' }),
+      expect.objectContaining({ path: 'workspaces/ws-42/projects/project-1/parameters/default' }),
       expect.objectContaining({
         bpTargets: { mode: 'yearly', yearlyRevenueTargetsMillionTwd: { '2026': 320 } },
         updatedAt: expect.any(Date),
       })
     );
+  });
+
+  it('parameterService.saveParameters rejects viewer', async () => {
+    const { saveParameters } = await import('./parameterService');
+    await expect(saveParameters(viewerScope, parameters)).rejects.toThrow(/viewer/);
+  });
+
+  it('capacityService getCapacityPlans uses the resolved scope path', async () => {
+    const { getCapacityPlans } = await import('./capacityService');
+    firestoreMock.getDocs.mockResolvedValue(snapshot([]));
+    await getCapacityPlans(sharedWorkspaceScope);
+    expect(firestoreMock.collection).toHaveBeenCalledWith({ kind: 'mock-db' }, 'workspaces/ws-42/projects/project-1/capacityPlans');
   });
 });

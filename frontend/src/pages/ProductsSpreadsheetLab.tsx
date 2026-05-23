@@ -8,7 +8,8 @@ import { ExperimentalBanner } from '../components/common';
 import { validateSKU } from '../core/validation';
 import { calculateSkuUpp, calculateSkuYieldEstimate, normalizeSkuDraft } from '../core/skuDerived';
 import { currencyOrUsd, normalizeCurrencyCode } from '../core/currency';
-import type { SizeCategory } from '../types';
+import type { SizeCategory, ProjectScope } from '../types';
+import { canEdit } from '../services/projectScope';
 
 const { Text } = Typography;
 
@@ -96,11 +97,11 @@ function isRowEmpty(r: SheetRow): boolean {
 }
 
 interface ProductsSpreadsheetLabProps {
-  userId: string;
-  projectId: string;
+  scope: ProjectScope;
 }
 
-const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ userId, projectId }) => {
+const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ scope }) => {
+  const writable = canEdit(scope.role);
   const [rows, setRows] = useState<SheetRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -109,7 +110,7 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ userId,
   const loadSKUs = useCallback(async () => {
     setLoading(true);
     try {
-      const skus = await getSKUs(userId, projectId);
+      const skus = await getSKUs(scope);
       const sheetRows: SheetRow[] = skus.map((s: any) => ({
         id: s.id,
         skuCode: s.skuCode || null,
@@ -139,7 +140,7 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ userId,
     } finally {
       setLoading(false);
     }
-  }, [userId, projectId]);
+  }, [scope]);
 
   useEffect(() => { loadSKUs(); }, [loadSKUs]);
 
@@ -186,7 +187,7 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ userId,
     setSaving(true);
     try {
       const payloads = toSave.map(r => rowToFirestore(deriveRow(r)));
-      await batchSaveSKUs(userId, projectId, payloads);
+      await batchSaveSKUs(scope, payloads);
       message.success(`Saved ${toSave.length} rows.${invalidCount > 0 ? ` ${invalidCount} invalid rows skipped.` : ''}`);
       await loadSKUs();
     } catch (e: any) {
@@ -194,7 +195,7 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ userId,
     } finally {
       setSaving(false);
     }
-  }, [rows, userId, projectId, loadSKUs]);
+  }, [rows, scope, loadSKUs]);
 
   const handleAddRows = useCallback(() => {
     setRows(prev => [...prev, ...createBlankRows(20)]);
@@ -283,7 +284,7 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ userId,
 
       {/* Toolbar */}
       <Space wrap style={{ marginBottom: 8 }}>
-        <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving}>
+        <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving} disabled={!writable}>
           Save Valid Rows
         </Button>
         <Button icon={<PlusOutlined />} onClick={handleValidate}>

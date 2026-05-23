@@ -6,14 +6,11 @@ import {
 import { db } from '../firebase/config';
 import { DEFAULT_WORKING_DAYS } from '../core/defaults';
 import { normalizeCurrencySettings } from '../core/currency';
-import type { ProjectParameters, YieldMatrix, PanelParams } from '../types';
+import type { ProjectParameters, YieldMatrix, PanelParams, ProjectScope } from '../types';
+import { parametersDocPath, assertCanWrite } from './projectScope';
 
 if (!db) {
   throw new Error('Firestore not initialized. Check your .env configuration.');
-}
-
-function paramPath(userId: string, projectId: string) {
-  return `users/${userId}/projects/${projectId}/parameters/default`;
 }
 
 // Default yield matrix
@@ -39,8 +36,8 @@ function normalizeParameters(params: ProjectParameters): ProjectParameters {
   };
 }
 
-export async function getParameters(userId: string, projectId: string): Promise<ProjectParameters> {
-  const ref = doc(db!, paramPath(userId, projectId));
+export async function getParameters(scope: ProjectScope): Promise<ProjectParameters> {
+  const ref = doc(db!, parametersDocPath(scope));
   const snap = await getDoc(ref);
   if (snap.exists()) {
     return normalizeParameters(snap.data() as ProjectParameters);
@@ -52,7 +49,8 @@ export async function getParameters(userId: string, projectId: string): Promise<
   });
 }
 
-export async function saveParameters(userId: string, projectId: string, params: ProjectParameters): Promise<void> {
-  const ref = doc(db!, paramPath(userId, projectId));
+export async function saveParameters(scope: ProjectScope, params: ProjectParameters): Promise<void> {
+  assertCanWrite(scope);
+  const ref = doc(db!, parametersDocPath(scope));
   await setDoc(ref, { ...params, updatedAt: new Date() });
 }

@@ -5,9 +5,10 @@
 - **Frontend**: React 19 + TypeScript + Vite + Ant Design 5
 - **Charts**: @ant-design/charts (Recharts-based)
 - **Backend**: Firebase Auth + Firestore + Hosting
-- **State**: React Context (AppPreferencesContext for language/currency)
+- **State**: React Context (AppPreferencesContext for language/currency, WorkspaceContext for active scope)
 - **UI System**: Ant Design is the **only** UI framework. No MUI, shadcn, Tailwind, or other UI systems.
-- **Data flow**: Firestore → Service layer → Calculation engine → Analytics → UI
+- **Data flow**: Firestore → Service layer (scope-aware) → Calculation engine → Analytics → UI
+- **Collaboration (v1.18+)**: Personal vs Shared Workspace scopes resolved via `services/projectScope.ts`. See [docs/WORKSPACE_COLLABORATION.md](docs/WORKSPACE_COLLABORATION.md).
 
 ## Platform Decisions (Non-Negotiable)
 

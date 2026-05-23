@@ -41,17 +41,17 @@ import type { SkuCalculationResult, MonthlyCapacitySummary, SKU, Forecast, Capac
 import { buildAnalysisContractPayload } from '../core/analysisContract';
 import { buildRiskBrief } from '../core/riskBrief';
 import { METRIC_DEFINITIONS } from '../core/metricDefinitions';
+import type { ProjectScope } from '../types';
 
 const { Text } = Typography;
 
 interface CalculationResultsPageProps {
-  userId: string;
-  projectId: string;
+  scope: ProjectScope;
 }
 
 type ResultsView = 'risk' | 'sales' | 'product' | 'capacity' | 'bp' | 'raw';
 
-const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId, projectId }) => {
+const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }) => {
   const { t } = useI18n();
   const { prefs } = useAppPrefs();
   const [loading, setLoading] = useState(true);
@@ -71,10 +71,10 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
       setError(null);
       try {
         const [skuData, forecastData, capacityData, paramsData] = await Promise.all([
-          getSKUs(userId, projectId),
-          getForecasts(userId, projectId),
-          getCapacityPlans(userId, projectId),
-          getParameters(userId, projectId),
+          getSKUs(scope),
+          getForecasts(scope),
+          getCapacityPlans(scope),
+          getParameters(scope),
         ]);
         setSkus(skuData);
         setForecasts(forecastData);
@@ -115,7 +115,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ userId,
       }
     };
     loadData();
-  }, [userId, projectId]);
+  }, [scope]);
 
   // Sync display currency when user preference changes
   useEffect(() => {

@@ -8,6 +8,8 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import type { ProjectScope } from '../types';
+import { collectionPath, assertCanWrite } from './projectScope';
 
 interface VersionSnapshot {
   id: string;
@@ -18,20 +20,20 @@ interface VersionSnapshot {
   workingDays: number;
 }
 
-function versionsPath(userId: string, projectId: string) {
-  return `users/${userId}/projects/${projectId}/capacityVersions`;
+function versionsPath(scope: ProjectScope) {
+  return collectionPath(scope, 'capacityVersions');
 }
 
 export async function saveVersion(
-  userId: string,
-  projectId: string,
+  scope: ProjectScope,
   versionName: string,
   gridData: Map<string, { core: number; bu: number }>,
   factories: Array<{ id: string; name: string }>,
   workingDays: number
 ): Promise<string> {
+  assertCanWrite(scope);
   const id = `v-${Date.now()}`;
-  const ref = doc(db!, versionsPath(userId, projectId), id);
+  const ref = doc(db!, versionsPath(scope), id);
   const gridObj: Record<string, { core: number; bu: number }> = {};
   gridData.forEach((val, key) => {
     gridObj[key] = val;
@@ -47,8 +49,8 @@ export async function saveVersion(
   return id;
 }
 
-export async function getVersions(userId: string, projectId: string): Promise<VersionSnapshot[]> {
-  const q = query(collection(db!, versionsPath(userId, projectId)), orderBy('createdAt', 'desc'));
+export async function getVersions(scope: ProjectScope): Promise<VersionSnapshot[]> {
+  const q = query(collection(db!, versionsPath(scope)), orderBy('createdAt', 'desc'));
   const snapshot = await getDocs(q);
   return snapshot.docs.map((d) => {
     const data = d.data();
@@ -61,8 +63,9 @@ export async function getVersions(userId: string, projectId: string): Promise<Ve
   });
 }
 
-export async function deleteVersion(userId: string, projectId: string, versionId: string): Promise<void> {
-  const ref = doc(db!, versionsPath(userId, projectId), versionId);
+export async function deleteVersion(scope: ProjectScope, versionId: string): Promise<void> {
+  assertCanWrite(scope);
+  const ref = doc(db!, versionsPath(scope), versionId);
   await deleteDoc(ref);
 }
 

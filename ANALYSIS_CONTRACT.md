@@ -79,6 +79,8 @@ The Analysis Contract outputs a standardized, future-proof payload `AnalysisCont
 - **KPI Summary** (global aggregated metrics).
 - **Matrices** (pre-grouped tables for customer/sku/application analysis).
 
+> **Data scope (v1.18.0):** all inputs are read through the active `ProjectScope` (personal vs shared workspace). The contract structure and calculation engine are scope-agnostic — the same payload shape comes out whether the source is `users/{uid}/...` or `workspaces/{wid}/...`. See [docs/WORKSPACE_COLLABORATION.md](docs/WORKSPACE_COLLABORATION.md).
+
 ---
 
 ## 5. Deterministic Risk Brief (v1.17.0 — Risk Driver Attribution)

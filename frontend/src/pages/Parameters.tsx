@@ -14,7 +14,9 @@ import {
 } from 'antd';
 import { SaveOutlined, UndoOutlined } from '@ant-design/icons';
 import { getParameters, saveParameters } from '../services/parameterService';
-import type { ProjectParameters, SizeCategory, LayerBucket } from '../types';
+import type { ProjectParameters, SizeCategory, LayerBucket, ProjectScope } from '../types';
+import { canEdit } from '../services/projectScope';
+import WorkspaceSettingsPanel from '../components/workspace/WorkspaceSettingsPanel';
 import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_WORKING_DAYS } from '../core/defaults';
 import { useI18n } from '../i18n';
 import { useAppPrefs } from '../context/AppPreferencesContext';
@@ -23,14 +25,14 @@ import { DEFAULT_CURRENCY_SETTINGS, type CurrencySettings, normalizeCurrencySett
 const { Text } = Typography;
 
 interface ParametersPageProps {
-  userId: string;
-  projectId: string;
+  scope: ProjectScope;
 }
 
 const SIZES: SizeCategory[] = ['small', 'medium', 'large', 'xlarge'];
 const BUCKETS: LayerBucket[] = ['4-8L', '10-14L', '16-20L', '20L+'];
 
-const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) => {
+const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
+  const writable = canEdit(scope.role);
   const { t } = useI18n();
   const { prefs, setCurrency } = useAppPrefs();
   const [params, setParams] = useState<ProjectParameters | null>(null);
@@ -45,7 +47,7 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
     setLoading(true);
     setError(null);
     try {
-      const data = await getParameters(userId, projectId);
+      const data = await getParameters(scope);
       setParams(data);
       form.setFieldsValue({
         defaultWorkingDays: data.defaultWorkingDays || DEFAULT_WORKING_DAYS,
@@ -76,7 +78,7 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
 
   useEffect(() => {
     loadParams();
-  }, [userId, projectId]);
+  }, [scope]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -99,7 +101,7 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
           yearlyRevenueTargetsMillionTwd: bpTargets,
         },
       };
-      await saveParameters(userId, projectId, updated);
+      await saveParameters(scope, updated);
       message.success('Parameters saved');
       loadParams();
     } catch (e: any) {
@@ -116,7 +118,7 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
       panelParams: DEFAULT_PANEL_PARAMS,
     };
     try {
-      await saveParameters(userId, projectId, defaults);
+      await saveParameters(scope, defaults);
       message.success('Defaults restored');
       loadParams();
     } catch (e: any) {
@@ -234,12 +236,16 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ userId, projectId }) =>
   return (
     <div>
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
+      <WorkspaceSettingsPanel />
+      {!writable && (
+        <Alert message="Read-only mode" description="You are a viewer in this workspace — editing is disabled." type="info" showIcon style={{ marginBottom: 16 }} />
+      )}
       <Space style={{ marginBottom: 16 }}>
-        <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving}>
+        <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving} disabled={!writable}>
           {t('parameters.save')}
         </Button>
-        <Popconfirm title={t('parameters.restore')} onConfirm={handleRestoreDefaults}>
-          <Button icon={<UndoOutlined />}>{t('parameters.restore')}</Button>
+        <Popconfirm title={t('parameters.restore')} onConfirm={handleRestoreDefaults} disabled={!writable}>
+          <Button icon={<UndoOutlined />} disabled={!writable}>{t('parameters.restore')}</Button>
         </Popconfirm>
       </Space>
 

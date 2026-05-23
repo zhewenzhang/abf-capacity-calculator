@@ -8,7 +8,8 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import type { SKU } from '../types';
+import type { SKU, ProjectScope } from '../types';
+import { collectionPath, assertCanWrite } from './projectScope';
 
 interface SKUVersionSnapshot {
   id: string;
@@ -17,18 +18,18 @@ interface SKUVersionSnapshot {
   skus: SKU[];
 }
 
-function versionsPath(userId: string, projectId: string) {
-  return `users/${userId}/projects/${projectId}/skuVersions`;
+function versionsPath(scope: ProjectScope) {
+  return collectionPath(scope, 'skuVersions');
 }
 
 export async function saveVersion(
-  userId: string,
-  projectId: string,
+  scope: ProjectScope,
   versionName: string,
   skus: SKU[]
 ): Promise<string> {
+  assertCanWrite(scope);
   const id = `sku-v-${Date.now()}`;
-  const ref = doc(db!, versionsPath(userId, projectId), id);
+  const ref = doc(db!, versionsPath(scope), id);
   await setDoc(ref, {
     id,
     versionName,
@@ -38,8 +39,8 @@ export async function saveVersion(
   return id;
 }
 
-export async function getVersions(userId: string, projectId: string): Promise<SKUVersionSnapshot[]> {
-  const q = query(collection(db!, versionsPath(userId, projectId)), orderBy('createdAt', 'desc'));
+export async function getVersions(scope: ProjectScope): Promise<SKUVersionSnapshot[]> {
+  const q = query(collection(db!, versionsPath(scope)), orderBy('createdAt', 'desc'));
   const snapshot = await getDocs(q);
   return snapshot.docs.map((d) => {
     const data = d.data();
@@ -51,8 +52,9 @@ export async function getVersions(userId: string, projectId: string): Promise<SK
   });
 }
 
-export async function deleteVersion(userId: string, projectId: string, versionId: string): Promise<void> {
-  const ref = doc(db!, versionsPath(userId, projectId), versionId);
+export async function deleteVersion(scope: ProjectScope, versionId: string): Promise<void> {
+  assertCanWrite(scope);
+  const ref = doc(db!, versionsPath(scope), versionId);
   await deleteDoc(ref);
 }
 

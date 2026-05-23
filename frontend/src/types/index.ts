@@ -162,3 +162,52 @@ export interface Project {
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+// ============================================================
+// Workspace Collaboration (v1.18.0)
+// ============================================================
+
+export type WorkspaceRole = 'owner' | 'editor' | 'viewer';
+
+/**
+ * Shared workspace. Members map is `uid → role`.
+ * UID-based MVP: invites use the colleague's Google UID directly (no email magic link).
+ */
+export interface Workspace {
+  id: string;
+  name: string;
+  ownerId: string;
+  members: Record<string, WorkspaceRole>;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+/**
+ * Per-user index entry — denormalized so a logged-in user can list their workspaces
+ * without scanning every `workspaces/*`.
+ *
+ * Path: `userWorkspaces/{uid}/workspaces/{workspaceId}`
+ */
+export interface UserWorkspaceRef {
+  workspaceId: string;
+  workspaceName: string;
+  role: WorkspaceRole;
+  ownerId: string;
+  defaultProjectId: string;
+  updatedAt?: Date;
+}
+
+/**
+ * ProjectScope is the unit every page-level service call is parameterized on.
+ * - mode === 'personal' → reads/writes `users/{userId}/projects/{projectId}/...`
+ * - mode === 'workspace' → reads/writes `workspaces/{workspaceId}/projects/{projectId}/...`
+ *
+ * `role` defaults to 'owner' for personal mode (the user owns their own data).
+ */
+export interface ProjectScope {
+  mode: 'personal' | 'workspace';
+  userId: string;
+  workspaceId?: string;
+  projectId: string;
+  role: WorkspaceRole;
+}

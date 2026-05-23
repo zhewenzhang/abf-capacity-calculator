@@ -3,7 +3,7 @@ import { saveForecast } from './forecastService';
 import { saveCapacityPlan } from './capacityService';
 import { saveParameters } from './parameterService';
 import { generateDefaultCapacityPlans, DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_FACTORIES, DEFAULT_WORKING_DAYS } from '../core/defaults';
-import type { ProjectParameters, SizeCategory } from '../types';
+import type { ProjectParameters, SizeCategory, ProjectScope } from '../types';
 
 // UPP calculation
 function calculateUPP(chipLengthMm: number, chipWidthMm: number): number {
@@ -122,14 +122,14 @@ function generateDemoForecasts(skuIds: string[]): Array<{ skuId: string; month: 
   return forecasts;
 }
 
-export async function loadDemoData(userId: string, projectId: string): Promise<string> {
+export async function loadDemoData(scope: ProjectScope): Promise<string> {
   // 1. Save default parameters
   const params: ProjectParameters = {
     defaultWorkingDays: DEFAULT_WORKING_DAYS,
     yieldMatrix: DEFAULT_YIELD_MATRIX,
     panelParams: DEFAULT_PANEL_PARAMS,
   };
-  await saveParameters(userId, projectId, params);
+  await saveParameters(scope, params);
 
   // 2. Save SKUs
   const skuIds: string[] = [];
@@ -139,14 +139,14 @@ export async function loadDemoData(userId: string, projectId: string): Promise<s
       upp: calculateUPP(sku.chipLengthMm, sku.chipWidthMm),
       yieldEstimate: getYieldEstimate(sku.sizeCategory as SizeCategory, sku.layerCount),
     };
-    const id = await saveSKU(userId, projectId, skuWithCalc as any);
+    const id = await saveSKU(scope, skuWithCalc as any);
     skuIds.push(id);
   }
 
   // 3. Save forecasts
   const forecasts = generateDemoForecasts(skuIds);
   for (const fc of forecasts) {
-    await saveForecast(userId, projectId, {
+    await saveForecast(scope, {
       skuId: fc.skuId,
       month: fc.month,
       forecastPcs: fc.forecastPcs,
@@ -163,7 +163,7 @@ export async function loadDemoData(userId: string, projectId: string): Promise<s
     const perFactoryBu = Math.floor(cp.buPanelPerDay / DEFAULT_FACTORIES.length);
     const remainderBu = cp.buPanelPerDay - perFactoryBu * DEFAULT_FACTORIES.length;
     for (let i = 0; i < DEFAULT_FACTORIES.length; i++) {
-      await saveCapacityPlan(userId, projectId, {
+      await saveCapacityPlan(scope, {
         month: cp.month,
         factoryId: DEFAULT_FACTORIES[i].id,
         corePanelPerDay: perFactoryCore + (i < remainderCore ? 1 : 0),

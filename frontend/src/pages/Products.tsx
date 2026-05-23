@@ -32,7 +32,8 @@ import type { ColumnsType } from 'antd/es/table';
 import * as XLSX from 'xlsx';
 import { getSKUs, saveSKU, deleteSKU, batchSaveSKUs } from '../services/skuService';
 import { saveVersion, getVersions, restoreVersion, deleteVersion } from '../services/skuVersionService';
-import type { CurrencyCode, SKU, SizeCategory } from '../types';
+import type { CurrencyCode, SKU, SizeCategory, ProjectScope } from '../types';
+import { canEdit } from '../services/projectScope';
 import { normalizeCurrencyCode } from '../core/currency';
 import { validateSKU } from '../core/validation';
 import { DEFAULT_YIELD_MATRIX } from '../core/defaults';
@@ -42,8 +43,7 @@ const { Text } = Typography;
 const { RangePicker } = DatePicker;
 
 interface ProductsPageProps {
-  userId: string;
-  projectId: string;
+  scope: ProjectScope;
 }
 
 const SIZE_OPTIONS: { label: string; value: SizeCategory }[] = [
@@ -92,8 +92,9 @@ function formatDateTime(date: any): string {
   return d.toLocaleString();
 }
 
-const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
+const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
   const { t } = useI18n();
+  const writable = canEdit(scope.role);
   const [skus, setSkus] = useState<SKU[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -188,7 +189,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getSKUs(userId, projectId);
+      const data = await getSKUs(scope);
       setSkus(data);
     } catch (e: any) {
       setError(e.message || 'Failed to load SKUs');
@@ -200,7 +201,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
   const loadVersions = async () => {
     setVersionsLoading(true);
     try {
-      const v = await getVersions(userId, projectId);
+      const v = await getVersions(scope);
       setVersions(v);
     } catch {
       // ignore
@@ -212,7 +213,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
   useEffect(() => {
     loadSKUs();
     loadVersions();
-  }, [userId, projectId]);
+  }, [scope]);
 
   // Filter by date
   const filteredSkus = useMemo(() => {
@@ -248,7 +249,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
       values.unitPriceCurrency = values.unitPriceCurrency ?? 'USD';
       values.upp = calculateUPP(values.chipLengthMm, values.chipWidthMm);
       values.yieldEstimate = getYieldEstimate(values.sizeCategory, values.layerCount);
-      await saveSKU(userId, projectId, values);
+      await saveSKU(scope, values);
       message.success('SKU added');
       setAddMode(false);
       addForm.resetFields();
@@ -281,7 +282,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
       values.unitPriceCurrency = values.unitPriceCurrency ?? sku.unitPriceCurrency ?? 'USD';
       values.upp = calculateUPP(values.chipLengthMm, values.chipWidthMm);
       values.yieldEstimate = getYieldEstimate(values.sizeCategory, values.layerCount);
-      await saveSKU(userId, projectId, { ...sku, ...values });
+      await saveSKU(scope, { ...sku, ...values });
       message.success('SKU updated');
       setEditingKey(null);
       loadSKUs();
@@ -293,7 +294,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteSKU(userId, projectId, id);
+      await deleteSKU(scope, id);
       message.success('SKU deleted');
       loadSKUs();
       loadVersions();
@@ -355,7 +356,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
           return;
         }
 
-        await batchSaveSKUs(userId, projectId, imported);
+        await batchSaveSKUs(scope, imported);
         message.success(`Imported ${imported.length} SKUs`);
         loadSKUs();
         loadVersions();
@@ -371,7 +372,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
   const handleSaveVersion = async () => {
     const name = versionName.trim() || `SKU v${versions.length + 1}`;
     try {
-      await saveVersion(userId, projectId, name, skus);
+      await saveVersion(scope, name, skus);
       message.success(`Version "${name}" saved`);
       setVersionName('');
       loadVersions();
@@ -382,12 +383,12 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
 
   const handleRestoreVersion = async (versionId: string) => {
     try {
-      const vList = await getVersions(userId, projectId);
+      const vList = await getVersions(scope);
       const ver = vList.find((v) => v.id === versionId);
       if (!ver) return;
       const restored = restoreVersion(ver);
       for (const sku of restored.skus) {
-        await saveSKU(userId, projectId, sku);
+        await saveSKU(scope, sku);
       }
       message.success(`Restored "${ver.versionName}" with ${restored.skus.length} SKUs`);
       loadSKUs();
@@ -399,7 +400,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
 
   const handleDeleteVersion = async (versionId: string) => {
     try {
-      await deleteVersion(userId, projectId, versionId);
+      await deleteVersion(scope, versionId);
       message.success('Version deleted');
       loadVersions();
     } catch (e: any) {
@@ -458,9 +459,9 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
           </Space>
         ) : (
           <Space>
-            <Button size="small" type="link" onClick={() => handleEditStart(record)}><EditOutlined /></Button>
-            <Popconfirm title={t('products.deleteConfirm')} onConfirm={() => handleDelete(record.id)}>
-              <Button size="small" type="link" danger><DeleteOutlined /></Button>
+            <Button size="small" type="link" onClick={() => handleEditStart(record)} disabled={!writable}><EditOutlined /></Button>
+            <Popconfirm title={t('products.deleteConfirm')} onConfirm={() => handleDelete(record.id)} disabled={!writable}>
+              <Button size="small" type="link" danger disabled={!writable}><DeleteOutlined /></Button>
             </Popconfirm>
           </Space>
         );
@@ -471,12 +472,19 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
   return (
     <div>
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
+      {!writable && (
+        <Alert
+          message={t('common.readOnlyMode') || 'Read-only mode'}
+          description={t('common.readOnlyDesc') || 'You are a viewer in this workspace — editing is disabled.'}
+          type="info" showIcon style={{ marginBottom: 16 }}
+        />
+      )}
 
       {/* Toolbar */}
       <Card size="small" style={{ marginBottom: 16 }}>
         <Row gutter={[12, 8]} align="middle" wrap>
           <Col>
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleAddStart} disabled={addMode || editingKey !== null}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleAddStart} disabled={!writable || addMode || editingKey !== null}>
               {t('products.addSku')}
             </Button>
           </Col>
@@ -487,7 +495,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
           </Col>
           <Col>
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleImport} style={{ display: 'none' }} />
-            <Button icon={<UploadOutlined />} onClick={() => fileInputRef.current?.click()}>{t('products.import')}</Button>
+            <Button icon={<UploadOutlined />} onClick={() => fileInputRef.current?.click()} disabled={!writable}>{t('products.import')}</Button>
           </Col>
           <Col>
             <RangePicker
@@ -510,7 +518,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ userId, projectId }) => {
                 style={{ width: 140 }}
                 onPressEnter={handleSaveVersion}
               />
-              <Button size="small" icon={<SaveOutlined />} onClick={handleSaveVersion}>{t('products.save')}</Button>
+              <Button size="small" icon={<SaveOutlined />} onClick={handleSaveVersion} disabled={!writable}>{t('products.save')}</Button>
               <Button size="small" icon={<HistoryOutlined />} onClick={() => document.getElementById('sku-versions-section')?.scrollIntoView({ behavior: 'smooth' })}>{t('common.template')}</Button>
             </Space>
           </Col>
