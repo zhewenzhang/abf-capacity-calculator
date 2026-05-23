@@ -474,8 +474,8 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
       {!writable && (
         <Alert
-          message={t('common.readOnlyMode') || 'Read-only mode'}
-          description={t('common.readOnlyDesc') || 'You are a viewer in this workspace — editing is disabled.'}
+          message={t('common.readOnlyMode')}
+          description={t('common.readOnlyDesc')}
           type="info" showIcon style={{ marginBottom: 16 }}
         />
       )}

@@ -626,7 +626,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ scope }) => {
     <div>
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
       {!writable && (
-        <Alert message="Read-only mode" description="You are a viewer in this workspace — editing is disabled." type="info" showIcon style={{ marginBottom: 16 }} />
+        <Alert message={t('common.readOnlyMode')} description={t('common.readOnlyDesc')} type="info" showIcon style={{ marginBottom: 16 }} />
       )}
 
       {/* View mode + toolbar */}

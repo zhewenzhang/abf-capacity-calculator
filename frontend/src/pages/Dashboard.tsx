@@ -220,7 +220,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ scope }) => {
         <Alert
           message={
             <span>
-              <strong>Data Confidence: </strong>
+              <strong>{t('dashboard.dataConfidence')} </strong>
               <Tag color={
                 qualitySummary.confidence === 'high' ? 'green' :
                 qualitySummary.confidence === 'medium' ? 'orange' :
@@ -230,12 +230,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ scope }) => {
               </Tag>
               {qualitySummary.status !== 'ok' && (
                 <Text type="secondary" style={{ marginLeft: 8 }}>
-                  {qualitySummary.issues.filter(i => i.severity === 'error').length} error(s), {qualitySummary.issues.filter(i => i.severity === 'warning').length} warning(s).
+                  {t('dashboard.errorCount', {
+                    errors: qualitySummary.issues.filter(i => i.severity === 'error').length,
+                    warnings: qualitySummary.issues.filter(i => i.severity === 'warning').length,
+                  })}
                 </Text>
               )}
               {highlights?.worstYear && qualitySummary.confidence !== 'blocked' && (
                 <Text type="danger" style={{ marginLeft: 8 }}>
-                  Highest risk period: {highlights.worstYear}.
+                  {t('dashboard.highestRiskPeriod', { period: highlights.worstYear })}
                 </Text>
               )}
             </span>

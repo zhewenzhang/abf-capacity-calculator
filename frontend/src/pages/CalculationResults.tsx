@@ -84,14 +84,14 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
         if (skuData.length === 0) {
           setModel(null);
           setBpTargets({});
-          setError('No SKUs found. Add products first.');
+          setError(t('results.noSkus'));
           setLoading(false);
           return;
         }
         if (forecastData.length === 0) {
           setModel(null);
           setBpTargets({});
-          setError('No forecasts found. Add forecasts first.');
+          setError(t('results.noForecasts'));
           setLoading(false);
           return;
         }
@@ -109,7 +109,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
           setBpTargets({});
         }
       } catch (e: any) {
-        setError(e.message || 'Failed to run calculation');
+        setError(e.message || t('results.calcFailed'));
       } finally {
         setLoading(false);
       }
@@ -569,12 +569,12 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
           {view === 'risk' && riskBrief && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Executive Summary */}
-              <Card title="Executive Summary" bordered={false} size="small">
+              <Card title={t('results.riskBrief.executiveSummaryTitle')} bordered={false} size="small">
                 <List
-                  dataSource={riskBrief.executiveSummary}
+                  dataSource={riskBrief.executiveSummaryMessages}
                   renderItem={(item) => (
                     <List.Item style={{ border: 'none', padding: '4px 0' }}>
-                      <Text style={{ fontSize: 14 }}>{item}</Text>
+                      <Text style={{ fontSize: 14 }}>{t(item)}</Text>
                     </List.Item>
                   )}
                 />
@@ -582,7 +582,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
 
               {/* Top Risk Periods */}
               {riskBrief.topRiskPeriods.length > 0 && (
-                <Card title={`Top Risk Periods (${riskBrief.topRiskPeriods.length})`} bordered={false} size="small">
+                <Card title={t('results.riskBrief.topRiskPeriodsTitle', { count: riskBrief.topRiskPeriods.length })} bordered={false} size="small">
                   <Table
                     dataSource={riskBrief.topRiskPeriods}
                     rowKey="period"
@@ -590,14 +590,14 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                     size="small"
                     columns={[
                       {
-                        title: 'Period',
+                        title: t('results.riskBrief.period'),
                         dataIndex: 'period',
                         key: 'period',
                         width: 80,
                         render: (v: string) => <Text strong>{v}</Text>,
                       },
                       {
-                        title: 'Severity',
+                        title: t('results.riskBrief.severity'),
                         dataIndex: 'severity',
                         key: 'severity',
                         width: 90,
@@ -608,7 +608,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                         ),
                       },
                       {
-                        title: 'Bottleneck',
+                        title: t('results.riskBrief.bottleneckCol'),
                         dataIndex: 'bottleneck',
                         key: 'bottleneck',
                         width: 90,
@@ -616,7 +616,12 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                           <Tag color={v === 'Core' ? 'orange' : v === 'BU' ? 'red' : 'default'}>{v}</Tag>
                         ),
                       },
-                      { title: 'Reason', dataIndex: 'reason', key: 'reason' },
+                      {
+                        title: t('results.riskBrief.reason'),
+                        dataIndex: 'reasonMessage',
+                        key: 'reasonMessage',
+                        render: (_v: unknown, record: typeof riskBrief.topRiskPeriods[0]) => t(record.reasonMessage),
+                      },
                     ]}
                   />
                 </Card>
@@ -624,7 +629,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
 
               {/* Key Facts */}
               {riskBrief.facts.length > 0 && (
-                <Card title="Key Facts" bordered={false} size="small">
+                <Card title={t('results.riskBrief.keyFactsTitle')} bordered={false} size="small">
                   <List
                     dataSource={riskBrief.facts}
                     renderItem={(item) => (
@@ -639,8 +644,8 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                         >
                           {item.severity.toUpperCase()}
                         </Tag>
-                        <Text strong>{item.title}:</Text>
-                        <Text style={{ marginLeft: 4 }}>{item.detail}</Text>
+                        <Text strong>{t(item.titleMessage)}:</Text>
+                        <Text style={{ marginLeft: 4 }}>{t(item.detailMessage)}</Text>
                       </List.Item>
                     )}
                   />
@@ -650,12 +655,12 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
               {/* Risk Period Attribution — shortage-month drivers */}
               {riskBrief.attributionDrivers.length > 0 && (
                 <Card
-                  title={`Risk Period Attribution (${riskBrief.shortageMonths.length} shortage month${riskBrief.shortageMonths.length === 1 ? '' : 's'})`}
+                  title={t('results.riskBrief.attributionTitle', { count: riskBrief.shortageMonths.length, plural: riskBrief.shortageMonths.length === 1 ? '' : 's' })}
                   bordered={false}
                   size="small"
                   extra={
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                      Who drives pressure during shortage months (deterministic, no AI)
+                      {t('results.riskBrief.attributionSubtitle')}
                     </Text>
                   }
                 >
@@ -665,11 +670,11 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                     pagination={false}
                     size="small"
                     columns={[
-                      { title: 'Dimension', dataIndex: 'dimension', key: 'dimension', width: 110 },
-                      { title: 'Driver', dataIndex: 'label', key: 'label', width: 180 },
-                      { title: 'Metric', dataIndex: 'metric', key: 'metric', width: 170 },
+                      { title: t('results.riskBrief.dimension'), dataIndex: 'dimension', key: 'dimension', width: 110, render: (v: string) => t(`attr.dimension.${v}`) },
+                      { title: t('results.riskBrief.driver'), dataIndex: 'label', key: 'label', width: 180 },
+                      { title: t('results.riskBrief.metric'), dataIndex: 'metric', key: 'metric', width: 170, render: (v: string) => t(`attr.metric.${v}`) },
                       {
-                        title: 'Value',
+                        title: t('results.riskBrief.value'),
                         dataIndex: 'value',
                         key: 'value',
                         width: 110,
@@ -677,7 +682,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                         render: (v: number) => v.toLocaleString(undefined, { maximumFractionDigits: 1 }),
                       },
                       {
-                        title: 'Share',
+                        title: t('results.riskBrief.share'),
                         dataIndex: 'share',
                         key: 'share',
                         width: 80,
@@ -685,7 +690,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                         render: (v: number | undefined) => (v !== undefined ? `${v.toFixed(1)}%` : '-'),
                       },
                       {
-                        title: 'Severity',
+                        title: t('results.riskBrief.severity'),
                         dataIndex: 'severity',
                         key: 'severity',
                         width: 90,
@@ -694,12 +699,12 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                         ),
                       },
                       {
-                        title: 'Periods',
+                        title: t('results.riskBrief.periods'),
                         dataIndex: 'affectedPeriods',
                         key: 'affectedPeriods',
-                        render: (ps: string[]) => (ps.length > 4 ? `${ps.slice(0, 4).join(', ')} +${ps.length - 4} more` : ps.join(', ') || '-'),
+                        render: (ps: string[]) => (ps.length > 4 ? t('results.riskBrief.morePeriods', { shown: ps.slice(0, 4).join(', '), rest: ps.length - 4 }) : ps.join(', ') || '-'),
                       },
-                      { title: 'Reason', dataIndex: 'reason', key: 'reason' },
+                      { title: t('results.riskBrief.reason'), dataIndex: 'reasonMessage', key: 'reasonMessage', render: (_v: unknown, record: typeof riskBrief.attributionDrivers[0]) => t(record.reasonMessage) },
                     ]}
                   />
                 </Card>
@@ -708,12 +713,12 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
               {/* SKU Health Signals (deterministic MVP) */}
               {riskBrief.skuHealthSignals.length > 0 && (
                 <Card
-                  title={`SKU Health Signals (top ${riskBrief.skuHealthSignals.length})`}
+                  title={t('results.riskBrief.healthSignalsTitle', { count: riskBrief.skuHealthSignals.length })}
                   bordered={false}
                   size="small"
                   extra={
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                      Revenue share vs capacity-pressure share — deterministic signal, not AI judgment
+                      {t('results.riskBrief.healthSignalsSubtitle')}
                     </Text>
                   }
                 >
@@ -723,10 +728,10 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                     pagination={false}
                     size="small"
                     columns={[
-                      { title: 'SKU', dataIndex: 'skuCode', key: 'skuCode', width: 140 },
-                      { title: 'Customer', dataIndex: 'customer', key: 'customer', width: 140 },
+                      { title: t('results.sku'), dataIndex: 'skuCode', key: 'skuCode', width: 140 },
+                      { title: t('attr.dimension.customer'), dataIndex: 'customer', key: 'customer', width: 140 },
                       {
-                        title: 'Classification',
+                        title: t('results.riskBrief.classification'),
                         dataIndex: 'classification',
                         key: 'classification',
                         width: 160,
@@ -739,11 +744,11 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                             watchList: 'default',
                             dataIncomplete: 'volcano',
                           };
-                          return <Tag color={colorMap[c] ?? 'default'}>{c}</Tag>;
+                          return <Tag color={colorMap[c] ?? 'default'}>{t(`health.${c}`)}</Tag>;
                         },
                       },
                       {
-                        title: 'Revenue Share',
+                        title: t('results.riskBrief.revenueShare'),
                         dataIndex: 'revenueShare',
                         key: 'revenueShare',
                         width: 120,
@@ -751,7 +756,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                         render: (v: number | undefined) => (v !== undefined ? `${v.toFixed(1)}%` : '-'),
                       },
                       {
-                        title: 'Pressure Share',
+                        title: t('results.riskBrief.pressureShare'),
                         dataIndex: 'capacityPressureShare',
                         key: 'capacityPressureShare',
                         width: 130,
@@ -759,10 +764,10 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                         render: (v: number | undefined) => (v !== undefined ? `${v.toFixed(1)}%` : '-'),
                       },
                       {
-                        title: 'Reason',
-                        dataIndex: 'reasons',
-                        key: 'reasons',
-                        render: (rs: string[]) => rs.join(' '),
+                        title: t('results.riskBrief.reason'),
+                        dataIndex: 'reasonMessages',
+                        key: 'reasonMessages',
+                        render: (_v: unknown, record: typeof riskBrief.skuHealthSignals[0]) => record.reasonMessages.map((m) => t(m)).join(' '),
                       },
                     ]}
                   />
@@ -772,12 +777,12 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
               {/* Overall Contribution Drivers */}
               {riskBrief.drivers.length > 0 && (
                 <Card
-                  title="Overall Contribution"
+                  title={t('results.riskBrief.contributionTitle')}
                   bordered={false}
                   size="small"
                   extra={
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                      Who is biggest across ALL periods (context only)
+                      {t('results.riskBrief.contributionSubtitle')}
                     </Text>
                   }
                 >
@@ -785,7 +790,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                     size="small"
                     items={riskBrief.drivers.map((dg) => ({
                       key: dg.metric,
-                      label: dg.title,
+                      label: t(dg.titleMessage),
                       children: (
                         <Table
                           dataSource={dg.items}
@@ -793,9 +798,9 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                           pagination={false}
                           size="small"
                           columns={[
-                            { title: 'Driver', dataIndex: 'label', key: 'label', width: 180 },
+                            { title: t('results.riskBrief.driver'), dataIndex: 'label', key: 'label', width: 180 },
                             {
-                              title: 'Value',
+                              title: t('results.riskBrief.value'),
                               dataIndex: 'value',
                               key: 'value',
                               width: 120,
@@ -803,14 +808,14 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                               render: (v: number) => dg.metric === 'revenue' ? formatCurrency(v, currencySettings) : v.toLocaleString(),
                             },
                             {
-                              title: 'Share',
+                              title: t('results.riskBrief.share'),
                               dataIndex: 'share',
                               key: 'share',
                               width: 80,
                               align: 'right',
                               render: (v: number | undefined) => v !== undefined ? `${v.toFixed(1)}%` : '-',
                             },
-                            { title: 'Reason', dataIndex: 'reason', key: 'reason' },
+                            { title: t('results.riskBrief.reason'), dataIndex: 'reasonMessage', key: 'reasonMessage', render: (_v: unknown, record: typeof dg.items[0]) => t(record.reasonMessage) },
                           ]}
                         />
                       ),
@@ -821,19 +826,19 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
 
               {/* BP Risk */}
               {riskBrief.bpRisk?.statement && (
-                <Card title="BP Risk" bordered={false} size="small">
+                <Card title={t('results.riskBrief.bpRiskTitle')} bordered={false} size="small">
                   <Alert
                     type="warning"
                     showIcon
                     icon={<WarningOutlined />}
-                    message={riskBrief.bpRisk.statement.title}
-                    description={riskBrief.bpRisk.statement.detail}
+                    message={t(riskBrief.bpRisk.statement.titleMessage)}
+                    description={t(riskBrief.bpRisk.statement.detailMessage)}
                   />
                 </Card>
               )}
 
               {/* Data Confidence & Caveats */}
-              <Card title="Data Confidence & Caveats" bordered={false} size="small">
+              <Card title={t('results.riskBrief.dataConfidenceTitle')} bordered={false} size="small">
                 <div style={{ marginBottom: 12 }}>
                   <Tag
                     color={
@@ -845,7 +850,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                     {riskBrief.confidence.toUpperCase()}
                   </Tag>
                   <Text type="secondary" style={{ marginLeft: 8, fontSize: 13 }}>
-                    {riskBrief.confidenceExplanation}
+                    {t(riskBrief.confidenceExplanationMessage)}
                   </Text>
                 </div>
                 {riskBrief.dataCaveats.total > 0 && (
@@ -853,7 +858,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                     size="small"
                     items={[{
                       key: 'caveats',
-                      label: `Data Caveats: ${riskBrief.dataCaveats.top.length} shown of ${riskBrief.dataCaveats.total} total`,
+                      label: t('results.riskBrief.caveatsCollapse', { shown: riskBrief.dataCaveats.top.length, total: riskBrief.dataCaveats.total }),
                       children: (
                         <List
                           size="small"
@@ -870,8 +875,8 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                                 {issue.severity.toUpperCase()}
                               </Tag>
                               <Tag color="default" style={{ marginRight: 8 }}>{issue.domain}</Tag>
-                              <Text strong>{issue.title}</Text>
-                              <Text type="secondary" style={{ marginLeft: 4, fontSize: 12 }}>{issue.detail}</Text>
+                              <Text strong>{t(issue.titleMessage)}</Text>
+                              <Text type="secondary" style={{ marginLeft: 4, fontSize: 12 }}>{t(issue.detailMessage)}</Text>
                             </List.Item>
                           )}
                         />
@@ -882,14 +887,14 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
               </Card>
 
               {/* Assumptions */}
-              <Card title="Assumptions" bordered={false} size="small">
+              <Card title={t('results.riskBrief.assumptionsTitle')} bordered={false} size="small">
                 <List
                   dataSource={riskBrief.assumptions}
                   renderItem={(item) => (
                     <List.Item style={{ border: 'none', padding: '4px 0' }}>
                       <InfoCircleOutlined style={{ color: '#1677ff', marginRight: 8 }} />
-                      <Text strong>{item.title}:</Text>
-                      <Text type="secondary" style={{ marginLeft: 4 }}>{item.detail}</Text>
+                      <Text strong>{t(item.titleMessage)}:</Text>
+                      <Text type="secondary" style={{ marginLeft: 4 }}>{t(item.detailMessage)}</Text>
                     </List.Item>
                   )}
                 />
@@ -898,52 +903,52 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
               {/* Role-Based Attention */}
               <Row gutter={[16, 16]}>
                 <Col xs={24} md={12}>
-                  <Card title="Sales & Customer Actions" size="small" bordered={false}>
+                  <Card title={t('results.riskBrief.salesTitle')} size="small" bordered={false}>
                     <List
-                      dataSource={riskBrief.roleAttention.sales}
+                      dataSource={riskBrief.roleAttention.salesMessages}
                       renderItem={(item) => (
                         <List.Item style={{ border: 'none', padding: '6px 0' }}>
                           <CaretRightOutlined style={{ color: '#1677ff', marginRight: 8 }} />
-                          <Text style={{ fontSize: 13 }}>{item}</Text>
+                          <Text style={{ fontSize: 13 }}>{t(item)}</Text>
                         </List.Item>
                       )}
                     />
                   </Card>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Card title="Product Planning Actions" size="small" bordered={false}>
+                  <Card title={t('results.riskBrief.productPlanningTitle')} size="small" bordered={false}>
                     <List
-                      dataSource={riskBrief.roleAttention.productPlanning}
+                      dataSource={riskBrief.roleAttention.productPlanningMessages}
                       renderItem={(item) => (
                         <List.Item style={{ border: 'none', padding: '6px 0' }}>
                           <CaretRightOutlined style={{ color: '#1677ff', marginRight: 8 }} />
-                          <Text style={{ fontSize: 13 }}>{item}</Text>
+                          <Text style={{ fontSize: 13 }}>{t(item)}</Text>
                         </List.Item>
                       )}
                     />
                   </Card>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Card title="Factory & Capacity Actions" size="small" bordered={false}>
+                  <Card title={t('results.riskBrief.capacityTitle')} size="small" bordered={false}>
                     <List
-                      dataSource={riskBrief.roleAttention.capacity}
+                      dataSource={riskBrief.roleAttention.capacityMessages}
                       renderItem={(item) => (
                         <List.Item style={{ border: 'none', padding: '6px 0' }}>
                           <CaretRightOutlined style={{ color: '#1677ff', marginRight: 8 }} />
-                          <Text style={{ fontSize: 13 }}>{item}</Text>
+                          <Text style={{ fontSize: 13 }}>{t(item)}</Text>
                         </List.Item>
                       )}
                     />
                   </Card>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Card title="Executive Actions" size="small" bordered={false}>
+                  <Card title={t('results.riskBrief.executiveTitle')} size="small" bordered={false}>
                     <List
-                      dataSource={riskBrief.roleAttention.executive}
+                      dataSource={riskBrief.roleAttention.executiveMessages}
                       renderItem={(item) => (
                         <List.Item style={{ border: 'none', padding: '6px 0' }}>
                           <CaretRightOutlined style={{ color: '#1677ff', marginRight: 8 }} />
-                          <Text style={{ fontSize: 13 }}>{item}</Text>
+                          <Text style={{ fontSize: 13 }}>{t(item)}</Text>
                         </List.Item>
                       )}
                     />
@@ -952,17 +957,17 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
               </Row>
 
               {/* Metric Glossaries */}
-              <Card title="Metric Registry Reference" size="small" bordered={false}>
+              <Card title={t('results.riskBrief.metricRegistryTitle')} size="small" bordered={false}>
                 <Table
                   dataSource={METRIC_DEFINITIONS}
                   rowKey="id"
                   pagination={false}
                   size="small"
                   columns={[
-                    { title: 'Metric ID', dataIndex: 'id', key: 'id', width: 140 },
-                    { title: 'Formula', dataIndex: 'formula', key: 'formula', width: 220, render: (v: string) => <code>{v}</code> },
-                    { title: 'Description', dataIndex: 'definition', key: 'definition' },
-                    { title: 'Unit', dataIndex: 'unit', key: 'unit', width: 90, render: (v: string) => <Tag>{v}</Tag> },
+                    { title: t('results.riskBrief.metricId'), dataIndex: 'id', key: 'id', width: 140 },
+                    { title: t('results.riskBrief.formula'), dataIndex: 'formula', key: 'formula', width: 220, render: (v: string) => <code>{v}</code> },
+                    { title: t('results.riskBrief.description'), dataIndex: 'definition', key: 'definition' },
+                    { title: t('results.riskBrief.unit'), dataIndex: 'unit', key: 'unit', width: 90, render: (v: string) => <Tag>{v}</Tag> },
                   ]}
                 />
               </Card>

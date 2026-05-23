@@ -1,5 +1,10 @@
 import type { SKU, Forecast, CapacityPlan, ProjectParameters } from '../types';
 import { currencyOrUsd } from './currency';
+import type { LocalizedMessage } from '../i18n';
+
+function msg(key: string, params?: Record<string, string | number>): LocalizedMessage {
+  return params ? { key, params } : { key };
+}
 
 export type DataQualitySeverity = 'error' | 'warning' | 'info';
 export type DataQualityDomain =
@@ -15,8 +20,12 @@ export interface DataQualityIssue {
   id: string;
   severity: DataQualitySeverity;
   domain: DataQualityDomain;
+  /** Legacy English title; UI should prefer titleMessage. */
   title: string;
+  /** Legacy English detail; UI should prefer detailMessage. */
   detail: string;
+  titleMessage: LocalizedMessage;
+  detailMessage: LocalizedMessage;
   affectedPeriods?: string[];
   affectedSkuIds?: string[];
   evidence?: Record<string, string | number | boolean | null>;
@@ -51,6 +60,8 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
           domain: 'analytics',
           title: 'No Data Loaded',
           detail: 'Load products and monthly forecasts to unlock full capacity risk analytics.',
+          titleMessage: msg('dq.noData.title'),
+          detailMessage: msg('dq.noData.detail'),
         },
       ],
     };
@@ -79,6 +90,8 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
         domain: 'products',
         title: 'SKU Missing Required Production Attributes',
         detail: `SKU ${sku.skuCode} has invalid or missing attributes: ${missingAttrs.join(', ')}.`,
+        titleMessage: msg('dq.skuMissingAttr.title'),
+        detailMessage: msg('dq.skuMissingAttr.detail', { skuCode: sku.skuCode, attrs: missingAttrs.join(', ') }),
         affectedSkuIds: [sku.id],
         evidence: { skuCode: sku.skuCode, missingCount: missingAttrs.length },
       });
@@ -91,6 +104,8 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
         domain: 'products',
         title: 'SKU Unit Price is Zero',
         detail: `SKU ${sku.skuCode} has a set unit price of exactly 0.`,
+        titleMessage: msg('dq.skuZeroPrice.title'),
+        detailMessage: msg('dq.skuZeroPrice.detail', { skuCode: sku.skuCode }),
         affectedSkuIds: [sku.id],
       });
     }
@@ -102,6 +117,8 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
         domain: 'products',
         title: 'SKU Unsupported Price Currency',
         detail: `SKU ${sku.skuCode} has an unsupported currency: ${sku.unitPriceCurrency}.`,
+        titleMessage: msg('dq.skuUnsupportedCurrency.title'),
+        detailMessage: msg('dq.skuUnsupportedCurrency.detail', { skuCode: sku.skuCode, currency: sku.unitPriceCurrency }),
         affectedSkuIds: [sku.id],
       });
     }
@@ -129,6 +146,8 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
         domain: 'forecast',
         title: 'Forecast References Missing SKU',
         detail: `Forecast for month ${fc.month} references skuId ${fc.skuId} which does not exist.`,
+        titleMessage: msg('dq.forecastOrphan.title'),
+        detailMessage: msg('dq.forecastOrphan.detail', { month: fc.month, skuId: fc.skuId }),
         evidence: { skuId: fc.skuId, month: fc.month },
       });
     }
@@ -140,6 +159,8 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
         domain: 'forecast',
         title: 'Forecast Unit Price is Zero',
         detail: `Forecast for month ${fc.month} has a unit price of 0.`,
+        titleMessage: msg('dq.forecastZeroPrice.title'),
+        detailMessage: msg('dq.forecastZeroPrice.detail', { month: fc.month }),
         evidence: { forecastId: fc.id },
       });
     }
@@ -156,6 +177,8 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
         domain: 'forecast',
         title: 'Partial Year Forecast Data',
         detail: `SKU ${sku.skuCode} has forecast data for only ${months.size}/12 months in ${year}.`,
+        titleMessage: msg('dq.forecastPartialYear.title'),
+        detailMessage: msg('dq.forecastPartialYear.detail', { skuCode: sku.skuCode, count: months.size, year }),
         affectedSkuIds: [skuId],
         affectedPeriods: [year],
       });
@@ -191,6 +214,8 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
       domain: 'capacity',
       title: 'Missing Capacity Config for Forecast Period',
       detail: `Forecast demand exists for ${missingCapMonths.length} month(s) but no factory capacity config exists.`,
+      titleMessage: msg('dq.missingCapacity.title'),
+      detailMessage: msg('dq.missingCapacity.detail', { count: missingCapMonths.length }),
       affectedPeriods: missingCapMonths.sort(),
     });
   }
@@ -208,6 +233,8 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
       domain: 'capacity',
       title: 'Capacity Exists Without Demand',
       detail: `Capacity configuration is defined for ${capacityWithoutDemand.length} month(s) with zero forecast demand.`,
+      titleMessage: msg('dq.capacityWithoutForecast.title'),
+      detailMessage: msg('dq.capacityWithoutForecast.detail', { count: capacityWithoutDemand.length }),
       affectedPeriods: capacityWithoutDemand.sort(),
     });
   }
@@ -232,6 +259,8 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
       domain: 'capacity',
       title: 'BU Demand Exists with Zero BU Capacity',
       detail: `Build-up (BU) panel demand is required for layered SKUs, but BU capacity is 0 in some months.`,
+      titleMessage: msg('dq.buZeroCapacity.title'),
+      detailMessage: msg('dq.buZeroCapacity.detail'),
       affectedPeriods: Array.from(new Set(buIssues.map((x) => x.split('::')[0]))).sort(),
     });
   }
@@ -253,6 +282,8 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
           domain: 'currency',
           title: 'Missing TWD Exchange Rate',
           detail: 'TWD currency is required but constant exchange rate is missing or invalid.',
+          titleMessage: msg('dq.missingTwdConstant.title'),
+          detailMessage: msg('dq.missingTwdConstant.detail'),
         });
       }
     } else {
@@ -268,6 +299,8 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
           domain: 'currency',
           title: 'Missing Yearly TWD Exchange Rate',
           detail: `Yearly exchange rate mode enabled but missing rates for years: ${missingYears.join(', ')}.`,
+          titleMessage: msg('dq.missingTwdYearly.title'),
+          detailMessage: msg('dq.missingTwdYearly.detail', { years: missingYears.join(', ') }),
           affectedPeriods: missingYears.sort(),
         });
       }
@@ -283,6 +316,8 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
           domain: 'currency',
           title: 'Missing CNY Exchange Rate',
           detail: 'CNY currency is required but constant exchange rate is missing or invalid.',
+          titleMessage: msg('dq.missingCnyConstant.title'),
+          detailMessage: msg('dq.missingCnyConstant.detail'),
         });
       }
     } else {
@@ -298,6 +333,8 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
           domain: 'currency',
           title: 'Missing Yearly CNY Exchange Rate',
           detail: `Yearly exchange rate mode enabled but missing CNY rates for years: ${missingYears.join(', ')}.`,
+          titleMessage: msg('dq.missingCnyYearly.title'),
+          detailMessage: msg('dq.missingCnyYearly.detail', { years: missingYears.join(', ') }),
           affectedPeriods: missingYears.sort(),
         });
       }
@@ -320,6 +357,8 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
         domain: 'bp',
         title: 'BP Target Exists Without Forecast Demand',
         detail: `BP target exists for year ${year} but no active monthly SKU forecast demand exists.`,
+        titleMessage: msg('dq.bpTargetZeroForecast.title'),
+        detailMessage: msg('dq.bpTargetZeroForecast.detail', { year }),
         affectedPeriods: [year],
       });
     }
@@ -335,6 +374,8 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
         domain: 'bp',
         title: 'Forecast Exists Without BP Target Config',
         detail: `Forecast demand exists for year ${year} but no BP target is configured in Parameters.`,
+        titleMessage: msg('dq.forecastMissingBpTarget.title'),
+        detailMessage: msg('dq.forecastMissingBpTarget.detail', { year }),
         affectedPeriods: [year],
       });
     }
@@ -347,6 +388,8 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
     domain: 'bp',
     title: 'BP Targets Allocation Method',
     detail: 'Yearly BP target targets are evenly allocated to quarter (annual / 4) and month (annual / 12) inside analysis.',
+    titleMessage: msg('dq.bpAllocationInfo.title'),
+    detailMessage: msg('dq.bpAllocationInfo.detail'),
   });
 
   issues.push({
@@ -355,6 +398,8 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
     domain: 'parameters',
     title: 'Fixed Working Days Configuration',
     detail: `Working days are fixed across all monthly summaries (Default: ${params.defaultWorkingDays ?? 28} days/month).`,
+    titleMessage: msg('dq.fixedWorkingDays.title'),
+    detailMessage: msg('dq.fixedWorkingDays.detail', { days: params.defaultWorkingDays ?? 28 }),
   });
 
   // --- Determine Status and Confidence ---

@@ -6,34 +6,34 @@ import React, { useState } from 'react';
 import { Button, Dropdown, message, Space, Tag, Tooltip } from 'antd';
 import { TeamOutlined, UserOutlined, CopyOutlined, DownOutlined } from '@ant-design/icons';
 import { useWorkspace } from '../../context/WorkspaceContext';
+import { useI18n } from '../../i18n';
 import type { MenuProps } from 'antd';
 
 export const WorkspaceSwitcher: React.FC = () => {
   const { scope, workspaces, switchToPersonal, switchToWorkspace, loading, user } = useWorkspace();
+  const { t } = useI18n();
   const [messageApi, contextHolder] = message.useMessage();
   const [copying, setCopying] = useState(false);
 
   const currentLabel = scope.mode === 'personal'
-    ? 'Personal'
-    : (workspaces.find((w) => w.workspaceId === scope.workspaceId)?.workspaceName ?? 'Workspace');
+    ? t('workspace.personal')
+    : (workspaces.find((w) => w.workspaceId === scope.workspaceId)?.workspaceName ?? t('workspace.workspace'));
 
   const roleTag = scope.mode === 'workspace' ? (
     <Tag color={scope.role === 'owner' ? 'gold' : scope.role === 'editor' ? 'blue' : 'default'}>
       {scope.role}
     </Tag>
   ) : (
-    <Tag color="default">personal</Tag>
+    <Tag color="default">{t('workspace.personalShort')}</Tag>
   );
 
   const handleCopyUid = async () => {
     try {
       setCopying(true);
       await navigator.clipboard.writeText(user.uid);
-      messageApi.success(
-        'Your Google UID has been copied. Paste it into Slack/email and send it to a workspace owner — they will add you by UID, not by email.'
-      );
+      messageApi.success(t('workspace.copyUidSuccess'));
     } catch {
-      messageApi.error('Copy failed. Your UID is shown in Parameters → Workspace Settings.');
+      messageApi.error(t('workspace.copyUidFail'));
     } finally {
       setCopying(false);
     }
@@ -43,7 +43,7 @@ export const WorkspaceSwitcher: React.FC = () => {
     {
       key: 'personal',
       icon: <UserOutlined />,
-      label: 'Personal Workspace',
+      label: t('workspace.personalMenu'),
       onClick: () => switchToPersonal(),
     },
     ...(workspaces.length > 0
@@ -75,7 +75,7 @@ export const WorkspaceSwitcher: React.FC = () => {
           </Button>
         </Dropdown>
         {roleTag}
-        <Tooltip title="Copy your Google UID — owners invite by UID (not email). Paste it to whoever is adding you to their workspace.">
+        <Tooltip title={t('workspace.copyUidTooltip')}>
           <Button size="small" icon={<CopyOutlined />} onClick={handleCopyUid} loading={copying}>
             UID
           </Button>

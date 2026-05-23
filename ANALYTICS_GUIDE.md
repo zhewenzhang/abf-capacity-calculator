@@ -153,3 +153,33 @@ Built by `getDashboardHighlights()` in `analytics.ts`.
 - **bottleneckDriver**: Core or BU (whichever has more bottleneck months).
 - **topCustomer**: highest total revenue customer.
 - **topSizeCategory**: highest total revenue size category.
+
+## Adding New Analytics-Emitted Messages (v1.19.0+)
+
+Core analytics modules (`riskBrief.ts`, `riskAttribution.ts`, `dataQuality.ts`) emit
+text intended for the UI. These modules must **not** call React i18n hooks
+directly. Instead, follow this 3-step recipe so every emitted message renders in
+both English and Traditional Chinese:
+
+1. **Define the key in both dictionaries.** Add the same key to
+   `src/i18n/en.ts` and `src/i18n/zhTW.ts`. Use `{placeholder}` tokens for any
+   dynamic values (number, percentage, period, SKU code). The `i18nKeys.test.ts`
+   parity test will fail if the two dictionaries diverge.
+2. **Emit a `LocalizedMessage` from the core module.** Use the local `msg()`
+   helper:
+   ```ts
+   const m = msg('mySection.someTitle', { share: 42, months: 3 });
+   ```
+   When refactoring an existing field, keep the legacy English string field as
+   well (e.g., `title` + `titleMessage`) so callers that haven't migrated still
+   render valid English.
+3. **Render via `t()` in the UI.** In `CalculationResults.tsx` (or any consumer
+   component) use `t(item.titleMessage)` — `t()` accepts both raw key strings
+   and `LocalizedMessage` objects. For dynamic dictionary lookups (e.g.,
+   classification → tag label), prefer template-literal keys like
+   `` t(`health.${classification}`) ``.
+
+The `i18nOutputs.test.ts` suite asserts that every Risk Brief / Data Quality
+message resolves to a non-empty string in both languages and contains no
+unresolved `{placeholder}` tokens. Run it (or the full `npx vitest run` gate)
+after adding new keys.

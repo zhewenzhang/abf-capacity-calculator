@@ -81,6 +81,8 @@ The Analysis Contract outputs a standardized, future-proof payload `AnalysisCont
 
 > **Data scope (v1.18.0):** all inputs are read through the active `ProjectScope` (personal vs shared workspace). The contract structure and calculation engine are scope-agnostic — the same payload shape comes out whether the source is `users/{uid}/...` or `workspaces/{wid}/...`. See [docs/WORKSPACE_COLLABORATION.md](docs/WORKSPACE_COLLABORATION.md).
 
+> **i18n contract (v1.19.0):** every UI-facing string produced by `core/riskBrief.ts`, `core/riskAttribution.ts`, and `core/dataQuality.ts` is emitted twice — as a legacy English string (`title`, `detail`, `reason`, ...) for backward compatibility and as a `LocalizedMessage = { key: string; params?: Record<string, string|number> }` (`titleMessage`, `detailMessage`, `reasonMessage`, ...). The UI must consume the `*Message` fields via `t(message)` so output respects the user's language (`en` / `zh-TW`). Core analysis modules must never call React i18n hooks directly — instead use the `msg(key, params?)` helper and let the UI resolve them. Tests (`i18nOutputs.test.ts`) enforce that every emitted message resolves in both languages without leaving raw `.key` strings or unresolved `{placeholder}` tokens.
+
 ---
 
 ## 5. Deterministic Risk Brief (v1.17.0 — Risk Driver Attribution)

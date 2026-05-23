@@ -14,6 +14,11 @@
 import type { SKU } from '../types';
 import type { AnalyticsModel } from './analytics';
 import type { BpAnalysisModel } from './bpTargets';
+import type { LocalizedMessage } from '../i18n';
+
+function msg(key: string, params?: Record<string, string | number>): LocalizedMessage {
+  return params ? { key, params } : { key };
+}
 
 // ============================================================
 // Types
@@ -39,13 +44,16 @@ export type RiskDriverMetric =
 export interface RiskDriver {
   dimension: RiskDriverDimension;
   label: string;
+  labelMessage?: LocalizedMessage;
   metric: RiskDriverMetric;
   value: number;
   share?: number; // 0-100 of group total
   affectedPeriods: string[];
   affectedSkuIds?: string[];
   severity: 'critical' | 'warning' | 'info';
+  /** Legacy English reason; UI should prefer reasonMessage. */
   reason: string;
+  reasonMessage: LocalizedMessage;
 }
 
 export type SkuHealthClassification =
@@ -68,7 +76,9 @@ export interface SkuHealthSignal {
   revenueShare?: number; // 0-100 of total revenue
   capacityPressureShare?: number; // 0-100 of total capacity pressure index
   classification: SkuHealthClassification;
+  /** Legacy English reasons; UI should prefer reasonMessages. */
   reasons: string[];
+  reasonMessages: LocalizedMessage[];
 }
 
 export interface RiskAttributionModel {
@@ -148,8 +158,10 @@ function buildDriversForDimension(args: {
   metric: RiskDriverMetric;
   valueFn: (row: { coreDemand: number; buDemand: number }) => number;
   reasonPrefix: string;
+  reasonKey: string;
+  reasonNoShareKey: string;
 }): RiskDriver[] {
-  const { shortageRows, skuMap, dimension, dimensionFn, metric, valueFn, reasonPrefix } = args;
+  const { shortageRows, skuMap, dimension, dimensionFn, metric, valueFn, reasonPrefix, reasonKey, reasonNoShareKey } = args;
   const buckets = new Map<string, AggBucket>();
   let total = 0;
 
@@ -172,6 +184,13 @@ function buildDriversForDimension(args: {
     if (bucket.value <= 0) continue;
     const share = safeShare(bucket.value, total);
     const severity: RiskDriver['severity'] = share !== undefined && share >= HIGH_SHARE ? 'critical' : share !== undefined && share >= LOW_SHARE ? 'warning' : 'info';
+    const months = bucket.periods.size;
+    const reasonText = share !== undefined
+      ? `${reasonPrefix} ${share.toFixed(1)}% during ${months} shortage month(s).`
+      : `${reasonPrefix} during ${months} shortage month(s).`;
+    const reasonMessage: LocalizedMessage = share !== undefined
+      ? msg(reasonKey, { share: share.toFixed(1), months })
+      : msg(reasonNoShareKey, { months });
     driverList.push({
       dimension,
       label,
@@ -181,9 +200,8 @@ function buildDriversForDimension(args: {
       affectedPeriods: Array.from(bucket.periods).sort(),
       affectedSkuIds: Array.from(bucket.skuIds).sort(),
       severity,
-      reason: share !== undefined
-        ? `${reasonPrefix} ${share.toFixed(1)}% during ${bucket.periods.size} shortage month(s).`
-        : `${reasonPrefix} during ${bucket.periods.size} shortage month(s).`,
+      reason: reasonText,
+      reasonMessage,
     });
   }
 
@@ -204,6 +222,8 @@ function buildBpGapDrivers(bp?: BpAnalysisModel): RiskDriver[] {
     const gap = Math.abs(r.gapMillionTwd ?? 0);
     const share = safeShare(gap, totalAbsGap);
     const severity: RiskDriver['severity'] = r.status === 'miss' ? 'critical' : 'warning';
+    const attainment = ((r.attainment ?? 0) * 100).toFixed(1);
+    const gapStr = gap.toFixed(1);
     return {
       dimension: 'customer', // period-level driver represented as label
       label: r.period,
@@ -212,7 +232,8 @@ function buildBpGapDrivers(bp?: BpAnalysisModel): RiskDriver[] {
       share,
       affectedPeriods: [r.period],
       severity,
-      reason: `BP attainment ${((r.attainment ?? 0) * 100).toFixed(1)}%; gap ${gap.toFixed(1)}M TWD.`,
+      reason: `BP attainment ${attainment}%; gap ${gapStr}M TWD.`,
+      reasonMessage: msg('attr.driver.bpGapReason', { attainment, gap: gapStr }),
     };
   });
   drivers.sort(deterministicSort);
@@ -239,56 +260,67 @@ function classifySku(
   revShare: number | undefined,
   pressureShare: number | undefined,
   invalidSkuIds: Set<string>
-): { classification: SkuHealthClassification; reasons: string[] } {
+): { classification: SkuHealthClassification; reasons: string[]; reasonMessages: LocalizedMessage[] } {
   const reasons: string[] = [];
+  const reasonMessages: LocalizedMessage[] = [];
 
   if (invalidSkuIds.has(agg.skuId)) {
     reasons.push('SKU has invalid or missing required attributes (see Data Caveats).');
-    return { classification: 'dataIncomplete', reasons };
+    reasonMessages.push(msg('attr.health.dataIncomplete'));
+    return { classification: 'dataIncomplete', reasons, reasonMessages };
   }
 
   const r = revShare ?? 0;
   const p = pressureShare ?? 0;
   const hasPressure = agg.shortageCoreDemand + agg.shortageBuDemand > 0;
+  const rStr = r.toFixed(1);
+  const pStr = p.toFixed(1);
 
   // strategicGrowth: high revenue & high pressure
   if (r >= HIGH_SHARE && p >= HIGH_SHARE) {
-    reasons.push(`High revenue share (${r.toFixed(1)}%) AND high capacity pressure share (${p.toFixed(1)}%). Strategic SKU; secure capacity.`);
-    return { classification: 'strategicGrowth', reasons };
+    reasons.push(`High revenue share (${rStr}%) AND high capacity pressure share (${pStr}%). Strategic SKU; secure capacity.`);
+    reasonMessages.push(msg('attr.health.strategicGrowth', { rev: rStr, pres: pStr }));
+    return { classification: 'strategicGrowth', reasons, reasonMessages };
   }
 
   // cashCow: high revenue & low/no pressure
   if (r >= HIGH_SHARE && p < HIGH_SHARE) {
-    reasons.push(`High revenue share (${r.toFixed(1)}%) without disproportionate capacity pressure (${p.toFixed(1)}%). Protect this stream.`);
-    return { classification: 'cashCow', reasons };
+    reasons.push(`High revenue share (${rStr}%) without disproportionate capacity pressure (${pStr}%). Protect this stream.`);
+    reasonMessages.push(msg('attr.health.cashCowProtected', { rev: rStr, pres: pStr }));
+    return { classification: 'cashCow', reasons, reasonMessages };
   }
 
   // lowValueHighLoad: low revenue & high pressure
   if (r <= LOW_SHARE && p >= HIGH_SHARE) {
-    reasons.push(`Low revenue share (${r.toFixed(1)}%) but high capacity pressure share (${p.toFixed(1)}%). Re-price or de-prioritize.`);
-    return { classification: 'lowValueHighLoad', reasons };
+    reasons.push(`Low revenue share (${rStr}%) but high capacity pressure share (${pStr}%). Re-price or de-prioritize.`);
+    reasonMessages.push(msg('attr.health.lowValueHighLoad', { rev: rStr, pres: pStr }));
+    return { classification: 'lowValueHighLoad', reasons, reasonMessages };
   }
 
   // capacityDrainer: high pressure but revenue not proportionally high
   if (p >= HIGH_SHARE && r < p) {
-    reasons.push(`Capacity pressure share (${p.toFixed(1)}%) exceeds revenue share (${r.toFixed(1)}%). Consumes scarce capacity without matching return.`);
-    return { classification: 'capacityDrainer', reasons };
+    reasons.push(`Capacity pressure share (${pStr}%) exceeds revenue share (${rStr}%). Consumes scarce capacity without matching return.`);
+    reasonMessages.push(msg('attr.health.capacityDrainer', { rev: rStr, pres: pStr }));
+    return { classification: 'capacityDrainer', reasons, reasonMessages };
   }
 
   // watchList: any pressure exists but no stronger class applies
   if (hasPressure) {
-    reasons.push(`SKU touches shortage months (pressure share ${p.toFixed(1)}%); monitor.`);
-    return { classification: 'watchList', reasons };
+    reasons.push(`SKU touches shortage months (pressure share ${pStr}%); monitor.`);
+    reasonMessages.push(msg('attr.health.watchListPressure', { pres: pStr }));
+    return { classification: 'watchList', reasons, reasonMessages };
   }
 
   // Default fallback when no shortage exposure: classify by revenue share only
   if (r >= HIGH_SHARE) {
-    reasons.push(`High revenue share (${r.toFixed(1)}%) with no shortage exposure. Cash cow under current plan.`);
-    return { classification: 'cashCow', reasons };
+    reasons.push(`High revenue share (${rStr}%) with no shortage exposure. Cash cow under current plan.`);
+    reasonMessages.push(msg('attr.health.cashCowNoPressure', { rev: rStr }));
+    return { classification: 'cashCow', reasons, reasonMessages };
   }
 
-  reasons.push(`Revenue share ${r.toFixed(1)}%, no shortage exposure. Routine monitoring.`);
-  return { classification: 'watchList', reasons };
+  reasons.push(`Revenue share ${rStr}%, no shortage exposure. Routine monitoring.`);
+  reasonMessages.push(msg('attr.health.routine', { rev: rStr }));
+  return { classification: 'watchList', reasons, reasonMessages };
 }
 
 function collectInvalidSkuIds(skus: SKU[]): Set<string> {
@@ -346,6 +378,8 @@ export function buildRiskAttributionModel(
         metric: 'shortageCoreDemand',
         valueFn: (row) => row.coreDemand,
         reasonPrefix: 'Customer Core demand during shortage =',
+        reasonKey: 'attr.driver.customerCoreReason',
+        reasonNoShareKey: 'attr.driver.customerCoreReasonNoShare',
       })
     );
     drivers.push(
@@ -357,6 +391,8 @@ export function buildRiskAttributionModel(
         metric: 'shortageBuDemand',
         valueFn: (row) => row.buDemand,
         reasonPrefix: 'Customer BU demand during shortage =',
+        reasonKey: 'attr.driver.customerBuReason',
+        reasonNoShareKey: 'attr.driver.customerBuReasonNoShare',
       })
     );
 
@@ -370,6 +406,8 @@ export function buildRiskAttributionModel(
         metric: 'shortageCoreDemand',
         valueFn: (row) => row.coreDemand,
         reasonPrefix: 'SKU Core demand during shortage =',
+        reasonKey: 'attr.driver.skuCoreReason',
+        reasonNoShareKey: 'attr.driver.skuCoreReasonNoShare',
       })
     );
     drivers.push(
@@ -381,6 +419,8 @@ export function buildRiskAttributionModel(
         metric: 'shortageBuDemand',
         valueFn: (row) => row.buDemand,
         reasonPrefix: 'SKU BU demand during shortage =',
+        reasonKey: 'attr.driver.skuBuReason',
+        reasonNoShareKey: 'attr.driver.skuBuReasonNoShare',
       })
     );
 
@@ -394,6 +434,8 @@ export function buildRiskAttributionModel(
         metric: 'capacityPressureIndex',
         valueFn: (row) => row.coreDemand + row.buDemand,
         reasonPrefix: 'Size capacity pressure share =',
+        reasonKey: 'attr.driver.sizeReason',
+        reasonNoShareKey: 'attr.driver.sizeReasonNoShare',
       })
     );
 
@@ -407,6 +449,8 @@ export function buildRiskAttributionModel(
         metric: 'capacityPressureIndex',
         valueFn: (row) => row.coreDemand + row.buDemand,
         reasonPrefix: 'Application capacity pressure share =',
+        reasonKey: 'attr.driver.applicationReason',
+        reasonNoShareKey: 'attr.driver.applicationReasonNoShare',
       })
     );
 
@@ -420,6 +464,8 @@ export function buildRiskAttributionModel(
         metric: 'capacityPressureIndex',
         valueFn: (row) => row.coreDemand + row.buDemand,
         reasonPrefix: 'Layer bucket capacity pressure share =',
+        reasonKey: 'attr.driver.layerReason',
+        reasonNoShareKey: 'attr.driver.layerReasonNoShare',
       })
     );
 
@@ -433,6 +479,8 @@ export function buildRiskAttributionModel(
         metric: 'capacityPressureIndex',
         valueFn: (row) => row.coreDemand + row.buDemand,
         reasonPrefix: 'Product grade capacity pressure share =',
+        reasonKey: 'attr.driver.gradeReason',
+        reasonNoShareKey: 'attr.driver.gradeReasonNoShare',
       })
     );
   }
@@ -486,7 +534,7 @@ export function buildRiskAttributionModel(
     const revenueShare = safeShare(agg.revenueUsd, totalRevenue);
     const pressureValue = agg.shortageCoreDemand + agg.shortageBuDemand;
     const capacityPressureShare = safeShare(pressureValue, totalPressureIndex);
-    const { classification, reasons } = classifySku(agg, revenueShare, capacityPressureShare, invalidSkuIds);
+    const { classification, reasons, reasonMessages } = classifySku(agg, revenueShare, capacityPressureShare, invalidSkuIds);
     signals.push({
       skuId: agg.skuId,
       skuCode: agg.skuCode,
@@ -500,6 +548,7 @@ export function buildRiskAttributionModel(
       capacityPressureShare,
       classification,
       reasons,
+      reasonMessages,
     });
   }
 
