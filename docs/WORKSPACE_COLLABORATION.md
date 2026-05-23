@@ -111,7 +111,7 @@ When a Personal-mode user wants to share their plan, the **Workspace Settings** 
 What it does (in `workspaceService.createWorkspaceFromPersonalProject`):
 
 1. Reads the user's personal `skus`, `forecasts`, `capacityPlans`, and `parameters/default` into memory **first** (so a read failure aborts before any workspace state is created).
-2. Creates the new `workspaces/{newId}` doc with `members: { ownerUid: 'owner' }` and the index entry `userWorkspaces/{ownerUid}/workspaces/{newId}` in a single batch.
+2. Calls `createWorkspace(...)`, which writes the workspace document and the owner index entry as **two sequential client-side writes** (see §5.1 for why this is not a single batch).
 3. Writes the SKUs / forecasts / capacity plans into the workspace's collections, batched in chunks of 400 docs (below Firestore's 500-op batch limit).
 4. Writes the parameters doc.
 5. Switches the React context's active scope to the new workspace.
@@ -121,6 +121,21 @@ Properties:
 - **It's a copy, not a move.** Personal data is untouched. If the workspace doesn't work out, users can switch back to Personal and the original data is there.
 - **No automatic deletion.** Cleanup of personal data is a manual decision.
 - **Failure is safe.** If steps 3–5 fail, the user is left with an empty workspace they can delete (no orphaned personal data).
+
+### 5.1 Why workspace creation uses sequential writes (v1.18.1 hardening)
+
+The earlier v1.18.0 implementation created the workspace doc and the owner's `userWorkspaces/{uid}/workspaces/{wid}` index entry in the *same* `writeBatch`. Mock unit tests passed, but in production the Firestore rules engine denied the index-entry write at runtime.
+
+The reason: the index-entry rule needs to confirm the caller owns the target workspace, which involves a `get(workspaces/{wid})`. Same-batch writes are **not** visible to `get()` / `exists()` during rule evaluation, so the rule could not see the just-created workspace doc and denied the index-entry write.
+
+v1.18.1 fixes this by splitting `createWorkspace` into two sequential writes:
+
+1. `setDoc(workspaces/{wid})` — succeeds standalone (the rule for this path only inspects the request payload, not other docs).
+2. `setDoc(userWorkspaces/{ownerUid}/workspaces/{wid})` — runs *after* step 1 commits, so the index-entry rule's `get(workspaces/{wid}).ownerId == auth.uid` check sees the committed workspace doc and passes.
+
+The rules also gained a dedicated **owner-bootstrap allow path** for the initial index write: it keys on the workspace's `ownerId` (a single `get`) rather than the members map, so there is no membership chicken-and-egg.
+
+If the second write fails for any reason (network blip, transient permission issue), `createWorkspace` throws a structured error pointing the caller to `repairOwnerIndex(workspaceId, ownerUid)` — an idempotent helper that completes the handshake once the cause is resolved. The workspace doc is left in place; nothing is silently abandoned.
 
 ---
 
@@ -172,17 +187,28 @@ Path resolution lives in **one** place — `projectScope.ts` — so a future cha
 Key invariants:
 
 - `users/{uid}/**` — readable / writable only by that user. Unchanged.
-- `workspaces/{wid}` doc — readable by any member, writable only by the owner. `ownerId` and `members[ownerId]==='owner'` are pinned on update (no silent ownership transfer).
+- `workspaces/{wid}` doc — readable by any member, writable only by the owner. `ownerId` and `members[ownerId]==='owner'` are pinned on update (no silent ownership transfer or self-demotion).
 - `workspaces/{wid}/projects/**` — readable by any member; writable by owner or editor; viewer is read-only.
-- `userWorkspaces/{uid}/workspaces/{wid}` — the user owns their index entry; an owner can also write to a member's index entry (this is how invites land).
+- `userWorkspaces/{uid}/workspaces/{wid}` — the user owns their index entry; an owner can also write to a member's index entry (this is how invites land). Three allow paths:
+  - **Owner bootstrap** — caller is the workspace owner per `workspaces/{wid}.ownerId` and writes their own index entry as `role='owner'`. Used by the second half of `createWorkspace`. Independent of the workspace's `members` map so it works the moment the workspace doc is committed.
+  - **Owner inviting member** — caller is the workspace owner, target UID is someone else, and the written role must match `workspaces/{wid}.members[uid]` (no role injection).
+  - **Self-repair** — member rewrites their own entry; written role must equal `members[caller]` (no escalation from editor → owner).
 
-See [`firestore.rules`](../firestore.rules) for the full ruleset and inline comments.
+See [`firestore.rules`](../firestore.rules) for the full ruleset with inline comments matching the three allow paths above. The verification harness in [`frontend/src/services/firestoreRules.test.ts`](../frontend/src/services/firestoreRules.test.ts) mirrors every rule predicate as TypeScript and asserts the same boolean outcomes for all critical scenarios (owner bootstrap, owner invite, role-escalation block, non-member read-block, viewer write-block, owner-transfer-block).
+
+For full end-to-end validation involving real OAuth UIDs and the actual Firestore rules engine, see [`WORKSPACE_SMOKE_TEST.md`](./WORKSPACE_SMOKE_TEST.md).
 
 Deploying rules:
 
 ```bash
 firebase use abf-capacity-calculator
 firebase deploy --only firestore:rules
+```
+
+Compile-check rules without releasing:
+
+```bash
+firebase deploy --only firestore:rules --dry-run
 ```
 
 ---

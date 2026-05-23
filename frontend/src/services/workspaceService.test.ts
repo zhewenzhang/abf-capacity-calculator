@@ -103,27 +103,67 @@ describe('workspaceService', () => {
     expect(firestoreMock.collection).toHaveBeenCalledWith({ kind: 'mock-db' }, 'userWorkspaces/user-1/workspaces');
   });
 
-  it('createWorkspace writes both workspace doc and owner index entry in a batch', async () => {
+  it('createWorkspace writes workspace doc THEN owner index sequentially (not batched) to avoid same-batch rule races', async () => {
     const { createWorkspace } = await import('./workspaceService');
     const wsId = await createWorkspace('owner-uid', 'owner@example.com', 'Team Alpha');
 
     expect(wsId).toMatch(/^ws-\d+-/);
-    expect(firestoreMock.writeBatch).toHaveBeenCalledTimes(1);
-    expect(firestoreMock.batchSet).toHaveBeenCalledTimes(2);
-    expect(firestoreMock.batchSet.mock.calls[0][1]).toMatchObject({
+    // Two setDoc calls, no writeBatch.
+    expect(firestoreMock.writeBatch).not.toHaveBeenCalled();
+    expect(firestoreMock.setDoc).toHaveBeenCalledTimes(2);
+    // First call: workspace document.
+    expect(firestoreMock.setDoc.mock.calls[0][0]).toMatchObject({ path: `workspaces/${wsId}` });
+    expect(firestoreMock.setDoc.mock.calls[0][1]).toMatchObject({
       ownerId: 'owner-uid',
       ownerEmail: 'owner@example.com',
       name: 'Team Alpha',
       members: { 'owner-uid': 'owner' as WorkspaceRole },
     });
-    expect(firestoreMock.batchSet.mock.calls[1][1]).toMatchObject({
+    // Second call: owner index entry (after workspace is committed).
+    expect(firestoreMock.setDoc.mock.calls[1][0]).toMatchObject({ path: `userWorkspaces/owner-uid/workspaces/${wsId}` });
+    expect(firestoreMock.setDoc.mock.calls[1][1]).toMatchObject({
       workspaceId: wsId,
       workspaceName: 'Team Alpha',
       role: 'owner',
       ownerId: 'owner-uid',
       defaultProjectId: 'default',
     });
-    expect(firestoreMock.batchCommit).toHaveBeenCalledTimes(1);
+  });
+
+  it('createWorkspace surfaces a repair-pointing error if the owner index write fails', async () => {
+    firestoreMock.setDoc
+      .mockResolvedValueOnce(undefined) // workspace doc write succeeds
+      .mockRejectedValueOnce(new Error('PERMISSION_DENIED')); // index entry fails
+    const { createWorkspace } = await import('./workspaceService');
+    await expect(createWorkspace('owner-uid', 'owner@example.com', 'Team Alpha'))
+      .rejects.toThrow(/repairOwnerIndex/);
+  });
+
+  it('repairOwnerIndex rewrites the owner index entry when workspace ownerId matches', async () => {
+    firestoreMock.getDoc.mockResolvedValue({
+      exists: () => true,
+      data: () => ({ ownerId: 'owner-uid', name: 'Team Alpha' }),
+    });
+    const { repairOwnerIndex } = await import('./workspaceService');
+    await repairOwnerIndex('ws-1', 'owner-uid');
+    expect(firestoreMock.setDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'userWorkspaces/owner-uid/workspaces/ws-1' }),
+      expect.objectContaining({
+        workspaceId: 'ws-1',
+        workspaceName: 'Team Alpha',
+        role: 'owner',
+        ownerId: 'owner-uid',
+      })
+    );
+  });
+
+  it('repairOwnerIndex refuses when ownerId does not match', async () => {
+    firestoreMock.getDoc.mockResolvedValue({
+      exists: () => true,
+      data: () => ({ ownerId: 'owner-uid', name: 'Team Alpha' }),
+    });
+    const { repairOwnerIndex } = await import('./workspaceService');
+    await expect(repairOwnerIndex('ws-1', 'someone-else')).rejects.toThrow(/owner is not/);
   });
 
   it('addWorkspaceMember rejects owner role to prevent accidental ownership grants', async () => {

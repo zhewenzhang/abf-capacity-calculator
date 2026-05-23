@@ -4,6 +4,7 @@ import { saveCapacityPlan } from './capacityService';
 import { saveParameters } from './parameterService';
 import { generateDefaultCapacityPlans, DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_FACTORIES, DEFAULT_WORKING_DAYS } from '../core/defaults';
 import type { ProjectParameters, SizeCategory, ProjectScope } from '../types';
+import { assertCanWrite } from './projectScope';
 
 // UPP calculation
 function calculateUPP(chipLengthMm: number, chipWidthMm: number): number {
@@ -123,6 +124,10 @@ function generateDemoForecasts(skuIds: string[]): Array<{ skuId: string; month: 
 }
 
 export async function loadDemoData(scope: ProjectScope): Promise<string> {
+  // Fail fast for viewer scopes so the user sees one clear error instead of
+  // five cascading throws from the underlying save* calls.
+  assertCanWrite(scope);
+
   // 1. Save default parameters
   const params: ProjectParameters = {
     defaultWorkingDays: DEFAULT_WORKING_DAYS,

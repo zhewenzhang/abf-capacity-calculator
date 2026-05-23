@@ -29,7 +29,9 @@ export const WorkspaceSwitcher: React.FC = () => {
     try {
       setCopying(true);
       await navigator.clipboard.writeText(user.uid);
-      messageApi.success('Your Google UID was copied. Share it with the workspace owner who is inviting you.');
+      messageApi.success(
+        'Your Google UID has been copied. Paste it into Slack/email and send it to a workspace owner — they will add you by UID, not by email.'
+      );
     } catch {
       messageApi.error('Copy failed. Your UID is shown in Parameters → Workspace Settings.');
     } finally {
@@ -73,7 +75,7 @@ export const WorkspaceSwitcher: React.FC = () => {
           </Button>
         </Dropdown>
         {roleTag}
-        <Tooltip title="Copy your Google UID — give this to a workspace owner so they can invite you.">
+        <Tooltip title="Copy your Google UID — owners invite by UID (not email). Paste it to whoever is adding you to their workspace.">
           <Button size="small" icon={<CopyOutlined />} onClick={handleCopyUid} loading={copying}>
             UID
           </Button>

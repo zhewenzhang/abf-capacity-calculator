@@ -161,6 +161,25 @@ const WorkspaceSettingsPanel: React.FC = () => {
     >
       {contextHolder}
       <Space direction="vertical" size={12} style={{ width: '100%' }}>
+        <Alert
+          type="warning"
+          showIcon
+          message="Invites are UID-based, not email."
+          description={
+            <Space direction="vertical" size={4}>
+              <Text>This MVP does not send email invitations. To invite a colleague:</Text>
+              <Text>1. They sign in here with their Google account.</Text>
+              <Text>2. They open Parameters → Workspace Settings and copy their Google UID.</Text>
+              <Text>3. They paste that UID into Slack / email / chat and send it to you.</Text>
+              <Text>4. You (the workspace owner) paste their UID below and pick a role.</Text>
+              <Text type="secondary">
+                Entering an email address will not work — Firebase Auth does not expose
+                other accounts' UIDs by email lookup from the client. Email-link invites are tracked for a future release.
+              </Text>
+            </Space>
+          }
+        />
+
         <Space wrap>
           <Text type="secondary">Your Google UID:</Text>
           <Text code>{user.uid}</Text>
@@ -264,25 +283,50 @@ const WorkspaceSettingsPanel: React.FC = () => {
                 {isOwner && (
                   <Form
                     form={inviteForm}
-                    layout="inline"
+                    layout="vertical"
                     initialValues={{ role: 'editor' as WorkspaceRole }}
                     onFinish={handleInvite}
                   >
                     <Form.Item
                       name="uid"
-                      label="Add member by UID"
-                      rules={[{ required: true, message: 'Paste the colleague\'s Google UID.' }]}
+                      label={
+                        <Space>
+                          <Text strong>Invite by Google UID</Text>
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            (not email — ask your colleague to copy theirs from Parameters → Workspace Settings)
+                          </Text>
+                        </Space>
+                      }
+                      rules={[
+                        { required: true, message: 'Paste the colleague\'s Google UID (not their email).' },
+                        {
+                          validator: (_, value: string) => {
+                            if (!value) return Promise.resolve();
+                            if (value.includes('@')) {
+                              return Promise.reject(new Error(
+                                'Looks like an email address. We need their Google UID — ask them to copy it from Parameters → Workspace Settings.'
+                              ));
+                            }
+                            return Promise.resolve();
+                          },
+                        },
+                      ]}
                     >
-                      <Input style={{ width: 320 }} placeholder="e.g. xQ1abc..." />
+                      <Input
+                        style={{ maxWidth: 480 }}
+                        placeholder="paste a Google UID, e.g. xQ1abcDeFg... (28-character string)"
+                      />
                     </Form.Item>
-                    <Form.Item name="role" label="Role">
-                      <Select style={{ width: 200 }} options={ROLE_OPTIONS} />
-                    </Form.Item>
-                    <Form.Item>
-                      <Button type="primary" htmlType="submit" icon={<UserAddOutlined />} loading={inviting}>
-                        Add member
-                      </Button>
-                    </Form.Item>
+                    <Space>
+                      <Form.Item name="role" label="Role" style={{ marginBottom: 0 }}>
+                        <Select style={{ width: 200 }} options={ROLE_OPTIONS} />
+                      </Form.Item>
+                      <Form.Item style={{ marginBottom: 0, alignSelf: 'flex-end' }}>
+                        <Button type="primary" htmlType="submit" icon={<UserAddOutlined />} loading={inviting}>
+                          Add member
+                        </Button>
+                      </Form.Item>
+                    </Space>
                   </Form>
                 )}
 

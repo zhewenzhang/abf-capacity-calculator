@@ -1,7 +1,7 @@
 rules_version = '2';
 
 // =====================================================================
-// ABF Capacity Calculator — Firestore Security Rules (v1.18.0)
+// ABF Capacity Calculator — Firestore Security Rules (v1.18.1)
 //
 // Data model:
 //   users/{uid}/projects/{projectId}/...       — personal data (private)
@@ -13,6 +13,19 @@ rules_version = '2';
 // - owner   → can read, write business data, manage members
 // - editor  → can read + write business data, cannot manage members
 // - viewer  → read-only on business data
+//
+// v1.18.1 hardening:
+// - Workspace creation is now a sequential client-side write
+//   (workspace doc first, then index entry). The two-write split exists
+//   because the index-entry rule needs `get(workspaces/{wid})` to see a
+//   committed doc; a single batch would deny because same-batch writes
+//   are NOT visible to get()/exists() during rule evaluation.
+// - Initial owner index entry has its own narrow allow path keyed on
+//   `get(workspaces/{wid}).ownerId == auth.uid`. No membership chicken-
+//   and-egg.
+// - Self-written index entries (by the same UID) cannot escalate role —
+//   the written role must match the workspace's members[uid] value.
+// - Owner update cannot drop or transfer ownership.
 // =====================================================================
 
 service cloud.firestore {
@@ -27,6 +40,10 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    function workspaceExists(workspaceId) {
+      return exists(/databases/$(database)/documents/workspaces/$(workspaceId));
+    }
+
     function workspaceData(workspaceId) {
       return get(/databases/$(database)/documents/workspaces/$(workspaceId)).data;
     }
@@ -37,7 +54,7 @@ service cloud.firestore {
 
     function isMember(workspaceId) {
       return isSignedIn()
-        && exists(/databases/$(database)/documents/workspaces/$(workspaceId))
+        && workspaceExists(workspaceId)
         && request.auth.uid in workspaceMembers(workspaceId);
     }
 
@@ -54,6 +71,14 @@ service cloud.firestore {
         && (memberRole(workspaceId) == 'owner' || memberRole(workspaceId) == 'editor');
     }
 
+    function isWorkspaceOwnerByDoc(workspaceId) {
+      // Strict check that does NOT depend on members map presence; reads ownerId
+      // directly. Used by the owner-bootstrap allow path for the index entry.
+      return isSignedIn()
+        && workspaceExists(workspaceId)
+        && workspaceData(workspaceId).ownerId == request.auth.uid;
+    }
+
     // ---------- Personal data (legacy + v1.18 backward compat) ----------
     // users/{uid}/** is private to the user — same as before v1.18.
     match /users/{uid}/{document=**} {
@@ -66,13 +91,14 @@ service cloud.firestore {
       allow read: if isMember(workspaceId);
 
       // Create: caller must be the named owner AND seed members[uid] = 'owner'.
+      // Nothing depends on the doc itself yet, so no get()/exists() races.
       allow create: if isSignedIn()
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.members[request.auth.uid] == 'owner';
 
       // Update: only the workspace owner may change membership / metadata.
+      // Ownership cannot be silently transferred or revoked via update.
       allow update: if isOwner(workspaceId)
-        // Ownership cannot be silently transferred via update — keep owner stable.
         && request.resource.data.ownerId == resource.data.ownerId
         && request.resource.data.members[resource.data.ownerId] == 'owner';
 
@@ -91,23 +117,80 @@ service cloud.firestore {
     // ---------- Per-user workspace index ----------
     // userWorkspaces/{uid}/workspaces/{wid} mirrors a member's role so the
     // client can list a user's workspaces without scanning every workspace.
+    //
+    // Allow paths (most-specific first):
+    //   1. Initial owner bootstrap — the second half of createWorkspace().
+    //      The caller is the owner per the freshly-committed workspace doc.
+    //      Role MUST be 'owner'.
+    //   2. Owner inviting a member — the workspace owner writes an index
+    //      entry for someone else. Role MUST match members[invitee].
+    //   3. Self-repair — a member rewrites their own entry; role MUST
+    //      match what the workspace says it should be (no escalation).
     match /userWorkspaces/{uid}/workspaces/{workspaceId} {
       // The owning user can always read their own index.
       allow read: if isSelf(uid);
 
-      // Writes:
-      //   - The user themselves may seed/refresh their own entry IF they
-      //     are already a member of the target workspace (cleanup / repair).
-      //   - The workspace owner may write any member's index entry
-      //     (this is how invites land — owners write to invitee's index).
-      allow create, update: if isSignedIn() && (
-        (isSelf(uid) && isMember(workspaceId))
-        || isOwner(workspaceId)
+      // Create:
+      //   - Owner bootstrap: caller IS the workspace owner-by-doc, writing
+      //     their own index entry as role=owner. This succeeds even when
+      //     the workspace doc was just committed in the previous step (no
+      //     `get` against the members map — only ownerId).
+      //   - Owner-inviting-member: a non-self target whose role on the
+      //     written index entry equals the workspace members[target].
+      //   - Member self-repair: caller writes their own entry where the
+      //     written role equals members[caller]; cannot escalate.
+      allow create: if isSignedIn() && (
+        // (1) owner bootstrap
+        (
+          isSelf(uid)
+          && isWorkspaceOwnerByDoc(workspaceId)
+          && request.resource.data.role == 'owner'
+          && request.resource.data.ownerId == request.auth.uid
+          && request.resource.data.workspaceId == workspaceId
+        )
+        // (2) owner inviting member
+        || (
+          isOwner(workspaceId)
+          && !isSelf(uid)
+          && request.resource.data.role == workspaceMembers(workspaceId)[uid]
+          && request.resource.data.workspaceId == workspaceId
+          && request.resource.data.ownerId == workspaceData(workspaceId).ownerId
+        )
+        // (3) member self-repair
+        || (
+          isSelf(uid)
+          && isMember(workspaceId)
+          && request.resource.data.role == memberRole(workspaceId)
+          && request.resource.data.workspaceId == workspaceId
+        )
+      );
+
+      // Update: same shape as create. Same caller, same role-constancy rules.
+      allow update: if isSignedIn() && (
+        // owner refreshing their own index
+        (
+          isSelf(uid)
+          && isWorkspaceOwnerByDoc(workspaceId)
+          && request.resource.data.role == 'owner'
+        )
+        // owner changing an invitee's role (updateWorkspaceMemberRole)
+        || (
+          isOwner(workspaceId)
+          && !isSelf(uid)
+          && request.resource.data.role == workspaceMembers(workspaceId)[uid]
+        )
+        // member refreshing their own entry (no role escalation)
+        || (
+          isSelf(uid)
+          && isMember(workspaceId)
+          && request.resource.data.role == memberRole(workspaceId)
+        )
       );
 
       // Delete:
       //   - The user can remove themselves.
-      //   - The workspace owner can remove any member's index entry.
+      //   - The workspace owner can remove any member's index entry
+      //     (used when removeWorkspaceMember runs).
       allow delete: if isSignedIn() && (isSelf(uid) || isOwner(workspaceId));
     }
   }

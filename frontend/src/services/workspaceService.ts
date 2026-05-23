@@ -3,11 +3,10 @@
  * documents, plus the "create shared workspace from personal data" copy flow.
  *
  * Invite model (MVP):
- *   Owners paste a colleague's Google UID. The service writes two docs in a batch:
- *     1. workspaces/{wid}.members[uid] = role
- *     2. userWorkspaces/{memberUid}/workspaces/{wid} = denormalized index entry
- *   When the colleague signs in, getUserWorkspaces() finds the entry and they
- *   can switch into the workspace via the header selector.
+ *   Owners paste a colleague's Google UID. The service writes both documents,
+ *   workspace-doc first then index-doc (see createWorkspace for why this is
+ *   sequential, not batched). When the colleague signs in, getUserWorkspaces()
+ *   finds the entry and they can switch into the workspace via the header.
  *
  * The copy flow is intentionally **copy, not move**: original personal data is
  * left untouched so users can revert if anything goes wrong.
@@ -91,6 +90,23 @@ export async function getUserWorkspaces(userId: string): Promise<UserWorkspaceRe
 // Writes
 // ============================================================
 
+/**
+ * Create a workspace and the owner's index entry.
+ *
+ * **Why two sequential writes instead of one batch:**
+ * The Firestore rule for `userWorkspaces/{uid}/workspaces/{wid}` needs to confirm
+ * the caller is the owner of the target workspace. That check requires a
+ * `get(workspaces/{wid})` which sees committed state only — same-batch writes are
+ * NOT visible. If we batched both, the index-doc rule would deny the write
+ * because the workspace document doesn't exist yet at rule-evaluation time.
+ *
+ * Step 1 (workspace doc) succeeds standalone (rule: caller is named owner).
+ * Step 2 (owner index) then sees a committed workspace doc and passes.
+ *
+ * If step 2 fails (network, rule mismatch, partial outage), we surface a
+ * structured error so the UI can offer a repair path. The workspace doc is
+ * left in place — repairOwnerIndex() can finish the handshake later.
+ */
 export async function createWorkspace(
   ownerId: string,
   ownerEmail: string,
@@ -98,10 +114,10 @@ export async function createWorkspace(
   defaultProjectId = 'default'
 ): Promise<string> {
   const workspaceId = `ws-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const batch = writeBatch(db!);
   const now = serverTimestamp();
 
-  batch.set(doc(db!, workspaceDocPath(workspaceId)), {
+  // Step 1: workspace document. Self-contained — rule only checks request payload.
+  await setDoc(doc(db!, workspaceDocPath(workspaceId)), {
     id: workspaceId,
     name: workspaceName,
     ownerId,
@@ -111,17 +127,61 @@ export async function createWorkspace(
     updatedAt: now,
   });
 
-  batch.set(doc(db!, userWorkspaceDocPath(ownerId, workspaceId)), {
+  // Step 2: owner index entry. Rule does `get(workspaces/{wid}).ownerId == auth.uid`,
+  // which now sees the committed doc from step 1.
+  try {
+    await setDoc(doc(db!, userWorkspaceDocPath(ownerId, workspaceId)), {
+      workspaceId,
+      workspaceName,
+      role: 'owner' as WorkspaceRole,
+      ownerId,
+      defaultProjectId,
+      updatedAt: now,
+    });
+  } catch (err) {
+    // Workspace exists but the owner cannot see it in their switcher. Caller
+    // can retry with repairOwnerIndex(workspaceId, ownerId, ...) once the
+    // transient cause is resolved.
+    const cause = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Workspace ${workspaceId} was created but the owner index could not be written: ${cause}. ` +
+      `Call repairOwnerIndex(${workspaceId}) once the cause is fixed.`,
+      { cause: err }
+    );
+  }
+
+  return workspaceId;
+}
+
+/**
+ * Re-create the owner index entry for a workspace whose initial handshake
+ * partially failed (or whose index was deleted out-of-band).
+ *
+ * Safe to call multiple times: it is an idempotent `setDoc`.
+ * Rule still gates this on the workspace doc saying `ownerId == auth.uid`.
+ */
+export async function repairOwnerIndex(
+  workspaceId: string,
+  ownerId: string,
+  defaultProjectId = 'default'
+): Promise<void> {
+  const wsRef = doc(db!, workspaceDocPath(workspaceId));
+  const wsSnap = await getDoc(wsRef);
+  if (!wsSnap.exists()) {
+    throw new Error(`Workspace ${workspaceId} does not exist; nothing to repair.`);
+  }
+  const data = wsSnap.data() as Record<string, unknown>;
+  if (data.ownerId !== ownerId) {
+    throw new Error(`Workspace ${workspaceId} owner is not ${ownerId}; refusing to repair index.`);
+  }
+  await setDoc(doc(db!, userWorkspaceDocPath(ownerId, workspaceId)), {
     workspaceId,
-    workspaceName,
+    workspaceName: (data.name as string) ?? workspaceId,
     role: 'owner' as WorkspaceRole,
     ownerId,
     defaultProjectId,
-    updatedAt: now,
+    updatedAt: serverTimestamp(),
   });
-
-  await batch.commit();
-  return workspaceId;
 }
 
 /**
@@ -145,7 +205,8 @@ export async function createWorkspaceFromPersonalProject(
     getParameters(personal),
   ]);
 
-  // Create workspace shell + owner membership entry.
+  // Create workspace shell + owner membership entry (two sequential writes;
+  // see createWorkspace docstring for why this can't be a single batch).
   const workspaceId = await createWorkspace(ownerId, ownerEmail, workspaceName, projectId);
   const wsScope = workspaceScope(ownerId, workspaceId, 'owner', projectId);
 
@@ -179,6 +240,10 @@ async function copyDocuments<T extends { id: string }>(
 
 // ============================================================
 // Membership management
+//
+// These mutate an existing workspace, so the workspace doc is already
+// committed and the dependent rule `get(workspaces/{wid}).ownerId == auth.uid`
+// works inside a single batch.
 // ============================================================
 
 export async function addWorkspaceMember(
