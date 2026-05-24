@@ -32,6 +32,7 @@ const DashboardPage = lazy(() => import('./pages/Dashboard'));
 const ProductsPage = lazy(() => import('./pages/Products'));
 const ProductsSpreadsheetLab = lazy(() => import('./pages/ProductsSpreadsheetLab'));
 const ForecastsPage = lazy(() => import('./pages/Forecasts'));
+const ForecastsSpreadsheetLab = lazy(() => import('./pages/ForecastsSpreadsheetLab'));
 const CapacityPlanPage = lazy(() => import('./pages/CapacityPlan'));
 const CapacitySpreadsheetPage = lazy(() => import('./pages/CapacitySpreadsheet'));
 const ParametersPage = lazy(() => import('./pages/Parameters'));
@@ -40,7 +41,7 @@ const CalculationResultsPage = lazy(() => import('./pages/CalculationResults'));
 const { Sider, Content } = Layout;
 const { Title } = Typography;
 
-const APP_VERSION = 'v1.24.1';
+const APP_VERSION = 'v1.26.0';
 
 // --- Sidebar with i18n ---
 const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }> = ({ current, onMenuClick }) => {
@@ -51,6 +52,7 @@ const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }
     { key: 'products', icon: <InboxOutlined />, label: t('menu.products') },
     { key: 'products-sheet-lab', icon: <ExperimentOutlined />, label: t('menu.productsSheet') },
     { key: 'forecasts', icon: <BarChartOutlined />, label: t('menu.forecasts') },
+    { key: 'forecasts-lab', icon: <ExperimentOutlined />, label: t('menu.forecastsLab') },
     { key: 'capacity', icon: <CloudOutlined />, label: t('menu.capacity') },
     { key: 'capacity-lab', icon: <ExperimentOutlined />, label: t('menu.capacityLab') },
     { key: 'parameters', icon: <SettingOutlined />, label: t('menu.parameters') },
@@ -159,7 +161,7 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
   // Derive current menu key from URL path
   const current = useMemo(() => {
     const path = location.pathname.replace(/^\//, '');
-    const validKeys = ['dashboard', 'products', 'products-sheet-lab', 'forecasts', 'capacity', 'capacity-lab', 'parameters', 'results'];
+    const validKeys = ['dashboard', 'products', 'products-sheet-lab', 'forecasts', 'forecasts-lab', 'capacity', 'capacity-lab', 'parameters', 'results'];
     return validKeys.includes(path) ? path : 'dashboard';
   }, [location.pathname]);
 
@@ -168,6 +170,7 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
     products: t('products.title'),
     'products-sheet-lab': t('productsSheet.title'),
     forecasts: t('forecasts.title'),
+    'forecasts-lab': t('forecastsLab.title'),
     capacity: t('capacity.title'),
     'capacity-lab': t('capacityLab.title'),
     parameters: t('parameters.title'),
@@ -201,6 +204,7 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
               <Route path="/products" element={<ProductsPage key={routeKey} scope={scope} />} />
               <Route path="/products-sheet-lab" element={<ProductsSpreadsheetLab key={routeKey} scope={scope} />} />
               <Route path="/forecasts" element={<ForecastsPage key={routeKey} scope={scope} />} />
+              <Route path="/forecasts-lab" element={<ForecastsSpreadsheetLab key={routeKey} scope={scope} />} />
               <Route path="/capacity" element={<CapacityPlanPage key={routeKey} scope={scope} />} />
               <Route path="/capacity-lab" element={<CapacitySpreadsheetPage key={routeKey} scope={scope} />} />
               <Route path="/parameters" element={<ParametersPage key={routeKey} scope={scope} />} />
