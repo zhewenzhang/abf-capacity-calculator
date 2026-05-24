@@ -1,6 +1,7 @@
 /**
  * AI Brief Export / Prompt Pack
  *
+ * v1.21.1 - Hardened version with UTF-8 BOM, F-A-I-R guardrails, Key Findings params fix.
  * v1.21.0 - Sanitized Analysis Contract export for external AI consumption.
  *
  * This module provides:
@@ -13,6 +14,14 @@
  */
 
 import type { AnalysisContractPayload } from './analysisContract';
+
+/**
+ * Localized message descriptor for i18n support.
+ */
+export interface LocalizedMessageDescriptor {
+  key: string;
+  params?: Record<string, string | number>;
+}
 
 /**
  * Sanitized Analysis Contract for external AI consumption.
@@ -67,8 +76,12 @@ export interface SanitizedAnalysisContract {
   keyFindings: Array<{
     severity: string;
     source: string;
-    title: string;
-    detail: string;
+    titleKey: string;
+    detailKey: string;
+    titleParams?: Record<string, string | number>;
+    detailParams?: Record<string, string | number>;
+    titleMessage: LocalizedMessageDescriptor;
+    detailMessage: LocalizedMessageDescriptor;
   }>;
   skuSummary: Array<{
     skuCode: string;
@@ -84,6 +97,9 @@ export interface SanitizedAnalysisContract {
     currencyHandling: string[];
     attributionWarning: string[];
     dataQualityWarning: string[];
+    fairClassification: string[];
+    weightedPressureBoundary: string[];
+    blockedConfidenceHandling: string[];
   };
 }
 
@@ -137,6 +153,26 @@ function removeSensitiveData<T>(obj: T): T {
 }
 
 /**
+ * Extract LocalizedMessageDescriptor from a message field.
+ * Handles both string and object formats.
+ */
+function extractMessageDescriptor(
+  message: unknown
+): LocalizedMessageDescriptor {
+  if (typeof message === 'string') {
+    return { key: message };
+  }
+  if (typeof message === 'object' && message !== null) {
+    const msg = message as Record<string, unknown>;
+    return {
+      key: typeof msg.key === 'string' ? msg.key : '',
+      params: msg.params as Record<string, string | number> | undefined,
+    };
+  }
+  return { key: '' };
+}
+
+/**
  * Build a sanitized Analysis Contract for external AI consumption.
  */
 export function buildSanitizedAnalysisContract(
@@ -165,6 +201,22 @@ export function buildSanitizedAnalysisContract(
     unit: m.unit,
   }));
 
+  // Build keyFindings with full message descriptors (P0-2 fix)
+  const keyFindings = cleanPayload.keyFindings.map(f => {
+    const titleMessage = extractMessageDescriptor(f.titleMessage);
+    const detailMessage = extractMessageDescriptor(f.detailMessage);
+    return {
+      severity: f.severity,
+      source: f.source,
+      titleKey: titleMessage.key,
+      detailKey: detailMessage.key,
+      titleParams: titleMessage.params,
+      detailParams: detailMessage.params,
+      titleMessage,
+      detailMessage,
+    };
+  });
+
   // Build sanitized structure
   return {
     version: cleanPayload.version,
@@ -179,7 +231,14 @@ export function buildSanitizedAnalysisContract(
       topIssues: cleanPayload.quality.issues
         .filter(i => i.severity === 'error' || i.severity === 'warning')
         .slice(0, 5)
-        .map(i => `${i.severity}: ${i.titleMessage}`),
+        .map(i => {
+          const titleMsg = extractMessageDescriptor(i.titleMessage);
+          let title = titleMsg.key;
+          if (titleMsg.params) {
+            title += ` (params: ${JSON.stringify(titleMsg.params)})`;
+          }
+          return `${i.severity}: ${title}`;
+        }),
     },
     assumptions: cleanPayload.assumptions,
     summary: cleanPayload.summary,
@@ -256,12 +315,7 @@ export function buildSanitizedAnalysisContract(
         maxBuUtilAfter: s.maxBuUtilAfter,
       })),
     },
-    keyFindings: cleanPayload.keyFindings.map(f => ({
-      severity: f.severity,
-      source: f.source,
-      title: typeof f.titleMessage === 'string' ? f.titleMessage : (f.titleMessage as unknown as Record<string, string>).key,
-      detail: typeof f.detailMessage === 'string' ? f.detailMessage : (f.detailMessage as unknown as Record<string, string>).key,
-    })),
+    keyFindings,
     skuSummary,
     aiGuardrails: {
       doNotModify: [
@@ -287,6 +341,27 @@ export function buildSanitizedAnalysisContract(
         'Always review quality.topIssues before making recommendations.',
         'Data caveats are listed in the quality section.',
       ],
+      // P1: F-A-I-R classification guardrails
+      fairClassification: [
+        'Every key conclusion must be tagged as [Fact / 事實], [Assumption / 假設], [Inference / 推論], or [Recommendation / 建議].',
+        'DO NOT present inferences as facts.',
+        'DO NOT present recommendations as decided actions.',
+        'Clearly distinguish what the data shows from what you infer or recommend.',
+      ],
+      // P2-1: Weighted Pressure boundary warning
+      weightedPressureBoundary: [
+        'Weighted Pressure Index (Core×1.3 / BU×1.0) is ONLY for risk ranking and proportional attribution.',
+        'It does NOT modify actual demand, capacity, shortage, or utilization calculations.',
+        'DO NOT multiply the Core 1.3 weight back into actual shortage panel counts.',
+        'The weighted values are relative scores, not physical quantities.',
+      ],
+      // P2-2: Blocked confidence handling
+      blockedConfidenceHandling: [
+        'If quality.confidence is "blocked", DO NOT produce full decision recommendations.',
+        'When blocked, ONLY list data gaps and human remediation steps.',
+        'For "low" confidence, reduce certainty in language - use "may", "possibly", "suggests" instead of "is", "will", "causes".',
+        'Always prominently display confidence level in your output header.',
+      ],
     },
   };
 }
@@ -295,6 +370,9 @@ export function buildSanitizedAnalysisContract(
  * Build the Chinese AI Brief Prompt with embedded guardrails.
  */
 export function buildChineseAiBriefPrompt(contract: SanitizedAnalysisContract): string {
+  const isBlocked = contract.quality.confidence === 'blocked';
+  const isLow = contract.quality.confidence === 'low';
+
   const sections = [
     // Role
     '## 角色定位',
@@ -302,6 +380,20 @@ export function buildChineseAiBriefPrompt(contract: SanitizedAnalysisContract): 
     '你是 ABF 載板產能與產品規劃分析顧問。',
     '你的任務是根據提供的 Analysis Contract 資料，進行深度的產能與 BP 決策分析。',
     '',
+
+    // Confidence Warning Header (P2-2: blocked confidence handling)
+    ...(isBlocked || isLow ? [
+      '## ⚠️ 資料品質警告',
+      '',
+      isBlocked
+        ? '**此資料集信心等級為 BLOCKED。你不可產出完整決策建議。**'
+        : '**此資料集信心等級為 LOW。請降低語氣確定性。**',
+      '',
+      isBlocked
+        ? '你只能：列出資料缺口、建議人類修復步驟。不可做營運決策建議。'
+        : '請在結論中使用「可能」、「或許」、「建議進一步確認」等語氣，而非絕對性陳述。',
+      '',
+    ] : []),
 
     // Analysis Tasks
     '## 分析任務',
@@ -365,7 +457,7 @@ export function buildChineseAiBriefPrompt(contract: SanitizedAnalysisContract): 
     '',
     '4. **忽略資料限制**',
     '   - 必須尊重 assumptions 中的分析假設',
-    '   - 若 quality.confidence 為 "low"，必須明確警告分析可能不可靠',
+    '   - 若 quality.confidence 為 "low" 或 "blocked"，必須明確警告分析可能不可靠',
     '   - 必須考量資料品質問題對結論的影響',
     '',
     '5. **混淆比例歸因與因果關係**',
@@ -373,6 +465,29 @@ export function buildChineseAiBriefPrompt(contract: SanitizedAnalysisContract): 
     '   - 「佔差距 30%」表示該驅動因子在差距期間貢獻 30% 營收',
     '   - 這**不表示**該因子「造成」30% 的差距',
     '   - 不可將比例歸因解讀為責任分配',
+    '',
+    // P2-1: Weighted Pressure boundary warning
+    '6. **誤用 Weighted Pressure Index**',
+    '   - Weighted Pressure Index（Core×1.3 / BU×1.0）只用於風險排序與比例歸因',
+    '   - 它不會改變實體 demand、capacity、shortage、utilization 公式',
+    '   - 不可把 Core 1.3 權重乘回實體短缺面板數',
+    '   - 加權值是相對分數，不是實際數量',
+    '',
+
+    // P1: F-A-I-R Classification requirement
+    '## 📋 結論分類標準（F-A-I-R）',
+    '',
+    '每個關鍵結論必須標明類型：',
+    '',
+    '- **[Fact / 事實]**：資料直接顯示的內容，如「2026-03 Core 稼動率 95%」',
+    '- **[Assumption / 假設]**：分析假設，如「假設工作天數固定」',
+    '- **[Inference / 推論]**：從資料推導出的結論，如「若價格 +10%，BP 達成率可能提升 5pp」',
+    '- **[Recommendation / 建議]**：行動建議，如「建議評估 Core 產能擴充」',
+    '',
+    '注意：',
+    '- 不要把推論寫成事實',
+    '- 不要把建議寫成已決策',
+    '- 每個重大結論都要標明類型',
     '',
 
     // Output Format
@@ -407,6 +522,15 @@ export function buildChineseAiBriefPrompt(contract: SanitizedAnalysisContract): 
     '**資料品質警告：**',
     ...contract.aiGuardrails.dataQualityWarning.map(g => `- ${g}`),
     '',
+    '**F-A-I-R 分類要求：**',
+    ...contract.aiGuardrails.fairClassification.map(g => `- ${g}`),
+    '',
+    '**Weighted Pressure 邊界：**',
+    ...contract.aiGuardrails.weightedPressureBoundary.map(g => `- ${g}`),
+    '',
+    '**Blocked / Low Confidence 處理：**',
+    ...contract.aiGuardrails.blockedConfidenceHandling.map(g => `- ${g}`),
+    '',
 
     // JSON Fence Notice
     '---',
@@ -435,7 +559,20 @@ export function buildCombinedAiBriefPack(payload: AnalysisContractPayload): stri
 }
 
 /**
+ * Build JSON content with UTF-8 BOM for download.
+ * P0-3: Ensures proper Chinese character encoding in downloaded files.
+ */
+export function buildDownloadJsonContent(payload: AnalysisContractPayload): string {
+  const sanitized = buildSanitizedAnalysisContract(payload);
+  const jsonContent = JSON.stringify(sanitized, null, 2);
+  // P0-3: Add UTF-8 BOM for proper encoding
+  return '\ufeff' + jsonContent;
+}
+
+/**
  * Download the sanitized contract as a JSON file.
+ * P0-3: Now includes UTF-8 BOM for proper Chinese encoding.
+ * P2-3: Caller must call revokeDownloadUrl(dataUrl) after download completes.
  */
 export function downloadSanitizedContract(
   payload: AnalysisContractPayload,
@@ -443,7 +580,10 @@ export function downloadSanitizedContract(
 ): { dataUrl: string; filename: string } {
   const sanitized = buildSanitizedAnalysisContract(payload);
   const jsonContent = JSON.stringify(sanitized, null, 2);
-  const blob = new Blob([jsonContent], { type: 'application/json' });
+  // P0-3: Add UTF-8 BOM and specify charset
+  const blob = new Blob(['\ufeff' + jsonContent], {
+    type: 'application/json;charset=utf-8;',
+  });
   const dataUrl = URL.createObjectURL(blob);
 
   const defaultFilename = `abf-analysis-contract-${sanitized.timeRange.years.join('-')}-${new Date().toISOString().split('T')[0]}.json`;
@@ -452,6 +592,14 @@ export function downloadSanitizedContract(
     dataUrl,
     filename: filename || defaultFilename,
   };
+}
+
+/**
+ * P2-3: Revoke the download URL to free memory.
+ * Call this after the download completes or when the URL is no longer needed.
+ */
+export function revokeDownloadUrl(dataUrl: string): void {
+  URL.revokeObjectURL(dataUrl);
 }
 
 /**

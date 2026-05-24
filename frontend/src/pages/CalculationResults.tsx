@@ -55,6 +55,7 @@ import {
   buildCombinedAiBriefPack,
   copyToClipboard,
   downloadSanitizedContract,
+  revokeDownloadUrl,
 } from '../core/aiBriefExport';
 
 const { Text } = Typography;
@@ -682,7 +683,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                       document.body.appendChild(link);
                       link.click();
                       document.body.removeChild(link);
-                      URL.revokeObjectURL(dataUrl);
+                      revokeDownloadUrl(dataUrl);
                       message.success(t('aiBriefExport.downloaded'));
                     }}
                   >

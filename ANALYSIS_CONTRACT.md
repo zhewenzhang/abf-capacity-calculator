@@ -303,7 +303,9 @@ The AI Brief Export feature follows a **"copy, don't call"** philosophy:
 | `buildSanitizedAnalysisContract(payload)` | Cleaned JSON with all decision-relevant data, no PII or auth tokens |
 | `buildChineseAiBriefPrompt(contract)` | Chinese prompt with role definition, analysis tasks, guardrails, output format |
 | `buildCombinedAiBriefPack(payload)` | Full pack: prompt + fenced JSON block |
-| `downloadSanitizedContract(payload)` | Triggers browser download of JSON file |
+| `buildDownloadJsonContent(payload)` | P0-3: Returns JSON string with UTF-8 BOM header prefixed (`\ufeff`) |
+| `downloadSanitizedContract(payload)` | Triggers browser download of JSON file, now with UTF-8 BOM |
+| `revokeDownloadUrl(dataUrl)` | P2-3: Frees the allocated object URL lifecycle resource |
 | `copyToClipboard(text)` | Cross-browser clipboard write |
 
 ### 10.3 Sanitization Rules
@@ -316,7 +318,13 @@ The AI Brief Export feature follows a **"copy, don't call"** philosophy:
 | SKU codes, customer names | Retained (business identifiers, not PII) |
 | All analysis data | Retained (riskAttribution, bpAttribution, priceImpact, capacityImpact, keyFindings) |
 
-### 10.4 Prompt Guardrails
+### 10.4 Key Findings Schema Enrichment (v1.21.1)
+
+To ensure that external AI models can consume message parameters (like `{ count: 2 }` or `{ month: '2026-03' }`) instead of just reading translation keys, `keyFindings` now retains:
+- Both `titleMessage` and `detailMessage` structures intact.
+- High-fidelity export of `titleKey`, `detailKey`, `titleParams`, and `detailParams` fallback properties.
+
+### 10.5 Prompt Guardrails & Safety Constraints
 
 The Chinese prompt includes explicit prohibitions:
 
@@ -325,8 +333,11 @@ The Chinese prompt includes explicit prohibitions:
 3. **不可混淆幣別** — Revenue is USD; BP targets are Million TWD. Never compare directly without conversion.
 4. **不可忽略假設** — Respect all `assumptions`; warn if `quality.confidence` is low.
 5. **比例歸因非因果** — Attribution is proportional (revenue-share based), not strict causal attribution.
+6. **F-A-I-R 結論分類 (v1.21.1)** — Every significant AI claim must be tagged with `[Fact / 事實]`, `[Assumption / 假設]`, `[Inference / 推論]`, or `[Recommendation / 建議]`.
+7. **Weighted Pressure 排序邊界 (v1.21.1)** — Explicitly warn AI that Weighted Pressure Index is only for ranking risk drivers, never for modifying physical shortage panel demand.
+8. **Blocked 信心等級處理 (v1.21.1)** — When `quality.confidence` is `'blocked'`, AI must downgrade tone completely and only output data gaps and remediation steps. For `'low'`, reduce assertions with softer helper verbs.
 
-### 10.5 External AI Usage Flow
+### 10.6 External AI Usage Flow
 
 1. User navigates to **Results → Risk Brief**.
 2. User clicks **"Copy AI Brief Pack"** (or individual buttons for Prompt/JSON).
@@ -335,7 +346,7 @@ The Chinese prompt includes explicit prohibitions:
 5. AI generates analysis based on the provided contract and guardrails.
 6. **User validates** — AI output is advisory; final decisions require human verification.
 
-### 10.6 Future AI API Integration Requirements
+### 10.7 Future AI API Integration Requirements
 
 If a future version integrates AI API directly, the following must be implemented first:
 
