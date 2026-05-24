@@ -49,6 +49,7 @@ A browser-based ABF (Ajinomoto Build-up Film) substrate capacity planning tool b
 | [docs/WORKSPACE_COLLABORATION.md](docs/WORKSPACE_COLLABORATION.md) | Workspace data model, roles, Firestore paths, invite flow, security rules |
 | [docs/WORKSPACE_SMOKE_TEST.md](docs/WORKSPACE_SMOKE_TEST.md) | Two-account manual checklist for verifying shared workspaces end-to-end |
 | [docs/AI_BRIEF_EXPORT.md](docs/AI_BRIEF_EXPORT.md) | AI Brief Export feature: usage, sanitization, guardrails, security policy |
+| [docs/ai-eval/README.md](docs/ai-eval/README.md) | AI analysis evaluation kit: rubric, benchmark cases, scorecards, external AI test runbook, and safety guardrails |
 
 ## Firebase Setup
 
