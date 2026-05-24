@@ -1,7 +1,18 @@
 rules_version = '2';
 
 // =====================================================================
-// ABF Capacity Calculator — Firestore Security Rules (v1.18.1)
+// ABF Capacity Calculator — Firestore Security Rules (v1.22.1)
+//
+// v1.22.1 hardening:
+// - Snapshots are now immutable (no update allowed).
+// - Personal snapshots: only the user can read/create/delete.
+// - Workspace snapshots:
+//   - Members can read.
+//   - Owner/Editor can create (createdBy must equal auth.uid).
+//   - Owner can delete any snapshot.
+//   - Editor can only delete their own snapshots (createdBy == auth.uid).
+//   - Viewer cannot create or delete.
+// =====================================================================
 //
 // Data model:
 //   users/{uid}/projects/{projectId}/...       — personal data (private)
@@ -109,9 +120,51 @@ service cloud.firestore {
     // ---------- Workspace business data ----------
     // Projects + nested collections (skus, forecasts, capacityPlans,
     // parameters, capacityVersions, skuVersions).
+    // NOTE: Snapshots have their own dedicated rules below.
     match /workspaces/{workspaceId}/projects/{projectId}/{document=**} {
       allow read: if isMember(workspaceId);
       allow write: if canWriteBusiness(workspaceId);
+    }
+
+    // ---------- Personal snapshots (immutable) ----------
+    // users/{uid}/projects/{projectId}/snapshots/{snapshotId}
+    // - Only the user can read/create/delete.
+    // - Update is forbidden (immutable).
+    // - Create requires createdBy == auth.uid.
+    match /users/{uid}/projects/{projectId}/snapshots/{snapshotId} {
+      allow read: if isSelf(uid);
+      allow create: if isSelf(uid)
+        && request.resource.data.createdBy == request.auth.uid;
+      allow delete: if isSelf(uid);
+      // Update forbidden — snapshots are immutable
+      allow update: if false;
+    }
+
+    // ---------- Workspace snapshots (immutable) ----------
+    // workspaces/{workspaceId}/projects/{projectId}/snapshots/{snapshotId}
+    // - Members can read.
+    // - Owner/Editor can create (createdBy must equal auth.uid).
+    // - Owner can delete any snapshot.
+    // - Editor can only delete their own (createdBy == auth.uid).
+    // - Viewer cannot create or delete.
+    // - Update is forbidden (immutable).
+    match /workspaces/{workspaceId}/projects/{projectId}/snapshots/{snapshotId} {
+      // Read: all workspace members
+      allow read: if isMember(workspaceId);
+
+      // Create: owner or editor, createdBy must be auth.uid
+      allow create: if isMember(workspaceId)
+        && (memberRole(workspaceId) == 'owner' || memberRole(workspaceId) == 'editor')
+        && request.resource.data.createdBy == request.auth.uid;
+
+      // Delete: owner (any) or editor (own snapshots only)
+      allow delete: if isMember(workspaceId) && (
+        memberRole(workspaceId) == 'owner'
+        || (memberRole(workspaceId) == 'editor' && resource.data.createdBy == request.auth.uid)
+      );
+
+      // Update forbidden — snapshots are immutable
+      allow update: if false;
     }
 
     // ---------- Per-user workspace index ----------
