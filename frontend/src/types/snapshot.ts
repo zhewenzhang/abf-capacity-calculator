@@ -3,9 +3,47 @@
  *
  * A snapshot captures the complete state of a project's data at a point in time,
  * allowing comparison between two versions to understand what changed.
+ *
+ * Phase 6.2: Added optional metadata for Forecast Version History Workflow.
+ * All metadata fields are optional for backward compatibility.
  */
 
 import type { SKU, Forecast, CapacityPlan, ProjectParameters } from './index';
+
+/**
+ * Snapshot kind / version type for categorization.
+ */
+export type SnapshotKind =
+  | 'working'
+  | 'bpBaseline'
+  | 'customerUpdate'
+  | 'capacityReview'
+  | 'scenario'
+  | 'archive';
+
+/**
+ * Review status for snapshot lifecycle tracking.
+ */
+export type SnapshotReviewStatus =
+  | 'draft'
+  | 'reviewed'
+  | 'locked'
+  | 'archived';
+
+/**
+ * Optional metadata for Forecast Version History Workflow (Phase 6.2).
+ * All fields are optional to maintain backward compatibility with existing snapshots.
+ */
+export interface SnapshotMetadata {
+  /** Version type / category */
+  kind?: SnapshotKind;
+  /** Human-readable period label, e.g. "2026 BP", "2026-Q3 Update" */
+  periodLabel?: string;
+  /** Review lifecycle status */
+  reviewStatus?: SnapshotReviewStatus;
+  /** Additional notes */
+  note?: string;
+}
 
 /**
  * Raw inputs captured in a snapshot.
@@ -50,6 +88,8 @@ export interface Snapshot {
   workspaceId?: string;
   rawInputs: SnapshotRawInputs;
   derivedHighlights: SnapshotDerivedHighlights;
+  /** Optional metadata (Phase 6.2) */
+  metadata?: SnapshotMetadata;
 }
 
 /**
@@ -60,6 +100,8 @@ export interface CreateSnapshotPayload {
   description?: string;
   rawInputs: SnapshotRawInputs;
   derivedHighlights: SnapshotDerivedHighlights;
+  /** Optional metadata (Phase 6.2) */
+  metadata?: SnapshotMetadata;
 }
 
 /**
@@ -74,4 +116,6 @@ export interface SnapshotListItem {
   createdByName?: string;
   sourceAppVersion: string;
   derivedHighlights: SnapshotDerivedHighlights;
+  /** Optional metadata (Phase 6.2) */
+  metadata?: SnapshotMetadata;
 }

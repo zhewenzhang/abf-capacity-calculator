@@ -75,7 +75,7 @@ import {
   getSnapshot,
   canDeleteSnapshot,
 } from '../services/snapshotService';
-import type { SnapshotListItem } from '../types/snapshot';
+import type { SnapshotListItem, SnapshotKind, SnapshotReviewStatus } from '../types/snapshot';
 import {
   computeChangeImpact,
   type ChangeImpactResult,
@@ -86,6 +86,16 @@ import {
   revokeDownloadUrl as revokeChangeImpactUrl,
   copyToClipboard,
 } from '../core/changeImpactExport';
+import {
+  getKindColor,
+  getReviewStatusColor,
+  filterSnapshotsByKind,
+  getRecommendedComparePair,
+  getEffectiveKind,
+  getEffectiveReviewStatus,
+  getPeriodLabel,
+  SNAPSHOT_FILTER_OPTIONS,
+} from '../core/snapshotMetadata';
 
 const { Text } = Typography;
 
@@ -120,6 +130,13 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
   const [targetSnapshotId, setTargetSnapshotId] = useState<string | null>(null);
   const [changeImpact, setChangeImpact] = useState<ChangeImpactResult | null>(null);
   const [comparing, setComparing] = useState(false);
+
+  // Phase 6.2: Filter and metadata states
+  const [snapshotFilter, setSnapshotFilter] = useState<SnapshotKind | 'all'>('all');
+  const [newSnapshotKind, setNewSnapshotKind] = useState<SnapshotKind | undefined>(undefined);
+  const [newSnapshotPeriodLabel, setNewSnapshotPeriodLabel] = useState('');
+  const [newSnapshotReviewStatus, setNewSnapshotReviewStatus] = useState<SnapshotReviewStatus | undefined>(undefined);
+  const [newSnapshotNote, setNewSnapshotNote] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
@@ -255,6 +272,16 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
         forecastMonthCount: new Set(forecasts.map(f => f.month)).size,
       };
 
+      // Build optional metadata (Phase 6.2)
+      const metadata = {
+        kind: newSnapshotKind,
+        periodLabel: newSnapshotPeriodLabel.trim() || undefined,
+        reviewStatus: newSnapshotReviewStatus,
+        note: newSnapshotNote.trim() || undefined,
+      };
+      // Only include metadata if at least one field is set
+      const hasMetadata = metadata.kind || metadata.periodLabel || metadata.reviewStatus || metadata.note;
+
       await createSnapshot(
         scope,
         scope.userId,
@@ -269,6 +296,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
             parameters: params,
           },
           derivedHighlights,
+          metadata: hasMetadata ? metadata : undefined,
         }
       );
 
@@ -276,13 +304,18 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
       setCreateModalOpen(false);
       setNewSnapshotName('');
       setNewSnapshotDesc('');
+      // Reset metadata fields
+      setNewSnapshotKind(undefined);
+      setNewSnapshotPeriodLabel('');
+      setNewSnapshotReviewStatus(undefined);
+      setNewSnapshotNote('');
       loadSnapshots();
     } catch (e: any) {
       message.error(t('changeReview.snapshotCreateFailed') + ': ' + e.message);
     } finally {
       setCreating(false);
     }
-  }, [scope, newSnapshotName, newSnapshotDesc, model, params, skus, forecasts, capacityPlans, bpAnalysisModel, loadSnapshots, t]);
+  }, [scope, newSnapshotName, newSnapshotDesc, newSnapshotKind, newSnapshotPeriodLabel, newSnapshotReviewStatus, newSnapshotNote, model, params, skus, forecasts, capacityPlans, bpAnalysisModel, loadSnapshots, t]);
 
   const handleDeleteSnapshot = useCallback(async (snapshot: SnapshotListItem) => {
     try {
@@ -358,6 +391,24 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
       loadSnapshots();
     }
   }, [view, loadSnapshots]);
+
+  // Phase 6.2: Filtered snapshots
+  const filteredSnapshots = useMemo(() => {
+    return filterSnapshotsByKind(snapshots, snapshotFilter);
+  }, [snapshots, snapshotFilter]);
+
+  // Phase 6.2: Recommended compare pair
+  const recommendedPair = useMemo(() => {
+    return getRecommendedComparePair(snapshots);
+  }, [snapshots]);
+
+  // Apply recommended pair handler
+  const handleApplyRecommended = useCallback(() => {
+    if (recommendedPair.baseId && recommendedPair.targetId) {
+      setBaseSnapshotId(recommendedPair.baseId);
+      setTargetSnapshotId(recommendedPair.targetId);
+    }
+  }, [recommendedPair]);
 
   // --- Reusable util cell render ---
   const renderUtil = (val: number | null, demand: number) => {
@@ -1540,45 +1591,71 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
             </div>
           )}
 
-          {/* Change Review View (Phase 6.1 Enhanced) */}
+          {/* Change Review View (Phase 6.2 Enhanced) */}
           {view === 'change' && (
             <div>
               {/* Snapshot Management Section */}
               <Card
-                title={t('changeReview.snapshotsTitle')}
+                title={t('changeReview.versionHistoryTitle')}
                 bordered={false}
                 size="small"
                 extra={
-                  <Button
-                    type="primary"
-                    icon={<CameraOutlined />}
-                    onClick={() => setCreateModalOpen(true)}
-                    disabled={scope.role === 'viewer'}
-                  >
-                    {t('changeReview.createSnapshot')}
-                  </Button>
+                  <Space>
+                    {/* Phase 6.2: Filter */}
+                    <Select
+                      value={snapshotFilter}
+                      onChange={setSnapshotFilter}
+                      style={{ width: 150 }}
+                      options={SNAPSHOT_FILTER_OPTIONS.map(opt => ({
+                        value: opt.value,
+                        label: t(`changeReview.filter${opt.value === 'all' ? 'All' : opt.value.charAt(0).toUpperCase() + opt.value.slice(1)}`),
+                      }))}
+                    />
+                    <Button
+                      type="primary"
+                      icon={<CameraOutlined />}
+                      onClick={() => setCreateModalOpen(true)}
+                      disabled={scope.role === 'viewer'}
+                    >
+                      {t('changeReview.createNewVersion')}
+                    </Button>
+                  </Space>
                 }
               >
                 <Spin spinning={snapshotsLoading}>
                   {snapshots.length === 0 ? (
-                    <Alert message={t('changeReview.noSnapshots')} type="info" showIcon />
+                    <Alert message={t('changeReview.noVersions')} type="info" showIcon />
                   ) : (
                     <Table
-                      dataSource={snapshots}
+                      dataSource={filteredSnapshots}
                       rowKey="id"
                       pagination={false}
                       size="small"
                       columns={[
                         {
-                          title: t('changeReview.snapshotName'),
+                          title: t('changeReview.versionName'),
                           dataIndex: 'name',
                           key: 'name',
                           render: (name: string, record: SnapshotListItem) => (
                             <Space direction="vertical" size={0}>
-                              <Text strong>{name}</Text>
-                              {record.description && (
-                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                  {record.description}
+                              <Space size={4}>
+                                <Text strong>{name}</Text>
+                                {/* Phase 6.2: Kind tag */}
+                                <Tag color={getKindColor(getEffectiveKind(record))}>
+                                  {t(`versionKind.${getEffectiveKind(record) ?? 'general'}`)}
+                                </Tag>
+                                {/* Phase 6.2: Review status tag */}
+                                <Tag color={getReviewStatusColor(getEffectiveReviewStatus(record))}>
+                                  {t(`reviewStatus.${getEffectiveReviewStatus(record)}`)}
+                                </Tag>
+                              </Space>
+                              {/* Phase 6.2: Period label */}
+                              <Text type="secondary" style={{ fontSize: 12 }}>
+                                {getPeriodLabel(record)}
+                              </Text>
+                              {record.metadata?.note && (
+                                <Text type="secondary" style={{ fontSize: 11, fontStyle: 'italic' }}>
+                                  {record.metadata.note}
                                 </Text>
                               )}
                             </Space>
@@ -1662,6 +1739,27 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                     showIcon
                     style={{ marginBottom: 8 }}
                   />
+                  {/* Phase 6.2: Recommended Compare Pair */}
+                  {recommendedPair.baseId && recommendedPair.targetId && (
+                    <Card size="small" style={{ backgroundColor: '#f6ffed', borderColor: '#b7eb8f' }}>
+                      <Space>
+                        <Text strong>{t('changeReview.recommendedPair')}:</Text>
+                        <Text>
+                          {snapshots.find(s => s.id === recommendedPair.baseId)?.name}
+                          {' → '}
+                          {snapshots.find(s => s.id === recommendedPair.targetId)?.name}
+                        </Text>
+                        <Text type="secondary">({recommendedPair.reason})</Text>
+                        <Button
+                          size="small"
+                          type="link"
+                          onClick={handleApplyRecommended}
+                        >
+                          {t('changeReview.applyRecommended')}
+                        </Button>
+                      </Space>
+                    </Card>
+                  )}
                   <Row gutter={16}>
                     <Col span={10}>
                       <Text type="secondary">{t('changeReview.baseIsOld')}</Text>
@@ -2152,27 +2250,100 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
             </div>
           )}
 
-          {/* Create Snapshot Modal */}
+          {/* Create Snapshot Modal (Phase 6.2 Enhanced) */}
           <Modal
-            title={t('changeReview.createSnapshot')}
+            title={t('changeReview.createNewVersion')}
             open={createModalOpen}
             onOk={handleCreateSnapshot}
             onCancel={() => setCreateModalOpen(false)}
             confirmLoading={creating}
+            width={520}
           >
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text>{t('changeReview.snapshotNameLabel')}</Text>
-              <Input
-                value={newSnapshotName}
-                onChange={(e) => setNewSnapshotName(e.target.value)}
-                placeholder={t('changeReview.snapshotNamePlaceholder')}
-              />
-              <Text>{t('changeReview.snapshotDescLabel')}</Text>
-              <Input.TextArea
-                value={newSnapshotDesc}
-                onChange={(e) => setNewSnapshotDesc(e.target.value)}
-                placeholder={t('changeReview.snapshotDescPlaceholder')}
-                rows={3}
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+              {/* Version Name */}
+              <div>
+                <Text>{t('changeReview.versionName')} *</Text>
+                <Input
+                  value={newSnapshotName}
+                  onChange={(e) => setNewSnapshotName(e.target.value)}
+                  placeholder={t('changeReview.snapshotNamePlaceholder')}
+                  style={{ marginTop: 4 }}
+                />
+              </div>
+              {/* Version Type (Phase 6.2) */}
+              <div>
+                <Text type="secondary">{t('changeReview.versionType')}</Text>
+                <Select
+                  style={{ width: '100%', marginTop: 4 }}
+                  value={newSnapshotKind}
+                  onChange={setNewSnapshotKind}
+                  placeholder={t('changeReview.versionTypePlaceholder')}
+                  allowClear
+                  options={[
+                    { value: 'working', label: t('versionKind.working') },
+                    { value: 'bpBaseline', label: t('versionKind.bpBaseline') },
+                    { value: 'customerUpdate', label: t('versionKind.customerUpdate') },
+                    { value: 'capacityReview', label: t('versionKind.capacityReview') },
+                    { value: 'scenario', label: t('versionKind.scenario') },
+                    { value: 'archive', label: t('versionKind.archive') },
+                  ]}
+                />
+              </div>
+              {/* Period Label (Phase 6.2) */}
+              <div>
+                <Text type="secondary">{t('changeReview.periodLabel')}</Text>
+                <Input
+                  value={newSnapshotPeriodLabel}
+                  onChange={(e) => setNewSnapshotPeriodLabel(e.target.value)}
+                  placeholder={t('changeReview.periodLabelPlaceholder')}
+                  style={{ marginTop: 4 }}
+                />
+              </div>
+              {/* Review Status (Phase 6.2) */}
+              <div>
+                <Text type="secondary">{t('changeReview.reviewStatus')}</Text>
+                <Select
+                  style={{ width: '100%', marginTop: 4 }}
+                  value={newSnapshotReviewStatus}
+                  onChange={setNewSnapshotReviewStatus}
+                  placeholder={t('changeReview.reviewStatusPlaceholder')}
+                  allowClear
+                  options={[
+                    { value: 'draft', label: t('reviewStatus.draft') },
+                    { value: 'reviewed', label: t('reviewStatus.reviewed') },
+                    { value: 'locked', label: t('reviewStatus.locked') },
+                    { value: 'archived', label: t('reviewStatus.archived') },
+                  ]}
+                />
+              </div>
+              {/* Description */}
+              <div>
+                <Text type="secondary">{t('changeReview.snapshotDescLabel')}</Text>
+                <Input.TextArea
+                  value={newSnapshotDesc}
+                  onChange={(e) => setNewSnapshotDesc(e.target.value)}
+                  placeholder={t('changeReview.snapshotDescPlaceholder')}
+                  rows={2}
+                  style={{ marginTop: 4 }}
+                />
+              </div>
+              {/* Note (Phase 6.2) */}
+              <div>
+                <Text type="secondary">{t('changeReview.note')}</Text>
+                <Input.TextArea
+                  value={newSnapshotNote}
+                  onChange={(e) => setNewSnapshotNote(e.target.value)}
+                  placeholder={t('changeReview.notePlaceholder')}
+                  rows={2}
+                  style={{ marginTop: 4 }}
+                />
+              </div>
+              {/* Immutable Warning (Phase 6.2) */}
+              <Alert
+                message={t('changeReview.immutableWarning')}
+                type="warning"
+                showIcon
+                style={{ marginTop: 8 }}
               />
             </Space>
           </Modal>

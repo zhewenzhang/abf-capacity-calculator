@@ -8,6 +8,9 @@
  * - Viewer: can list and view snapshots, cannot create or delete
  * - Editor: can create snapshots, cannot delete others' snapshots
  * - Owner: can manage all snapshots in workspace
+ *
+ * Phase 6.2: Added support for optional metadata (kind, periodLabel, reviewStatus, note).
+ * Snapshots are immutable — once created, they cannot be updated.
  */
 import {
   collection,
@@ -23,14 +26,14 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import type { ProjectScope } from '../types';
-import type { Snapshot, SnapshotListItem, CreateSnapshotPayload } from '../types/snapshot';
+import type { Snapshot, SnapshotListItem, CreateSnapshotPayload, SnapshotMetadata } from '../types/snapshot';
 import { projectRoot, isViewer } from './projectScope';
 
 if (!db) {
   throw new Error('Firestore not initialized. Check your .env configuration.');
 }
 
-const APP_VERSION = 'v1.22.2';
+const APP_VERSION = 'v1.24.0';
 
 /**
  * Get the Firestore collection path for snapshots.
@@ -71,6 +74,8 @@ export async function listSnapshots(scope: ProjectScope): Promise<SnapshotListIt
       createdByName: data.createdByName as string | undefined,
       sourceAppVersion: (data.sourceAppVersion as string) ?? '',
       derivedHighlights: data.derivedHighlights as SnapshotListItem['derivedHighlights'],
+      // Phase 6.2: Optional metadata with safe fallback
+      metadata: data.metadata as SnapshotMetadata | undefined,
     };
   });
 }
@@ -97,12 +102,17 @@ export async function getSnapshot(scope: ProjectScope, snapshotId: string): Prom
     workspaceId: data.workspaceId as string | undefined,
     rawInputs: data.rawInputs as Snapshot['rawInputs'],
     derivedHighlights: data.derivedHighlights as Snapshot['derivedHighlights'],
+    // Phase 6.2: Optional metadata with safe fallback
+    metadata: data.metadata as SnapshotMetadata | undefined,
   };
 }
 
 /**
  * Create a new snapshot.
  * Only editors and owners can create snapshots.
+ *
+ * IMPORTANT: Snapshots are immutable. Once created, they cannot be updated.
+ * If metadata needs to be changed, the snapshot must be deleted and recreated.
  */
 export async function createSnapshot(
   scope: ProjectScope,
@@ -131,6 +141,11 @@ export async function createSnapshot(
     derivedHighlights: payload.derivedHighlights,
   };
 
+  // Phase 6.2: Include optional metadata if provided
+  if (payload.metadata) {
+    snapshotData.metadata = payload.metadata;
+  }
+
   if (scope.mode === 'workspace' && scope.workspaceId) {
     snapshotData.workspaceId = scope.workspaceId;
   }
@@ -145,6 +160,9 @@ export async function createSnapshot(
  * - Viewer: cannot delete
  * - Editor: can only delete own snapshots
  * - Owner: can delete any snapshot
+ *
+ * Note: This is the only way to "modify" a snapshot's metadata —
+ * delete and recreate with updated metadata.
  */
 export async function deleteSnapshot(
   scope: ProjectScope,
