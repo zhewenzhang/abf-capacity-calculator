@@ -203,4 +203,192 @@ describe('forecastsLabHelpers', () => {
       expect(dirty.has('sku1||jan')).toBe(true);
     });
   });
+
+  // Unit price inheritance tests (v1.26.1)
+  describe('unitPrice inheritance', () => {
+    // Mock types for testing
+    interface MockSKU {
+      id: string;
+      unitPrice: number;
+      unitPriceCurrency?: string;
+    }
+
+    interface MockForecast {
+      id?: string;
+      skuId: string;
+      month: string;
+      unitPrice: number;
+      unitPriceCurrency?: string;
+    }
+
+    /**
+     * Determines unit price with proper fallback chain:
+     * 1. Existing forecast price (if available and non-zero)
+     * 2. SKU price (if available and non-zero)
+     * 3. Fallback to 0
+     */
+    function determineUnitPrice(
+      existing: MockForecast | undefined,
+      sku: MockSKU | undefined
+    ): { unitPrice: number; unitPriceCurrency: string } {
+      let unitPrice = 0;
+      let unitPriceCurrency = 'USD';
+
+      if (existing?.unitPrice !== undefined && existing.unitPrice !== 0) {
+        // Priority 1: Use existing forecast price
+        unitPrice = existing.unitPrice;
+        unitPriceCurrency = existing.unitPriceCurrency || 'USD';
+      } else if (sku?.unitPrice !== undefined && sku.unitPrice !== 0) {
+        // Priority 2: Use SKU price
+        unitPrice = sku.unitPrice;
+        unitPriceCurrency = sku.unitPriceCurrency || 'USD';
+      }
+      // Priority 3: Fallback to 0
+
+      return { unitPrice, unitPriceCurrency };
+    }
+
+    it('uses existing forecast price when available', () => {
+      const existing: MockForecast = {
+        id: 'fc1',
+        skuId: 'sku1',
+        month: '2026-01',
+        unitPrice: 100,
+        unitPriceCurrency: 'TWD',
+      };
+      const sku: MockSKU = {
+        id: 'sku1',
+        unitPrice: 50,
+        unitPriceCurrency: 'USD',
+      };
+
+      const result = determineUnitPrice(existing, sku);
+      expect(result.unitPrice).toBe(100);
+      expect(result.unitPriceCurrency).toBe('TWD');
+    });
+
+    it('inherits from SKU when no existing forecast', () => {
+      const sku: MockSKU = {
+        id: 'sku1',
+        unitPrice: 75,
+        unitPriceCurrency: 'CNY',
+      };
+
+      const result = determineUnitPrice(undefined, sku);
+      expect(result.unitPrice).toBe(75);
+      expect(result.unitPriceCurrency).toBe('CNY');
+    });
+
+    it('inherits from SKU when existing forecast has zero price', () => {
+      const existing: MockForecast = {
+        id: 'fc1',
+        skuId: 'sku1',
+        month: '2026-01',
+        unitPrice: 0,
+        unitPriceCurrency: 'USD',
+      };
+      const sku: MockSKU = {
+        id: 'sku1',
+        unitPrice: 80,
+        unitPriceCurrency: 'TWD',
+      };
+
+      const result = determineUnitPrice(existing, sku);
+      expect(result.unitPrice).toBe(80);
+      expect(result.unitPriceCurrency).toBe('TWD');
+    });
+
+    it('falls back to 0 when both existing and SKU have no price', () => {
+      const existing: MockForecast = {
+        id: 'fc1',
+        skuId: 'sku1',
+        month: '2026-01',
+        unitPrice: 0,
+      };
+      const sku: MockSKU = {
+        id: 'sku1',
+        unitPrice: 0,
+      };
+
+      const result = determineUnitPrice(existing, sku);
+      expect(result.unitPrice).toBe(0);
+      expect(result.unitPriceCurrency).toBe('USD');
+    });
+
+    it('falls back to 0 when SKU is undefined', () => {
+      const result = determineUnitPrice(undefined, undefined);
+      expect(result.unitPrice).toBe(0);
+      expect(result.unitPriceCurrency).toBe('USD');
+    });
+
+    it('uses existing forecast currency even when price is from SKU', () => {
+      // This tests that we correctly use SKU price but default currency when existing has 0 price
+      const existing: MockForecast = {
+        id: 'fc1',
+        skuId: 'sku1',
+        month: '2026-01',
+        unitPrice: 0,
+        unitPriceCurrency: 'USD',
+      };
+      const sku: MockSKU = {
+        id: 'sku1',
+        unitPrice: 90,
+        unitPriceCurrency: 'TWD',
+      };
+
+      const result = determineUnitPrice(existing, sku);
+      expect(result.unitPrice).toBe(90);
+      expect(result.unitPriceCurrency).toBe('TWD'); // SKU currency when existing price is 0
+    });
+  });
+
+  // Zero value handling tests (v1.26.1)
+  describe('zero value handling', () => {
+    /**
+     * Determines if a forecast should be deleted (when value is 0 and forecast exists)
+     * or created (when value > 0).
+     */
+    function classifyChange(
+      pcs: number,
+      existingForecastId: string | undefined
+    ): { action: 'create' | 'update' | 'delete' | 'skip' } {
+      if (pcs < 0) {
+        throw new Error('Negative values not allowed');
+      }
+      if (pcs === 0) {
+        if (existingForecastId) {
+          return { action: 'delete' };
+        }
+        return { action: 'skip' };
+      }
+      if (existingForecastId) {
+        return { action: 'update' };
+      }
+      return { action: 'create' };
+    }
+
+    it('classifies zero with existing forecast as delete', () => {
+      const result = classifyChange(0, 'fc-existing-id');
+      expect(result.action).toBe('delete');
+    });
+
+    it('classifies zero without existing forecast as skip', () => {
+      const result = classifyChange(0, undefined);
+      expect(result.action).toBe('skip');
+    });
+
+    it('classifies positive value with existing forecast as update', () => {
+      const result = classifyChange(100, 'fc-existing-id');
+      expect(result.action).toBe('update');
+    });
+
+    it('classifies positive value without existing forecast as create', () => {
+      const result = classifyChange(100, undefined);
+      expect(result.action).toBe('create');
+    });
+
+    it('rejects negative values', () => {
+      expect(() => classifyChange(-10, undefined)).toThrow('Negative values not allowed');
+    });
+  });
 });

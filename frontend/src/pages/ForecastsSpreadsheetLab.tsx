@@ -4,7 +4,7 @@ import { SaveOutlined, UndoOutlined, ExperimentOutlined } from '@ant-design/icon
 import { DataSheetGrid, textColumn, intColumn, keyColumn } from 'react-datasheet-grid';
 import 'react-datasheet-grid/dist/style.css';
 import { getSKUs } from '../services/skuService';
-import { getForecasts, batchSaveForecasts } from '../services/forecastService';
+import { getForecasts, batchSaveForecasts, deleteForecast } from '../services/forecastService';
 import type { SKU, Forecast, ProjectScope } from '../types';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
@@ -202,8 +202,9 @@ const ForecastsSpreadsheetLab: React.FC<ForecastsSpreadsheetLabProps> = ({ scope
       return;
     }
 
-    // Build forecast updates
+    // Build forecast updates and deletions
     const updates: Array<Omit<Forecast, 'id'> & { id?: string }> = [];
+    const deletions: string[] = []; // forecast IDs to delete
 
     for (const k of dirtySet) {
       const [skuId, monthKey] = k.split('||') as [string, MonthKey];
@@ -223,31 +224,70 @@ const ForecastsSpreadsheetLab: React.FC<ForecastsSpreadsheetLabProps> = ({ scope
       // Find existing forecast for this skuId + month
       const existing = forecasts.find((f) => f.skuId === skuId && f.month === month);
 
+      // Find SKU for price fallback
+      const sku = skus.find((s) => s.id === skuId);
+
       if (pcs === 0) {
-        // If value is 0 and there's an existing forecast, we should delete it
-        // But batchSaveForecasts doesn't support delete, so we just skip
-        // In a future version, we might want to handle this differently
+        // If value is 0 and there's an existing forecast, delete it
+        if (existing?.id) {
+          deletions.push(existing.id);
+        }
+        // If no existing forecast, nothing to do (skip)
         continue;
       }
+
+      // Determine unit price with proper fallback chain:
+      // 1. Existing forecast price (if available)
+      // 2. SKU price (if available)
+      // 3. Fallback to 0 with a warning (SKU might be missing price data)
+      let unitPrice = 0;
+      let unitPriceCurrency: 'USD' | 'TWD' | 'CNY' = 'USD';
+
+      if (existing?.unitPrice !== undefined && existing.unitPrice !== 0) {
+        // Priority 1: Use existing forecast price
+        unitPrice = existing.unitPrice;
+        unitPriceCurrency = existing.unitPriceCurrency || 'USD';
+      } else if (sku?.unitPrice !== undefined && sku.unitPrice !== 0) {
+        // Priority 2: Use SKU price
+        unitPrice = sku.unitPrice;
+        unitPriceCurrency = sku.unitPriceCurrency || 'USD';
+      }
+      // Priority 3: Fallback to 0 (price data missing)
+      // Note: This means the SKU has no price configured. The forecast will be saved with 0 price.
+      // Users should update the SKU price or manually edit the forecast price in the Forecasts page.
 
       updates.push({
         id: existing?.id,
         skuId,
         month,
         forecastPcs: pcs,
-        unitPrice: existing?.unitPrice ?? 0,
-        unitPriceCurrency: existing?.unitPriceCurrency ?? 'USD',
+        unitPrice,
+        unitPriceCurrency,
       });
     }
 
-    if (updates.length === 0) {
+    if (updates.length === 0 && deletions.length === 0) {
       message.info(t('forecastsLab.noValidChanges'));
       return;
     }
 
     try {
-      await batchSaveForecasts(scope, updates);
-      message.success(t('forecastsLab.saved', { count: updates.length }));
+      // Save updates first
+      if (updates.length > 0) {
+        await batchSaveForecasts(scope, updates);
+      }
+      // Then delete forecasts with 0 value
+      for (const forecastId of deletions) {
+        await deleteForecast(scope, forecastId);
+      }
+
+      const savedCount = updates.length;
+      const deletedCount = deletions.length;
+      if (deletedCount > 0) {
+        message.success(t('forecastsLab.savedWithDeletes', { count: savedCount, deleted: deletedCount }));
+      } else {
+        message.success(t('forecastsLab.saved', { count: savedCount }));
+      }
       await loadData();
     } catch (e: any) {
       message.error(e.message || t('capacityLab.failedToSave'));

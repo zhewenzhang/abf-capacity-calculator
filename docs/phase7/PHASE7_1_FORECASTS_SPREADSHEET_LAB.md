@@ -46,8 +46,24 @@ Total: 14 columns (2 read-only + 12 editable months)
 
 - Forecast PCS must be non-negative integers
 - Negative values are rejected with error message
-- Empty/zero values are skipped during save (not deleted from Firestore)
+- Setting value to 0 **deletes** the existing forecast from Firestore
 - Non-numeric input is handled by react-datasheet-grid's intColumn
+
+### Unit Price Inheritance (v1.26.1)
+
+When creating a new forecast, unit price is determined by the following priority:
+
+1. **Existing forecast price**: If a forecast already exists for this SKU+month, use its price
+2. **SKU price**: If no existing forecast, inherit from the SKU's `unitPrice` and `unitPriceCurrency`
+3. **Fallback to 0**: If neither has price data, use 0 (SKU may be missing price configuration)
+
+This ensures new forecasts don't silently lose price data from SKU configuration.
+
+### Delete Support (v1.26.1)
+
+- Setting a cell to 0 will **delete** the existing forecast from Firestore
+- If no forecast exists for that SKU+month, nothing happens
+- Save confirmation message shows both saved count and deleted count
 
 ### Save / Discard
 
@@ -97,10 +113,10 @@ After save:
 ## Known Limitations
 
 1. **Year-by-year only**: Cannot view/edit multiple years at once
-2. **No delete support**: Setting value to 0 skips save; existing forecast is not deleted
-3. **No unit price editing**: Price is preserved from existing forecast or defaults to 0
-4. **No Excel export**: Paste-in only, no copy-out formatting
-5. **Limited mobile support**: Horizontal scroll required on narrow screens
+2. **No unit price editing**: Price is inherited from existing forecast or SKU (v1.26.1), but cannot be edited directly in this page. Use the Forecasts page for price adjustments.
+3. **No Excel export**: Paste-in only, no copy-out formatting
+4. **Limited mobile support**: Horizontal scroll required on narrow screens
+5. **Missing SKU price**: If SKU has no price configured, new forecast will have price 0. Users should update SKU price in Products page.
 
 ## Future Considerations
 
