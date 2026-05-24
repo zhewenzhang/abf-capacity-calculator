@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Table,
   Tag,
@@ -15,6 +15,12 @@ import {
   Button,
   Space,
   message,
+  Modal,
+  Select,
+  Input,
+  Popconfirm,
+  Statistic,
+  Progress,
 } from 'antd';
 import {
   WarningOutlined,
@@ -24,6 +30,12 @@ import {
   DownloadOutlined,
   RobotOutlined,
   SafetyOutlined,
+  CameraOutlined,
+  DeleteOutlined,
+  SwapOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+  MinusOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useI18n } from '../i18n';
@@ -53,10 +65,27 @@ import {
   buildSanitizedAnalysisContract,
   buildChineseAiBriefPrompt,
   buildCombinedAiBriefPack,
-  copyToClipboard,
   downloadSanitizedContract,
   revokeDownloadUrl,
 } from '../core/aiBriefExport';
+import {
+  listSnapshots,
+  createSnapshot,
+  deleteSnapshot,
+  getSnapshot,
+  canDeleteSnapshot,
+} from '../services/snapshotService';
+import type { SnapshotListItem } from '../types/snapshot';
+import {
+  computeChangeImpact,
+  type ChangeImpactResult,
+} from '../core/changeImpact';
+import {
+  buildCombinedChangeImpactPack,
+  downloadChangeImpactPack,
+  revokeDownloadUrl as revokeChangeImpactUrl,
+  copyToClipboard,
+} from '../core/changeImpactExport';
 
 const { Text } = Typography;
 
@@ -64,7 +93,7 @@ interface CalculationResultsPageProps {
   scope: ProjectScope;
 }
 
-type ResultsView = 'risk' | 'sales' | 'product' | 'capacity' | 'bp' | 'raw';
+type ResultsView = 'risk' | 'change' | 'sales' | 'product' | 'capacity' | 'bp' | 'raw';
 
 const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }) => {
   const { t } = useI18n();
@@ -79,6 +108,18 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
   const [view, setView] = useState<ResultsView>('risk');
   const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(DEFAULT_CURRENCY_SETTINGS);
   const [bpTargets, setBpTargets] = useState<Record<string, number>>({});
+
+  // Phase 6: Snapshot states
+  const [snapshots, setSnapshots] = useState<SnapshotListItem[]>([]);
+  const [snapshotsLoading, setSnapshotsLoading] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [newSnapshotName, setNewSnapshotName] = useState('');
+  const [newSnapshotDesc, setNewSnapshotDesc] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [baseSnapshotId, setBaseSnapshotId] = useState<string | null>(null);
+  const [targetSnapshotId, setTargetSnapshotId] = useState<string | null>(null);
+  const [changeImpact, setChangeImpact] = useState<ChangeImpactResult | null>(null);
+  const [comparing, setComparing] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -170,6 +211,153 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
     if (!analysisPayload) return null;
     return buildRiskBrief(analysisPayload);
   }, [analysisPayload]);
+
+  // ============================
+  // Phase 6: Snapshot handlers
+  // ============================
+
+  const loadSnapshots = useCallback(async () => {
+    setSnapshotsLoading(true);
+    try {
+      const list = await listSnapshots(scope);
+      setSnapshots(list);
+    } catch (e: any) {
+      message.error(t('changeReview.snapshotLoadFailed') + ': ' + e.message);
+    } finally {
+      setSnapshotsLoading(false);
+    }
+  }, [scope, t]);
+
+  const handleCreateSnapshot = useCallback(async () => {
+    if (!newSnapshotName.trim()) {
+      message.warning(t('changeReview.snapshotNameRequired'));
+      return;
+    }
+    if (!model || !params) {
+      message.warning(t('changeReview.noDataToSnapshot'));
+      return;
+    }
+
+    setCreating(true);
+    try {
+      // Build derived highlights
+      const derivedHighlights = {
+        totalRevenueUsd: model.totalRevenue,
+        totalForecastPcs: model.totalForecastPcs,
+        maxCoreUtilization: model.maxCoreUtil,
+        maxBuUtilization: model.maxBuUtil,
+        shortageMonthCount: model.shortageMonthCount,
+        worstBottleneckMonth: model.worstMonth,
+        bpAttainment: bpAnalysisModel?.yearly[0]?.attainment ?? null,
+        bpGapMillionTwd: bpAnalysisModel?.yearly[0]?.gapMillionTwd ?? null,
+        keyFindingsCount: 0, // Will be computed when snapshot is loaded
+        skuCount: skus.length,
+        forecastMonthCount: new Set(forecasts.map(f => f.month)).size,
+      };
+
+      await createSnapshot(
+        scope,
+        scope.userId,
+        undefined,
+        {
+          name: newSnapshotName.trim(),
+          description: newSnapshotDesc.trim() || undefined,
+          rawInputs: {
+            skus,
+            forecasts,
+            capacityPlans,
+            parameters: params,
+          },
+          derivedHighlights,
+        }
+      );
+
+      message.success(t('changeReview.snapshotCreated'));
+      setCreateModalOpen(false);
+      setNewSnapshotName('');
+      setNewSnapshotDesc('');
+      loadSnapshots();
+    } catch (e: any) {
+      message.error(t('changeReview.snapshotCreateFailed') + ': ' + e.message);
+    } finally {
+      setCreating(false);
+    }
+  }, [scope, newSnapshotName, newSnapshotDesc, model, params, skus, forecasts, capacityPlans, bpAnalysisModel, loadSnapshots, t]);
+
+  const handleDeleteSnapshot = useCallback(async (snapshot: SnapshotListItem) => {
+    try {
+      await deleteSnapshot(scope, snapshot.id, snapshot.createdBy);
+      message.success(t('changeReview.snapshotDeleted'));
+      loadSnapshots();
+      // Clear selection if deleted snapshot was selected
+      if (baseSnapshotId === snapshot.id) setBaseSnapshotId(null);
+      if (targetSnapshotId === snapshot.id) setTargetSnapshotId(null);
+    } catch (e: any) {
+      message.error(t('changeReview.snapshotDeleteFailed') + ': ' + e.message);
+    }
+  }, [scope, baseSnapshotId, targetSnapshotId, loadSnapshots, t]);
+
+  const handleCompareSnapshots = useCallback(async () => {
+    if (!baseSnapshotId || !targetSnapshotId) {
+      message.warning(t('changeReview.selectTwoSnapshots'));
+      return;
+    }
+    if (baseSnapshotId === targetSnapshotId) {
+      message.warning(t('changeReview.sameSnapshot'));
+      return;
+    }
+
+    setComparing(true);
+    try {
+      const [baseSnap, targetSnap] = await Promise.all([
+        getSnapshot(scope, baseSnapshotId),
+        getSnapshot(scope, targetSnapshotId),
+      ]);
+
+      if (!baseSnap || !targetSnap) {
+        message.error(t('changeReview.snapshotNotFound'));
+        return;
+      }
+
+      const result = computeChangeImpact(baseSnap, targetSnap);
+      setChangeImpact(result);
+    } catch (e: any) {
+      message.error(t('changeReview.compareFailed') + ': ' + e.message);
+    } finally {
+      setComparing(false);
+    }
+  }, [scope, baseSnapshotId, targetSnapshotId, t]);
+
+  const handleCopyChangeImpactPack = useCallback(async () => {
+    if (!changeImpact) return;
+    const pack = buildCombinedChangeImpactPack(changeImpact);
+    const success = await copyToClipboard(pack);
+    if (success) {
+      message.success(t('changeReview.packCopied'));
+    } else {
+      message.error(t('changeReview.packCopyFailed'));
+    }
+  }, [changeImpact, t]);
+
+  const handleDownloadChangeImpactPack = useCallback(() => {
+    if (!changeImpact) return;
+    const { dataUrl, filename } = downloadChangeImpactPack(changeImpact);
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    revokeChangeImpactUrl(dataUrl);
+    message.success(t('changeReview.packDownloaded'));
+  }, [changeImpact, t]);
+
+  // Load snapshots when view changes to 'change'
+  useEffect(() => {
+    if (view === 'change') {
+      loadSnapshots();
+    }
+  }, [view, loadSnapshots]);
 
   // --- Reusable util cell render ---
   const renderUtil = (val: number | null, demand: number) => {
@@ -1351,6 +1539,417 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
               </Card>
             </div>
           )}
+
+          {/* Change Review View (Phase 6) */}
+          {view === 'change' && (
+            <div>
+              {/* Snapshot Management Section */}
+              <Card
+                title={t('changeReview.snapshotsTitle')}
+                bordered={false}
+                size="small"
+                extra={
+                  <Button
+                    type="primary"
+                    icon={<CameraOutlined />}
+                    onClick={() => setCreateModalOpen(true)}
+                    disabled={scope.role === 'viewer'}
+                  >
+                    {t('changeReview.createSnapshot')}
+                  </Button>
+                }
+              >
+                <Spin spinning={snapshotsLoading}>
+                  {snapshots.length === 0 ? (
+                    <Alert message={t('changeReview.noSnapshots')} type="info" showIcon />
+                  ) : (
+                    <Table
+                      dataSource={snapshots}
+                      rowKey="id"
+                      pagination={false}
+                      size="small"
+                      columns={[
+                        {
+                          title: t('changeReview.snapshotName'),
+                          dataIndex: 'name',
+                          key: 'name',
+                          render: (name: string, record: SnapshotListItem) => (
+                            <Space direction="vertical" size={0}>
+                              <Text strong>{name}</Text>
+                              {record.description && (
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                  {record.description}
+                                </Text>
+                              )}
+                            </Space>
+                          ),
+                        },
+                        {
+                          title: t('changeReview.snapshotDate'),
+                          dataIndex: 'createdAt',
+                          key: 'createdAt',
+                          width: 160,
+                          render: (date: Date) => new Date(date).toLocaleString(),
+                        },
+                        {
+                          title: t('changeReview.snapshotHighlights'),
+                          key: 'highlights',
+                          render: (_: unknown, record: SnapshotListItem) => (
+                            <Space size="small" wrap>
+                              <Tag>{t('changeReview.revenue')}: {formatCurrency(record.derivedHighlights?.totalRevenueUsd ?? 0, currencySettings)}</Tag>
+                              <Tag color={record.derivedHighlights?.shortageMonthCount ? 'orange' : 'green'}>
+                                {t('changeReview.shortageMonths')}: {record.derivedHighlights?.shortageMonthCount ?? 0}
+                              </Tag>
+                              <Tag>{t('changeReview.skuCount')}: {record.derivedHighlights?.skuCount ?? 0}</Tag>
+                            </Space>
+                          ),
+                        },
+                        {
+                          title: t('changeReview.actions'),
+                          key: 'actions',
+                          width: 80,
+                          render: (_: unknown, record: SnapshotListItem) => (
+                            <Popconfirm
+                              title={t('changeReview.deleteConfirm')}
+                              onConfirm={() => handleDeleteSnapshot(record)}
+                              disabled={!canDeleteSnapshot(scope.role, record.createdBy, scope.userId)}
+                            >
+                              <Button
+                                type="text"
+                                danger
+                                icon={<DeleteOutlined />}
+                                disabled={!canDeleteSnapshot(scope.role, record.createdBy, scope.userId)}
+                              />
+                            </Popconfirm>
+                          ),
+                        },
+                      ]}
+                    />
+                  )}
+                </Spin>
+              </Card>
+
+              {/* Compare Section */}
+              <Card
+                title={t('changeReview.compareTitle')}
+                bordered={false}
+                size="small"
+                style={{ marginTop: 16 }}
+              >
+                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                  <Row gutter={16}>
+                    <Col span={10}>
+                      <Text>{t('changeReview.baseSnapshot')}</Text>
+                      <Select
+                        style={{ width: '100%', marginTop: 4 }}
+                        placeholder={t('changeReview.selectBase')}
+                        value={baseSnapshotId}
+                        onChange={setBaseSnapshotId}
+                        options={snapshots.map(s => ({ value: s.id, label: s.name }))}
+                        allowClear
+                      />
+                    </Col>
+                    <Col span={4} style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                      <SwapOutlined style={{ fontSize: 20, color: '#999' }} />
+                    </Col>
+                    <Col span={10}>
+                      <Text>{t('changeReview.targetSnapshot')}</Text>
+                      <Select
+                        style={{ width: '100%', marginTop: 4 }}
+                        placeholder={t('changeReview.selectTarget')}
+                        value={targetSnapshotId}
+                        onChange={setTargetSnapshotId}
+                        options={snapshots.map(s => ({ value: s.id, label: s.name }))}
+                        allowClear
+                      />
+                    </Col>
+                  </Row>
+                  <Button
+                    type="primary"
+                    onClick={handleCompareSnapshots}
+                    loading={comparing}
+                    disabled={!baseSnapshotId || !targetSnapshotId}
+                  >
+                    {t('changeReview.compareSnapshots')}
+                  </Button>
+                </Space>
+              </Card>
+
+              {/* Change Impact Results */}
+              {changeImpact && (
+                <Card
+                  title={t('changeReview.impactTitle')}
+                  bordered={false}
+                  size="small"
+                  style={{ marginTop: 16 }}
+                  extra={
+                    <Space>
+                      <Button
+                        icon={<CopyOutlined />}
+                        onClick={handleCopyChangeImpactPack}
+                      >
+                        {t('changeReview.copyPack')}
+                      </Button>
+                      <Button
+                        icon={<DownloadOutlined />}
+                        onClick={handleDownloadChangeImpactPack}
+                      >
+                        {t('changeReview.downloadPack')}
+                      </Button>
+                    </Space>
+                  }
+                >
+                  {/* Attribution Disclaimer */}
+                  <Alert
+                    message={t('changeReview.attributionDisclaimer')}
+                    type="warning"
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                  />
+
+                  {/* Summary Cards */}
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card size="small" bordered>
+                        <Statistic
+                          title={t('changeReview.revenueDelta')}
+                          value={changeImpact.summary.revenueDelta.delta ?? 0}
+                          precision={0}
+                          prefix={
+                            (changeImpact.summary.revenueDelta.delta ?? 0) > 0
+                              ? <ArrowUpOutlined style={{ color: '#52c41a' }} />
+                              : (changeImpact.summary.revenueDelta.delta ?? 0) < 0
+                                ? <ArrowDownOutlined style={{ color: '#ff4d4f' }} />
+                                : <MinusOutlined />
+                          }
+                          suffix="USD"
+                          valueStyle={{
+                            color:
+                              (changeImpact.summary.revenueDelta.delta ?? 0) > 0
+                                ? '#52c41a'
+                                : (changeImpact.summary.revenueDelta.delta ?? 0) < 0
+                                  ? '#ff4d4f'
+                                  : '#666',
+                          }}
+                        />
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card size="small" bordered>
+                        <Statistic
+                          title={t('changeReview.bpAttainmentDelta')}
+                          value={(changeImpact.summary.bpAttainmentDelta.delta ?? 0) * 100}
+                          precision={1}
+                          prefix={
+                            (changeImpact.summary.bpAttainmentDelta.delta ?? 0) > 0
+                              ? <ArrowUpOutlined style={{ color: '#52c41a' }} />
+                              : (changeImpact.summary.bpAttainmentDelta.delta ?? 0) < 0
+                                ? <ArrowDownOutlined style={{ color: '#ff4d4f' }} />
+                                : <MinusOutlined />
+                          }
+                          suffix="pp"
+                          valueStyle={{
+                            color:
+                              (changeImpact.summary.bpAttainmentDelta.delta ?? 0) > 0
+                                ? '#52c41a'
+                                : (changeImpact.summary.bpAttainmentDelta.delta ?? 0) < 0
+                                  ? '#ff4d4f'
+                                  : '#666',
+                          }}
+                        />
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card size="small" bordered>
+                        <Statistic
+                          title={t('changeReview.shortageMonthDelta')}
+                          value={changeImpact.summary.shortageMonthDelta.delta ?? 0}
+                          prefix={
+                            (changeImpact.summary.shortageMonthDelta.delta ?? 0) > 0
+                              ? <ArrowUpOutlined style={{ color: '#ff4d4f' }} />
+                              : (changeImpact.summary.shortageMonthDelta.delta ?? 0) < 0
+                                ? <ArrowDownOutlined style={{ color: '#52c41a' }} />
+                                : <MinusOutlined />
+                          }
+                          valueStyle={{
+                            color:
+                              (changeImpact.summary.shortageMonthDelta.delta ?? 0) > 0
+                                ? '#ff4d4f'
+                                : (changeImpact.summary.shortageMonthDelta.delta ?? 0) < 0
+                                  ? '#52c41a'
+                                  : '#666',
+                          }}
+                        />
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card size="small" bordered>
+                        <Statistic
+                          title={t('changeReview.maxCoreUtilDelta')}
+                          value={(changeImpact.summary.maxCoreUtilizationDelta.delta ?? 0) * 100}
+                          precision={1}
+                          suffix="%"
+                          valueStyle={{
+                            color: Math.abs(changeImpact.summary.maxCoreUtilizationDelta.delta ?? 0) > 0.05 ? '#ff4d4f' : '#666',
+                          }}
+                        />
+                      </Card>
+                    </Col>
+                  </Row>
+
+                  {/* Price vs Quantity Attribution */}
+                  <Card size="small" title={t('changeReview.priceQuantityTitle')} style={{ marginTop: 16 }} bordered={false}>
+                    <Row gutter={16}>
+                      <Col span={12}>
+                        <Statistic
+                          title={t('changeReview.priceDriven')}
+                          value={changeImpact.priceQuantityAttribution.priceDrivenDeltaUsd}
+                          precision={0}
+                          suffix="USD"
+                        />
+                        <Progress percent={changeImpact.priceQuantityAttribution.priceDrivenPercent} size="small" />
+                      </Col>
+                      <Col span={12}>
+                        <Statistic
+                          title={t('changeReview.quantityDriven')}
+                          value={changeImpact.priceQuantityAttribution.quantityDrivenDeltaUsd}
+                          precision={0}
+                          suffix="USD"
+                        />
+                        <Progress percent={changeImpact.priceQuantityAttribution.quantityDrivenPercent} size="small" />
+                      </Col>
+                    </Row>
+                  </Card>
+
+                  {/* Top Changed Tables */}
+                  <Collapse
+                    size="small"
+                    style={{ marginTop: 16 }}
+                    items={[
+                      {
+                        key: 'customers',
+                        label: t('changeReview.topChangedCustomers'),
+                        children: (
+                          <Table
+                            dataSource={changeImpact.topChangedCustomers}
+                            rowKey="id"
+                            pagination={false}
+                            size="small"
+                            columns={[
+                              { title: t('changeReview.customer'), dataIndex: 'label', key: 'label' },
+                              {
+                                title: t('changeReview.revenueDelta'),
+                                dataIndex: 'revenueDeltaUsd',
+                                key: 'revenueDelta',
+                                render: (v: number) => (
+                                  <Text style={{ color: v > 0 ? '#52c41a' : v < 0 ? '#ff4d4f' : '#666' }}>
+                                    {v > 0 ? '+' : ''}{v.toLocaleString()} USD
+                                  </Text>
+                                ),
+                              },
+                              {
+                                title: t('changeReview.changePercent'),
+                                dataIndex: 'revenueDeltaPercent',
+                                key: 'percent',
+                                render: (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`,
+                              },
+                            ]}
+                          />
+                        ),
+                      },
+                      {
+                        key: 'skus',
+                        label: t('changeReview.topChangedSkus'),
+                        children: (
+                          <Table
+                            dataSource={changeImpact.topChangedSkus}
+                            rowKey="id"
+                            pagination={false}
+                            size="small"
+                            columns={[
+                              { title: t('changeReview.sku'), dataIndex: 'label', key: 'label' },
+                              {
+                                title: t('changeReview.revenueDelta'),
+                                dataIndex: 'revenueDeltaUsd',
+                                key: 'revenueDelta',
+                                render: (v: number) => (
+                                  <Text style={{ color: v > 0 ? '#52c41a' : v < 0 ? '#ff4d4f' : '#666' }}>
+                                    {v > 0 ? '+' : ''}{v.toLocaleString()} USD
+                                  </Text>
+                                ),
+                              },
+                              {
+                                title: t('changeReview.changePercent'),
+                                dataIndex: 'revenueDeltaPercent',
+                                key: 'percent',
+                                render: (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`,
+                              },
+                            ]}
+                          />
+                        ),
+                      },
+                      {
+                        key: 'months',
+                        label: t('changeReview.topChangedMonths'),
+                        children: (
+                          <Table
+                            dataSource={changeImpact.topChangedMonths}
+                            rowKey="id"
+                            pagination={false}
+                            size="small"
+                            columns={[
+                              { title: t('changeReview.month'), dataIndex: 'label', key: 'label' },
+                              {
+                                title: t('changeReview.revenueDelta'),
+                                dataIndex: 'revenueDeltaUsd',
+                                key: 'revenueDelta',
+                                render: (v: number) => (
+                                  <Text style={{ color: v > 0 ? '#52c41a' : v < 0 ? '#ff4d4f' : '#666' }}>
+                                    {v > 0 ? '+' : ''}{v.toLocaleString()} USD
+                                  </Text>
+                                ),
+                              },
+                              {
+                                title: t('changeReview.changePercent'),
+                                dataIndex: 'revenueDeltaPercent',
+                                key: 'percent',
+                                render: (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`,
+                              },
+                            ]}
+                          />
+                        ),
+                      },
+                    ]}
+                  />
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* Create Snapshot Modal */}
+          <Modal
+            title={t('changeReview.createSnapshot')}
+            open={createModalOpen}
+            onOk={handleCreateSnapshot}
+            onCancel={() => setCreateModalOpen(false)}
+            confirmLoading={creating}
+          >
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Text>{t('changeReview.snapshotNameLabel')}</Text>
+              <Input
+                value={newSnapshotName}
+                onChange={(e) => setNewSnapshotName(e.target.value)}
+                placeholder={t('changeReview.snapshotNamePlaceholder')}
+              />
+              <Text>{t('changeReview.snapshotDescLabel')}</Text>
+              <Input.TextArea
+                value={newSnapshotDesc}
+                onChange={(e) => setNewSnapshotDesc(e.target.value)}
+                placeholder={t('changeReview.snapshotDescPlaceholder')}
+                rows={3}
+              />
+            </Space>
+          </Modal>
 
           {/* Sales View */}
           {view === 'sales' && (
