@@ -12,11 +12,18 @@ import {
   Card,
   List,
   Collapse,
+  Button,
+  Space,
+  message,
 } from 'antd';
 import {
   WarningOutlined,
   InfoCircleOutlined,
   CaretRightOutlined,
+  CopyOutlined,
+  DownloadOutlined,
+  RobotOutlined,
+  SafetyOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useI18n } from '../i18n';
@@ -42,6 +49,13 @@ import { buildAnalysisContractPayload } from '../core/analysisContract';
 import { buildRiskBrief } from '../core/riskBrief';
 import { METRIC_DEFINITIONS } from '../core/metricDefinitions';
 import type { ProjectScope } from '../types';
+import {
+  buildSanitizedAnalysisContract,
+  buildChineseAiBriefPrompt,
+  buildCombinedAiBriefPack,
+  copyToClipboard,
+  downloadSanitizedContract,
+} from '../core/aiBriefExport';
 
 const { Text } = Typography;
 
@@ -581,6 +595,131 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                       <Text style={{ fontSize: 14 }}>{t(item)}</Text>
                     </List.Item>
                   )}
+                />
+              </Card>
+
+              {/* Phase 5.4 — AI Brief Export */}
+              <Card
+                title={
+                  <Space>
+                    <RobotOutlined />
+                    <span>{t('aiBriefExport.title')}</span>
+                  </Space>
+                }
+                bordered={false}
+                size="small"
+                extra={
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {t('aiBriefExport.subtitle')}
+                  </Text>
+                }
+              >
+                <Alert
+                  type="info"
+                  showIcon
+                  icon={<SafetyOutlined />}
+                  message={t('aiBriefExport.notice')}
+                  description={t('aiBriefExport.disclaimer')}
+                  style={{ marginBottom: 16 }}
+                />
+                <Space wrap>
+                  <Button
+                    type="primary"
+                    icon={<CopyOutlined />}
+                    onClick={async () => {
+                      if (!analysisPayload) return;
+                      const pack = buildCombinedAiBriefPack(analysisPayload);
+                      const success = await copyToClipboard(pack);
+                      if (success) {
+                        message.success(t('aiBriefExport.copied'));
+                      } else {
+                        message.error(t('aiBriefExport.copyFailed'));
+                      }
+                    }}
+                  >
+                    {t('aiBriefExport.copyPack')}
+                  </Button>
+                  <Button
+                    icon={<CopyOutlined />}
+                    onClick={async () => {
+                      if (!analysisPayload) return;
+                      const sanitized = buildSanitizedAnalysisContract(analysisPayload);
+                      const prompt = buildChineseAiBriefPrompt(sanitized);
+                      const success = await copyToClipboard(prompt);
+                      if (success) {
+                        message.success(t('aiBriefExport.copied'));
+                      } else {
+                        message.error(t('aiBriefExport.copyFailed'));
+                      }
+                    }}
+                  >
+                    {t('aiBriefExport.copyPrompt')}
+                  </Button>
+                  <Button
+                    icon={<CopyOutlined />}
+                    onClick={async () => {
+                      if (!analysisPayload) return;
+                      const sanitized = buildSanitizedAnalysisContract(analysisPayload);
+                      const json = JSON.stringify(sanitized, null, 2);
+                      const success = await copyToClipboard(json);
+                      if (success) {
+                        message.success(t('aiBriefExport.copied'));
+                      } else {
+                        message.error(t('aiBriefExport.copyFailed'));
+                      }
+                    }}
+                  >
+                    {t('aiBriefExport.copyJson')}
+                  </Button>
+                  <Button
+                    icon={<DownloadOutlined />}
+                    onClick={() => {
+                      if (!analysisPayload) return;
+                      const { dataUrl, filename } = downloadSanitizedContract(analysisPayload);
+                      const link = document.createElement('a');
+                      link.href = dataUrl;
+                      link.download = filename;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      URL.revokeObjectURL(dataUrl);
+                      message.success(t('aiBriefExport.downloaded'));
+                    }}
+                  >
+                    {t('aiBriefExport.downloadJson')}
+                  </Button>
+                </Space>
+                <Collapse
+                  size="small"
+                  style={{ marginTop: 16 }}
+                  items={[
+                    {
+                      key: 'security',
+                      label: t('aiBriefExport.securityNote'),
+                      children: (
+                        <Text type="secondary" style={{ fontSize: 13 }}>
+                          {t('aiBriefExport.securityContent')}
+                        </Text>
+                      ),
+                    },
+                    {
+                      key: 'guardrails',
+                      label: t('aiBriefExport.guardrailsTitle'),
+                      children: (
+                        <div>
+                          <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 8 }}>
+                            {t('aiBriefExport.guardrails.note')}
+                          </Text>
+                          <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
+                            <li>{t('aiBriefExport.guardrails.modifyFormulas')}</li>
+                            <li>{t('aiBriefExport.guardrails.supplementData')}</li>
+                            <li>{t('aiBriefExport.guardrails.currencyMix')}</li>
+                            <li>{t('aiBriefExport.guardrails.attribution')}</li>
+                          </ul>
+                        </div>
+                      ),
+                    },
+                  ]}
                 />
               </Card>
 

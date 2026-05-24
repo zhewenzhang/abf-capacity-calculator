@@ -276,3 +276,73 @@ Three lines added to `payload.assumptions` to make the new semantics explicit to
 ### 9.7 i18n coverage
 
 All v1.1 output strings — `bpAttr.driver.reason`, every `keyFindings.*` title/detail, and the Results-page section labels — ship with both `en.ts` and `zhTW.ts` entries. `i18nKeys.test.ts` enforces key parity; `i18nOutputs.test.ts` asserts both languages render with no leftover `{placeholder}` tokens and no raw `.key` echo.
+
+---
+
+## 10. AI Brief Export Policy (v1.21.0)
+
+v1.21.0 adds the ability for users to export the Analysis Contract for external AI consumption — **without integrating any AI API** into the application itself.
+
+### 10.1 Design Principle
+
+The AI Brief Export feature follows a **"copy, don't call"** philosophy:
+
+1. **No AI API integration** — The app never sends data to Gemini, Claude, ChatGPT, or any other AI service.
+2. **User-controlled sharing** — Users manually copy the exported content and paste it into their preferred AI tool.
+3. **Sanitized payload** — The exported contract removes all sensitive identifiers (tokens, emails, UIDs, workspace member info).
+4. **Embedded guardrails** — Both the prompt and the JSON include explicit instructions to prevent AI from:
+   - Modifying formulas or metric definitions
+   - Supplementing or inventing missing data
+   - Confusing USD revenue with Million TWD BP targets
+   - Misinterpreting proportional attribution as strict causation
+
+### 10.2 Export Functions
+
+| Function | Output |
+|----------|--------|
+| `buildSanitizedAnalysisContract(payload)` | Cleaned JSON with all decision-relevant data, no PII or auth tokens |
+| `buildChineseAiBriefPrompt(contract)` | Chinese prompt with role definition, analysis tasks, guardrails, output format |
+| `buildCombinedAiBriefPack(payload)` | Full pack: prompt + fenced JSON block |
+| `downloadSanitizedContract(payload)` | Triggers browser download of JSON file |
+| `copyToClipboard(text)` | Cross-browser clipboard write |
+
+### 10.3 Sanitization Rules
+
+| Data Type | Action |
+|-----------|--------|
+| Firebase tokens, auth state | Removed |
+| User emails, UIDs | Removed |
+| Workspace member info | Removed |
+| SKU codes, customer names | Retained (business identifiers, not PII) |
+| All analysis data | Retained (riskAttribution, bpAttribution, priceImpact, capacityImpact, keyFindings) |
+
+### 10.4 Prompt Guardrails
+
+The Chinese prompt includes explicit prohibitions:
+
+1. **不可改公式** — Do not modify any formula in `metricDefinitions.formula`.
+2. **不可補資料** — Do not invent or supplement missing data.
+3. **不可混淆幣別** — Revenue is USD; BP targets are Million TWD. Never compare directly without conversion.
+4. **不可忽略假設** — Respect all `assumptions`; warn if `quality.confidence` is low.
+5. **比例歸因非因果** — Attribution is proportional (revenue-share based), not strict causal attribution.
+
+### 10.5 External AI Usage Flow
+
+1. User navigates to **Results → Risk Brief**.
+2. User clicks **"Copy AI Brief Pack"** (or individual buttons for Prompt/JSON).
+3. User opens external AI tool (Gemini, Claude, ChatGPT).
+4. User pastes the content.
+5. AI generates analysis based on the provided contract and guardrails.
+6. **User validates** — AI output is advisory; final decisions require human verification.
+
+### 10.6 Future AI API Integration Requirements
+
+If a future version integrates AI API directly, the following must be implemented first:
+
+1. **Server-side sanitization** — Never send raw payload; always apply sanitization on a backend proxy.
+2. **System prompt enforcement** — Use system-level prompts to enforce guardrails (harder to override than user prompts).
+3. **Output validation** — Validate AI responses against deterministic rules (e.g., no formula changes, correct unit handling).
+4. **Audit logging** — Log all AI requests and responses for compliance.
+5. **Human-in-the-loop** — Require explicit user confirmation before any AI-suggested action is applied.
+
+See [docs/AI_BRIEF_EXPORT.md](docs/AI_BRIEF_EXPORT.md) for full documentation.
