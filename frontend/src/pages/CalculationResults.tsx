@@ -1749,7 +1749,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                           {' → '}
                           {snapshots.find(s => s.id === recommendedPair.targetId)?.name}
                         </Text>
-                        <Text type="secondary">({recommendedPair.reason})</Text>
+                        <Text type="secondary">({t(`changeReview.recommendedReason.${recommendedPair.reasonKey}`)})</Text>
                         <Button
                           size="small"
                           type="link"
@@ -1964,7 +1964,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                       </Col>
                       <Col xs={24} sm={8}>
                         <Statistic
-                          title="BP Gap Delta"
+                          title={t('changeReview.bpGapDelta')}
                           value={changeImpact.summary.bpGapDelta.delta ?? 0}
                           precision={1}
                           suffix="M TWD"
@@ -2039,7 +2039,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                       </Col>
                       <Col xs={24} sm={8}>
                         <Statistic
-                          title="Max Core Util Delta"
+                          title={t('changeReview.maxCoreUtilDelta')}
                           value={(changeImpact.summary.maxCoreUtilizationDelta.delta ?? 0) * 100}
                           precision={1}
                           suffix="%"

@@ -113,13 +113,18 @@ export function filterSnapshotsByKind(
   return snapshots.filter((s) => snapshotMatchesFilter(s, filterKind));
 }
 
+export type RecommendedCompareReason =
+  | 'insufficientSnapshots'
+  | 'bpBaselineVsLatestUpdate'
+  | 'latestTwoVersions';
+
 /**
  * Recommended compare pair result.
  */
 export interface RecommendedComparePair {
   baseId: string | null;
   targetId: string | null;
-  reason: string;
+  reasonKey: RecommendedCompareReason;
 }
 
 /**
@@ -138,7 +143,7 @@ export function getRecommendedComparePair(
     return {
       baseId: null,
       targetId: null,
-      reason: 'Need at least 2 snapshots to compare',
+      reasonKey: 'insufficientSnapshots',
     };
   }
 
@@ -171,7 +176,7 @@ export function getRecommendedComparePair(
       return {
         baseId: base.id,
         targetId: target.id,
-        reason: 'BP Baseline vs latest Working/Customer Update',
+        reasonKey: 'bpBaselineVsLatestUpdate',
       };
     }
   }
@@ -184,7 +189,7 @@ export function getRecommendedComparePair(
   return {
     baseId: sortedByDate[1].id,
     targetId: sortedByDate[0].id,
-    reason: 'Latest two versions',
+    reasonKey: 'latestTwoVersions',
   };
 }
 

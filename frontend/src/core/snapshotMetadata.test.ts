@@ -156,7 +156,7 @@ describe('getRecommendedComparePair', () => {
     const result = getRecommendedComparePair(snapshots);
     expect(result.baseId).toBeNull();
     expect(result.targetId).toBeNull();
-    expect(result.reason).toContain('Need at least 2');
+    expect(result.reasonKey).toBe('insufficientSnapshots');
   });
 
   it('recommends BP Baseline vs latest Working', () => {
@@ -177,7 +177,7 @@ describe('getRecommendedComparePair', () => {
     const result = getRecommendedComparePair(snapshots);
     expect(result.baseId).toBe('bp-1');
     expect(result.targetId).toBe('work-2');
-    expect(result.reason).toContain('BP Baseline');
+    expect(result.reasonKey).toBe('bpBaselineVsLatestUpdate');
   });
 
   it('recommends BP Baseline vs latest Customer Update', () => {
@@ -194,6 +194,7 @@ describe('getRecommendedComparePair', () => {
     const result = getRecommendedComparePair(snapshots);
     expect(result.baseId).toBe('bp-1');
     expect(result.targetId).toBe('cust-1');
+    expect(result.reasonKey).toBe('bpBaselineVsLatestUpdate');
   });
 
   it('falls back to latest two when no BP Baseline', () => {
@@ -206,7 +207,7 @@ describe('getRecommendedComparePair', () => {
     // Latest two: 3 (target) and 2 (base)
     expect(result.targetId).toBe('3');
     expect(result.baseId).toBe('2');
-    expect(result.reason).toContain('Latest two');
+    expect(result.reasonKey).toBe('latestTwoVersions');
   });
 
   it('uses oldest BP Baseline when multiple exist', () => {
