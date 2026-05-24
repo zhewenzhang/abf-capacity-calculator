@@ -54,15 +54,15 @@
 
 ### 1. 亮眼段落 (Best Sections)
 *(AI 報告中在 ABF 特征判讀、數據質量識別或角色建議上表現極佳、值得借鑒的段落)*
-- 
+-
 
 ### 2. 主要缺陷 (Key Failures)
 *(AI 報告中出現的算術混亂、逻辑漏洞、语气過度自信或常識偏誤)*
-- 
+-
 
 ### 3. Prompt 優化建議 (Prompt Guardrails Tuning)
 *(為了解決本次測試發現的問題，需要向 system prompt 或 brief export 中補充的防禦限制)*
-- 
+-
 
 ---
 

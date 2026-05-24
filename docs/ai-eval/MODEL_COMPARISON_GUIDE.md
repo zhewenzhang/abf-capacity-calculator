@@ -83,7 +83,7 @@ sequenceDiagram
     participant CC as CC (Claude Code)
     participant Ext as 外部被測 AI
     participant Human as 人類專家 (Human)
-    
+
     AGY->>CC: 1. 交付功能設計合約 (Analysis Contract v1.1)
     CC->>CC: 2. 編寫主代碼 (aiBriefExport.ts & UI)
     AGY->>Ext: 3. 運行 6 大基準測試 (Benchmark Cases)
