@@ -1540,7 +1540,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
             </div>
           )}
 
-          {/* Change Review View (Phase 6) */}
+          {/* Change Review View (Phase 6.1 Enhanced) */}
           {view === 'change' && (
             <div>
               {/* Snapshot Management Section */}
@@ -1588,26 +1588,43 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                           title: t('changeReview.snapshotDate'),
                           dataIndex: 'createdAt',
                           key: 'createdAt',
-                          width: 160,
+                          width: 140,
                           render: (date: Date) => new Date(date).toLocaleString(),
                         },
                         {
-                          title: t('changeReview.snapshotHighlights'),
-                          key: 'highlights',
+                          title: t('changeReview.snapshotCreatedBy'),
+                          key: 'createdBy',
+                          width: 100,
+                          render: (_: unknown, record: SnapshotListItem) => (
+                            <Text type="secondary">
+                              {record.createdByName || t('changeReview.snapshotCreatedByUnknown')}
+                            </Text>
+                          ),
+                        },
+                        {
+                          title: t('changeReview.snapshotVersion'),
+                          dataIndex: 'sourceAppVersion',
+                          key: 'version',
+                          width: 80,
+                          render: (v: string) => <Tag color="blue">{v}</Tag>,
+                        },
+                        {
+                          title: t('changeReview.snapshotSummary'),
+                          key: 'summary',
                           render: (_: unknown, record: SnapshotListItem) => (
                             <Space size="small" wrap>
+                              <Tag>{t('changeReview.snapshotSkuCount')}: {record.derivedHighlights?.skuCount ?? 0}</Tag>
                               <Tag>{t('changeReview.revenue')}: {formatCurrency(record.derivedHighlights?.totalRevenueUsd ?? 0, currencySettings)}</Tag>
                               <Tag color={record.derivedHighlights?.shortageMonthCount ? 'orange' : 'green'}>
                                 {t('changeReview.shortageMonths')}: {record.derivedHighlights?.shortageMonthCount ?? 0}
                               </Tag>
-                              <Tag>{t('changeReview.skuCount')}: {record.derivedHighlights?.skuCount ?? 0}</Tag>
                             </Space>
                           ),
                         },
                         {
                           title: t('changeReview.actions'),
                           key: 'actions',
-                          width: 80,
+                          width: 60,
                           render: (_: unknown, record: SnapshotListItem) => (
                             <Popconfirm
                               title={t('changeReview.deleteConfirm')}
@@ -1637,26 +1654,37 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                 style={{ marginTop: 16 }}
               >
                 <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                  {/* Compare Direction Hint */}
+                  <Alert
+                    message={t('changeReview.compareDirection')}
+                    description={t('changeReview.compareDirectionDesc')}
+                    type="info"
+                    showIcon
+                    style={{ marginBottom: 8 }}
+                  />
                   <Row gutter={16}>
                     <Col span={10}>
-                      <Text>{t('changeReview.baseSnapshot')}</Text>
+                      <Text type="secondary">{t('changeReview.baseIsOld')}</Text>
                       <Select
                         style={{ width: '100%', marginTop: 4 }}
-                        placeholder={t('changeReview.selectBase')}
+                        placeholder={t('changeReview.selectBaseHint')}
                         value={baseSnapshotId}
                         onChange={setBaseSnapshotId}
                         options={snapshots.map(s => ({ value: s.id, label: s.name }))}
                         allowClear
                       />
                     </Col>
-                    <Col span={4} style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-                      <SwapOutlined style={{ fontSize: 20, color: '#999' }} />
+                    <Col span={4} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Space direction="vertical" size={0} style={{ textAlign: 'center' }}>
+                        <SwapOutlined style={{ fontSize: 20, color: '#1677ff' }} />
+                        <Text type="secondary" style={{ fontSize: 11 }}>Target − Base</Text>
+                      </Space>
                     </Col>
                     <Col span={10}>
-                      <Text>{t('changeReview.targetSnapshot')}</Text>
+                      <Text type="secondary">{t('changeReview.targetIsNew')}</Text>
                       <Select
                         style={{ width: '100%', marginTop: 4 }}
-                        placeholder={t('changeReview.selectTarget')}
+                        placeholder={t('changeReview.selectTargetHint')}
                         value={targetSnapshotId}
                         onChange={setTargetSnapshotId}
                         options={snapshots.map(s => ({ value: s.id, label: s.name }))}
@@ -1664,11 +1692,19 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                       />
                     </Col>
                   </Row>
+                  {/* Same Snapshot Warning */}
+                  {baseSnapshotId && targetSnapshotId && baseSnapshotId === targetSnapshotId && (
+                    <Alert message={t('changeReview.sameSnapshotError')} type="error" showIcon />
+                  )}
+                  {/* Not Enough Snapshots Hint */}
+                  {snapshots.length < 2 && (
+                    <Alert message={t('changeReview.noSnapshotsToCompare')} type="warning" showIcon />
+                  )}
                   <Button
                     type="primary"
                     onClick={handleCompareSnapshots}
                     loading={comparing}
-                    disabled={!baseSnapshotId || !targetSnapshotId}
+                    disabled={!baseSnapshotId || !targetSnapshotId || baseSnapshotId === targetSnapshotId}
                   >
                     {t('changeReview.compareSnapshots')}
                   </Button>
@@ -1677,12 +1713,9 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
 
               {/* Change Impact Results */}
               {changeImpact && (
-                <Card
-                  title={t('changeReview.impactTitle')}
-                  bordered={false}
-                  size="small"
-                  style={{ marginTop: 16 }}
-                  extra={
+                <div style={{ marginTop: 16 }}>
+                  {/* Export Buttons */}
+                  <Card size="small" bordered={false} style={{ marginBottom: 16 }}>
                     <Space>
                       <Button
                         icon={<CopyOutlined />}
@@ -1697,8 +1730,8 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                         {t('changeReview.downloadPack')}
                       </Button>
                     </Space>
-                  }
-                >
+                  </Card>
+
                   {/* Attribution Disclaimer */}
                   <Alert
                     message={t('changeReview.attributionDisclaimer')}
@@ -1707,12 +1740,36 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                     style={{ marginBottom: 16 }}
                   />
 
-                  {/* Summary Cards */}
-                  <Row gutter={[16, 16]}>
-                    <Col xs={24} sm={12} md={6}>
-                      <Card size="small" bordered>
+                  {/* Section 1: Revenue Impact */}
+                  <Card
+                    title={t('changeReview.revenueImpactTitle')}
+                    bordered={false}
+                    size="small"
+                    style={{ marginBottom: 16 }}
+                  >
+                    <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+                      {t('changeReview.revenueImpactDesc')}
+                    </Text>
+                    <Row gutter={16}>
+                      <Col xs={24} sm={8}>
                         <Statistic
-                          title={t('changeReview.revenueDelta')}
+                          title={t('changeReview.baseValue')}
+                          value={changeImpact.summary.revenueDelta.base ?? 0}
+                          precision={0}
+                          suffix="USD"
+                        />
+                      </Col>
+                      <Col xs={24} sm={8}>
+                        <Statistic
+                          title={t('changeReview.targetValue')}
+                          value={changeImpact.summary.revenueDelta.target ?? 0}
+                          precision={0}
+                          suffix="USD"
+                        />
+                      </Col>
+                      <Col xs={24} sm={8}>
+                        <Statistic
+                          title={t('changeReview.deltaValue')}
                           value={changeImpact.summary.revenueDelta.delta ?? 0}
                           precision={0}
                           prefix={
@@ -1732,12 +1789,43 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                                   : '#666',
                           }}
                         />
-                      </Card>
-                    </Col>
-                    <Col xs={24} sm={12} md={6}>
-                      <Card size="small" bordered>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          {(changeImpact.summary.revenueDelta.deltaPercent ?? 0).toFixed(1)}%
+                        </Text>
+                      </Col>
+                    </Row>
+                  </Card>
+
+                  {/* Section 2: BP Impact */}
+                  <Card
+                    title={t('changeReview.bpImpactTitle')}
+                    bordered={false}
+                    size="small"
+                    style={{ marginBottom: 16 }}
+                  >
+                    <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+                      {t('changeReview.bpImpactDesc')}
+                    </Text>
+                    <Row gutter={16}>
+                      <Col xs={24} sm={8}>
                         <Statistic
-                          title={t('changeReview.bpAttainmentDelta')}
+                          title={`${t('changeReview.baseValue')} BP %`}
+                          value={(changeImpact.summary.bpAttainmentDelta.base ?? 0) * 100}
+                          precision={1}
+                          suffix="%"
+                        />
+                      </Col>
+                      <Col xs={24} sm={8}>
+                        <Statistic
+                          title={`${t('changeReview.targetValue')} BP %`}
+                          value={(changeImpact.summary.bpAttainmentDelta.target ?? 0) * 100}
+                          precision={1}
+                          suffix="%"
+                        />
+                      </Col>
+                      <Col xs={24} sm={8}>
+                        <Statistic
+                          title={t('changeReview.deltaValue')}
                           value={(changeImpact.summary.bpAttainmentDelta.delta ?? 0) * 100}
                           precision={1}
                           prefix={
@@ -1757,12 +1845,64 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                                   : '#666',
                           }}
                         />
-                      </Card>
-                    </Col>
-                    <Col xs={24} sm={12} md={6}>
-                      <Card size="small" bordered>
+                      </Col>
+                    </Row>
+                    <Row gutter={16} style={{ marginTop: 12 }}>
+                      <Col xs={24} sm={8}>
                         <Statistic
-                          title={t('changeReview.shortageMonthDelta')}
+                          title={`${t('changeReview.baseValue')} BP Gap`}
+                          value={changeImpact.summary.bpGapDelta.base ?? 0}
+                          precision={1}
+                          suffix="M TWD"
+                        />
+                      </Col>
+                      <Col xs={24} sm={8}>
+                        <Statistic
+                          title={`${t('changeReview.targetValue')} BP Gap`}
+                          value={changeImpact.summary.bpGapDelta.target ?? 0}
+                          precision={1}
+                          suffix="M TWD"
+                        />
+                      </Col>
+                      <Col xs={24} sm={8}>
+                        <Statistic
+                          title="BP Gap Delta"
+                          value={changeImpact.summary.bpGapDelta.delta ?? 0}
+                          precision={1}
+                          suffix="M TWD"
+                        />
+                      </Col>
+                    </Row>
+                  </Card>
+
+                  {/* Section 3: Capacity Risk Impact */}
+                  <Card
+                    title={t('changeReview.capacityRiskImpactTitle')}
+                    bordered={false}
+                    size="small"
+                    style={{ marginBottom: 16 }}
+                  >
+                    <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+                      {t('changeReview.capacityRiskImpactDesc')}
+                    </Text>
+                    <Row gutter={16}>
+                      <Col xs={24} sm={8}>
+                        <Statistic
+                          title={`${t('changeReview.baseValue')} Shortage`}
+                          value={changeImpact.summary.shortageMonthDelta.base ?? 0}
+                          suffix={t('results.months')}
+                        />
+                      </Col>
+                      <Col xs={24} sm={8}>
+                        <Statistic
+                          title={`${t('changeReview.targetValue')} Shortage`}
+                          value={changeImpact.summary.shortageMonthDelta.target ?? 0}
+                          suffix={t('results.months')}
+                        />
+                      </Col>
+                      <Col xs={24} sm={8}>
+                        <Statistic
+                          title={t('changeReview.deltaValue')}
                           value={changeImpact.summary.shortageMonthDelta.delta ?? 0}
                           prefix={
                             (changeImpact.summary.shortageMonthDelta.delta ?? 0) > 0
@@ -1780,12 +1920,28 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                                   : '#666',
                           }}
                         />
-                      </Card>
-                    </Col>
-                    <Col xs={24} sm={12} md={6}>
-                      <Card size="small" bordered>
+                      </Col>
+                    </Row>
+                    <Row gutter={16} style={{ marginTop: 12 }}>
+                      <Col xs={24} sm={8}>
                         <Statistic
-                          title={t('changeReview.maxCoreUtilDelta')}
+                          title={`${t('changeReview.baseValue')} Max Core Util`}
+                          value={(changeImpact.summary.maxCoreUtilizationDelta.base ?? 0) * 100}
+                          precision={1}
+                          suffix="%"
+                        />
+                      </Col>
+                      <Col xs={24} sm={8}>
+                        <Statistic
+                          title={`${t('changeReview.targetValue')} Max Core Util`}
+                          value={(changeImpact.summary.maxCoreUtilizationDelta.target ?? 0) * 100}
+                          precision={1}
+                          suffix="%"
+                        />
+                      </Col>
+                      <Col xs={24} sm={8}>
+                        <Statistic
+                          title="Max Core Util Delta"
                           value={(changeImpact.summary.maxCoreUtilizationDelta.delta ?? 0) * 100}
                           precision={1}
                           suffix="%"
@@ -1793,12 +1949,23 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                             color: Math.abs(changeImpact.summary.maxCoreUtilizationDelta.delta ?? 0) > 0.05 ? '#ff4d4f' : '#666',
                           }}
                         />
-                      </Card>
-                    </Col>
-                  </Row>
+                      </Col>
+                    </Row>
+                  </Card>
 
-                  {/* Price vs Quantity Attribution */}
-                  <Card size="small" title={t('changeReview.priceQuantityTitle')} style={{ marginTop: 16 }} bordered={false}>
+                  {/* Section 4: Price vs Quantity Attribution */}
+                  <Card
+                    size="small"
+                    title={t('changeReview.priceQuantityTitle')}
+                    bordered={false}
+                    style={{ marginBottom: 16 }}
+                  >
+                    <Alert
+                      message={t('changeReview.deepseekWarning.noCausal')}
+                      type="info"
+                      showIcon
+                      style={{ marginBottom: 12 }}
+                    />
                     <Row gutter={16}>
                       <Col span={12}>
                         <Statistic
@@ -1821,107 +1988,166 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                     </Row>
                   </Card>
 
-                  {/* Top Changed Tables */}
-                  <Collapse
+                  {/* Section 5: Top Changes */}
+                  <Card
+                    title={t('changeReview.topChangesTitle')}
+                    bordered={false}
                     size="small"
-                    style={{ marginTop: 16 }}
-                    items={[
-                      {
-                        key: 'customers',
-                        label: t('changeReview.topChangedCustomers'),
-                        children: (
-                          <Table
-                            dataSource={changeImpact.topChangedCustomers}
-                            rowKey="id"
-                            pagination={false}
-                            size="small"
-                            columns={[
-                              { title: t('changeReview.customer'), dataIndex: 'label', key: 'label' },
-                              {
-                                title: t('changeReview.revenueDelta'),
-                                dataIndex: 'revenueDeltaUsd',
-                                key: 'revenueDelta',
-                                render: (v: number) => (
-                                  <Text style={{ color: v > 0 ? '#52c41a' : v < 0 ? '#ff4d4f' : '#666' }}>
-                                    {v > 0 ? '+' : ''}{v.toLocaleString()} USD
-                                  </Text>
-                                ),
-                              },
-                              {
-                                title: t('changeReview.changePercent'),
-                                dataIndex: 'revenueDeltaPercent',
-                                key: 'percent',
-                                render: (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`,
-                              },
-                            ]}
-                          />
-                        ),
-                      },
-                      {
-                        key: 'skus',
-                        label: t('changeReview.topChangedSkus'),
-                        children: (
-                          <Table
-                            dataSource={changeImpact.topChangedSkus}
-                            rowKey="id"
-                            pagination={false}
-                            size="small"
-                            columns={[
-                              { title: t('changeReview.sku'), dataIndex: 'label', key: 'label' },
-                              {
-                                title: t('changeReview.revenueDelta'),
-                                dataIndex: 'revenueDeltaUsd',
-                                key: 'revenueDelta',
-                                render: (v: number) => (
-                                  <Text style={{ color: v > 0 ? '#52c41a' : v < 0 ? '#ff4d4f' : '#666' }}>
-                                    {v > 0 ? '+' : ''}{v.toLocaleString()} USD
-                                  </Text>
-                                ),
-                              },
-                              {
-                                title: t('changeReview.changePercent'),
-                                dataIndex: 'revenueDeltaPercent',
-                                key: 'percent',
-                                render: (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`,
-                              },
-                            ]}
-                          />
-                        ),
-                      },
-                      {
-                        key: 'months',
-                        label: t('changeReview.topChangedMonths'),
-                        children: (
-                          <Table
-                            dataSource={changeImpact.topChangedMonths}
-                            rowKey="id"
-                            pagination={false}
-                            size="small"
-                            columns={[
-                              { title: t('changeReview.month'), dataIndex: 'label', key: 'label' },
-                              {
-                                title: t('changeReview.revenueDelta'),
-                                dataIndex: 'revenueDeltaUsd',
-                                key: 'revenueDelta',
-                                render: (v: number) => (
-                                  <Text style={{ color: v > 0 ? '#52c41a' : v < 0 ? '#ff4d4f' : '#666' }}>
-                                    {v > 0 ? '+' : ''}{v.toLocaleString()} USD
-                                  </Text>
-                                ),
-                              },
-                              {
-                                title: t('changeReview.changePercent'),
-                                dataIndex: 'revenueDeltaPercent',
-                                key: 'percent',
-                                render: (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`,
-                              },
-                            ]}
-                          />
-                        ),
-                      },
-                    ]}
-                  />
-                </Card>
+                  >
+                    <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                      {t('changeReview.topChangesDesc')}
+                    </Text>
+                    <Text type="secondary" style={{ display: 'block', marginBottom: 12, fontSize: 12 }}>
+                      {t('changeReview.sortByDeltaDesc')}
+                    </Text>
+                    <Collapse
+                      size="small"
+                      items={[
+                        {
+                          key: 'customers',
+                          label: t('changeReview.topChangedCustomers'),
+                          children: (
+                            <Table
+                              dataSource={changeImpact.topChangedCustomers}
+                              rowKey="id"
+                              pagination={false}
+                              size="small"
+                              columns={[
+                                { title: t('changeReview.customer'), dataIndex: 'label', key: 'label' },
+                                {
+                                  title: t('changeReview.baseValue'),
+                                  dataIndex: 'baseRevenueUsd',
+                                  key: 'base',
+                                  render: (v: number) => `$${(v ?? 0).toLocaleString()}`,
+                                },
+                                {
+                                  title: t('changeReview.targetValue'),
+                                  dataIndex: 'targetRevenueUsd',
+                                  key: 'target',
+                                  render: (v: number) => `$${(v ?? 0).toLocaleString()}`,
+                                },
+                                {
+                                  title: t('changeReview.deltaValue'),
+                                  dataIndex: 'revenueDeltaUsd',
+                                  key: 'delta',
+                                  render: (v: number) => (
+                                    <Text style={{ color: v > 0 ? '#52c41a' : v < 0 ? '#ff4d4f' : '#666' }}>
+                                      {v > 0 ? '+' : ''}${(v ?? 0).toLocaleString()}
+                                    </Text>
+                                  ),
+                                },
+                                {
+                                  title: t('changeReview.deltaPercent'),
+                                  dataIndex: 'revenueDeltaPercent',
+                                  key: 'percent',
+                                  render: (v: number) => (
+                                    <Tag color={v > 0 ? 'green' : v < 0 ? 'red' : 'default'}>
+                                      {v > 0 ? '+' : ''}{(v ?? 0).toFixed(1)}%
+                                    </Tag>
+                                  ),
+                                },
+                              ]}
+                            />
+                          ),
+                        },
+                        {
+                          key: 'skus',
+                          label: t('changeReview.topChangedSkus'),
+                          children: (
+                            <Table
+                              dataSource={changeImpact.topChangedSkus}
+                              rowKey="id"
+                              pagination={false}
+                              size="small"
+                              columns={[
+                                { title: t('changeReview.sku'), dataIndex: 'label', key: 'label' },
+                                {
+                                  title: t('changeReview.baseValue'),
+                                  dataIndex: 'baseRevenueUsd',
+                                  key: 'base',
+                                  render: (v: number) => `$${(v ?? 0).toLocaleString()}`,
+                                },
+                                {
+                                  title: t('changeReview.targetValue'),
+                                  dataIndex: 'targetRevenueUsd',
+                                  key: 'target',
+                                  render: (v: number) => `$${(v ?? 0).toLocaleString()}`,
+                                },
+                                {
+                                  title: t('changeReview.deltaValue'),
+                                  dataIndex: 'revenueDeltaUsd',
+                                  key: 'delta',
+                                  render: (v: number) => (
+                                    <Text style={{ color: v > 0 ? '#52c41a' : v < 0 ? '#ff4d4f' : '#666' }}>
+                                      {v > 0 ? '+' : ''}${(v ?? 0).toLocaleString()}
+                                    </Text>
+                                  ),
+                                },
+                                {
+                                  title: t('changeReview.deltaPercent'),
+                                  dataIndex: 'revenueDeltaPercent',
+                                  key: 'percent',
+                                  render: (v: number) => (
+                                    <Tag color={v > 0 ? 'green' : v < 0 ? 'red' : 'default'}>
+                                      {v > 0 ? '+' : ''}{(v ?? 0).toFixed(1)}%
+                                    </Tag>
+                                  ),
+                                },
+                              ]}
+                            />
+                          ),
+                        },
+                        {
+                          key: 'months',
+                          label: t('changeReview.topChangedMonths'),
+                          children: (
+                            <Table
+                              dataSource={changeImpact.topChangedMonths}
+                              rowKey="id"
+                              pagination={false}
+                              size="small"
+                              columns={[
+                                { title: t('changeReview.month'), dataIndex: 'label', key: 'label' },
+                                {
+                                  title: t('changeReview.baseValue'),
+                                  dataIndex: 'baseRevenueUsd',
+                                  key: 'base',
+                                  render: (v: number) => `$${(v ?? 0).toLocaleString()}`,
+                                },
+                                {
+                                  title: t('changeReview.targetValue'),
+                                  dataIndex: 'targetRevenueUsd',
+                                  key: 'target',
+                                  render: (v: number) => `$${(v ?? 0).toLocaleString()}`,
+                                },
+                                {
+                                  title: t('changeReview.deltaValue'),
+                                  dataIndex: 'revenueDeltaUsd',
+                                  key: 'delta',
+                                  render: (v: number) => (
+                                    <Text style={{ color: v > 0 ? '#52c41a' : v < 0 ? '#ff4d4f' : '#666' }}>
+                                      {v > 0 ? '+' : ''}${(v ?? 0).toLocaleString()}
+                                    </Text>
+                                  ),
+                                },
+                                {
+                                  title: t('changeReview.deltaPercent'),
+                                  dataIndex: 'revenueDeltaPercent',
+                                  key: 'percent',
+                                  render: (v: number) => (
+                                    <Tag color={v > 0 ? 'green' : v < 0 ? 'red' : 'default'}>
+                                      {v > 0 ? '+' : ''}{(v ?? 0).toFixed(1)}%
+                                    </Tag>
+                                  ),
+                                },
+                              ]}
+                            />
+                          ),
+                        },
+                      ]}
+                    />
+                  </Card>
+                </div>
               )}
             </div>
           )}

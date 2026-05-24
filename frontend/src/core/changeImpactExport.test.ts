@@ -278,4 +278,81 @@ describe('changeImpactExport', () => {
       expect(pack.aiGuardrails.factVsInference.some(w => w.includes('Inference') || w.includes('推論'))).toBe(true);
     });
   });
+
+  describe('Phase 6.1 DeepSeek prompt enhancements', () => {
+    it('should include snapshot compare direction (Target - Base)', () => {
+      const result = createMockChangeImpactResult();
+      const pack = buildCombinedChangeImpactPack(result);
+
+      expect(pack).toContain('Target − Base');
+      expect(pack).toContain('目標快照 − 基準快照');
+      expect(pack).toContain('Base Snapshot');
+      expect(pack).toContain('Target Snapshot');
+    });
+
+    it('should include F-A-I-R classification', () => {
+      const result = createMockChangeImpactResult();
+      const pack = buildCombinedChangeImpactPack(result);
+
+      expect(pack).toContain('Fact / 事實');
+      expect(pack).toContain('Attribution / 比例歸因');
+      expect(pack).toContain('Inference / 推論');
+      expect(pack).toContain('Recommendation / 建議');
+    });
+
+    it('should include proportional-not-causal warning', () => {
+      const result = createMockChangeImpactResult();
+      const pack = buildCombinedChangeImpactPack(result);
+
+      expect(pack).toContain('比例分攤');
+      expect(pack).toContain('不是因果關係');
+      expect(pack).toContain('一階拆解');
+      expect(pack).toContain('不是完整因果模型');
+    });
+
+    it('should include currency / BP unit warning', () => {
+      const result = createMockChangeImpactResult();
+      const pack = buildCombinedChangeImpactPack(result);
+
+      expect(pack).toContain('USD');
+      expect(pack).toContain('百萬 TWD');
+      expect(pack).toContain('不可直接比較');
+    });
+
+    it('should include no formula modification warning', () => {
+      const result = createMockChangeImpactResult();
+      const pack = buildCombinedChangeImpactPack(result);
+
+      expect(pack).toContain('不可修改公式');
+      expect(pack).toContain('不可假設不同的計算邏輯');
+    });
+
+    it('should include no data supplementation warning', () => {
+      const result = createMockChangeImpactResult();
+      const pack = buildCombinedChangeImpactPack(result);
+
+      expect(pack).toContain('不可補充缺失資料');
+      expect(pack).toContain('不可自行假設或補充');
+    });
+
+    it('should include human review requirement', () => {
+      const result = createMockChangeImpactResult();
+      const pack = buildCombinedChangeImpactPack(result);
+
+      expect(pack).toContain('需要人類確認');
+      expect(pack).toContain('Questions for Human Review');
+    });
+
+    it('should include suggested output format', () => {
+      const result = createMockChangeImpactResult();
+      const pack = buildCombinedChangeImpactPack(result);
+
+      expect(pack).toContain('Executive Summary');
+      expect(pack).toContain('What Changed');
+      expect(pack).toContain('Business Impact');
+      expect(pack).toContain('Capacity Risk Impact');
+      expect(pack).toContain('Top Changes Analysis');
+      expect(pack).toContain('Data Caveats');
+    });
+  });
 });
