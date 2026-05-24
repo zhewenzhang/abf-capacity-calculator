@@ -91,9 +91,13 @@ service cloud.firestore {
     }
 
     // ---------- Personal data (legacy + v1.18 backward compat) ----------
-    // users/{uid}/** is private to the user — same as before v1.18.
-    match /users/{uid}/{document=**} {
+    // Only allow specific non-snapshot personal project collections to avoid overlap
+    match /users/{uid}/projects/{projectId} {
       allow read, write: if isSelf(uid);
+    }
+
+    match /users/{uid}/projects/{projectId}/{collectionName}/{docId} {
+      allow read, write: if isSelf(uid) && collectionName in ['skus', 'forecasts', 'capacityPlans', 'parameters', 'capacityVersions', 'skuVersions'];
     }
 
     // ---------- Workspace root doc ----------
@@ -121,9 +125,14 @@ service cloud.firestore {
     // Projects + nested collections (skus, forecasts, capacityPlans,
     // parameters, capacityVersions, skuVersions).
     // NOTE: Snapshots have their own dedicated rules below.
-    match /workspaces/{workspaceId}/projects/{projectId}/{document=**} {
+    match /workspaces/{workspaceId}/projects/{projectId} {
       allow read: if isMember(workspaceId);
       allow write: if canWriteBusiness(workspaceId);
+    }
+
+    match /workspaces/{workspaceId}/projects/{projectId}/{collectionName}/{docId} {
+      allow read: if isMember(workspaceId);
+      allow write: if canWriteBusiness(workspaceId) && collectionName in ['skus', 'forecasts', 'capacityPlans', 'parameters', 'capacityVersions', 'skuVersions'];
     }
 
     // ---------- Personal snapshots (immutable) ----------

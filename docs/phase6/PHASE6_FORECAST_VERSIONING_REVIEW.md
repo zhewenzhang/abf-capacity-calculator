@@ -149,8 +149,10 @@ match /workspaces/{workspaceId}/projects/{projectId}/snapshots/{snapshotId} {
 3. **Create 驗證**: `request.resource.data.createdBy == request.auth.uid` 確保建立時 createdBy 欄位確實是當前用戶。
 4. **Viewer 隔離**: Viewer 只能 read，無法 create 或 delete。
 
-### ⚠️ 重要注意事項
+### ⚠️ 重要安全注意事項与 v1.22.2 Overlap 漏洞加固记录
 
-- 這些規則在 Firestore 層強制執行，即使前端 SDK 被繞過也無法違反。
-- 規則覆蓋了通用的 `{document=**}` 規則，提供更精確的存取控制。
-- 快照的不可篡改性是系統設計的核心紅線，確保歷史數據的「時間膠囊」真實性。
+- **Firestore Rules OR 求值安全警示**：Firestore Rules 同一路径只要任一规则 allow 就会放行，并不存在“后定义的规则能覆盖/阻断前定义的递归规则”的设计。
+- **v1.22.1 遗留漏洞**：在 v1.22.1 中，由于 `users/{uid}/{document=**}` 与 `workspaces/{workspaceId}/projects/{projectId}/{document=**}` 通用递归 `allow write` 依然存在，上述 snapshots 专用规则的 `allow update: if false` 与 Editor 仅删自己快照的限制实际上被通用规则完美绕过（本人或具备 canWriteBusiness 的 Editor update/delete 操作被通用规则批准放行）。
+- **v1.22.2 漏洞终结封堵**：我们在 v1.22.2 中彻底清除了这两个通用通配符 `{document=**}`，重构为非快照业务 Collection 精确白名单匹配 `collectionName in ['skus', 'forecasts', 'capacityPlans', 'parameters', 'capacityVersions', 'skuVersions']`。
+- **Immutability 与越权隔离真正成立**：修复后，`snapshots` 集合绝无任何通用 write 匹配可能，其安全决策权 100% 回归到 snapshots 专用规则本身，快照不可篡改与越权删除隔离的安全红线真正闭环锁定。
+- 详细漏洞剖析与 TS 回归仿真模拟，请参阅专门的技术白皮书：[FIRESTORE_SNAPSHOT_RULES_HARDENING.md](file:///D:/abf-capacity-calculator/docs/phase6/FIRESTORE_SNAPSHOT_RULES_HARDENING.md)。

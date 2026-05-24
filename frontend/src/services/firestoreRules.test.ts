@@ -63,6 +63,11 @@ interface World {
   workspaces: Record<string, WorkspaceDoc | undefined>;
 }
 
+interface SnapshotDoc {
+  id: string;
+  createdBy: UID;
+}
+
 // ============================================================
 // Predicate mirrors of firestore.rules
 // ============================================================
@@ -115,10 +120,11 @@ function isWorkspaceOwnerByDoc(auth: RuleAuth, world: World, wid: string): boole
 // Rule entry points (one per match block)
 // ============================================================
 
-// users/{uid}/**
-function userScope(auth: RuleAuth, uid: UID): { read: boolean; write: boolean } {
+// users/{uid}/** (v1.22.2: only non-snapshot collections allowed for write)
+function userScope(auth: RuleAuth, uid: UID, pathCollection?: string): { read: boolean; write: boolean } {
   const allow = isSelf(auth, uid);
-  return { read: allow, write: allow };
+  const isBusinessCollection = !pathCollection || ['skus', 'forecasts', 'capacityPlans', 'parameters', 'capacityVersions', 'skuVersions'].includes(pathCollection);
+  return { read: allow, write: allow && isBusinessCollection };
 }
 
 // workspaces/{wid}
@@ -152,16 +158,18 @@ function workspaceRoot(args: {
   }
 }
 
-// workspaces/{wid}/projects/{pid}/{**}
+// workspaces/{wid}/projects/{pid}/{**} (v1.22.2: only non-snapshot collections allowed for write)
 function workspaceBusiness(args: {
   auth: RuleAuth;
   world: World;
   wid: string;
   op: 'read' | 'write';
+  pathCollection?: string;
 }): boolean {
-  const { auth, world, wid, op } = args;
+  const { auth, world, wid, op, pathCollection } = args;
+  const isBusinessCollection = !pathCollection || ['skus', 'forecasts', 'capacityPlans', 'parameters', 'capacityVersions', 'skuVersions'].includes(pathCollection);
   if (op === 'read') return isMember(auth, world, wid);
-  return canWriteBusiness(auth, world, wid);
+  return canWriteBusiness(auth, world, wid) && isBusinessCollection;
 }
 
 // userWorkspaces/{uid}/workspaces/{wid}
@@ -215,6 +223,50 @@ function userWorkspaceIndex(args: {
   // create and update separately.
   if (op === 'create') return ownerBootstrap || ownerInvite || selfRepair;
   return ownerBootstrap || ownerInvite || selfRepair;
+}
+
+// ---------- Personal snapshots (v1.22.2) ----------
+function personalSnapshotRule(args: {
+  auth: RuleAuth;
+  uid: UID;
+  op: 'read' | 'create' | 'update' | 'delete';
+  payload?: SnapshotDoc;
+}): boolean {
+  const { auth, uid, op, payload } = args;
+  if (!isSelf(auth, uid)) return false;
+  switch (op) {
+    case 'read': return true;
+    case 'create': return payload?.createdBy === auth.uid;
+    case 'delete': return true;
+    case 'update': return false; // immutable
+  }
+}
+
+// ---------- Workspace snapshots (v1.22.2) ----------
+function workspaceSnapshotRule(args: {
+  auth: RuleAuth;
+  world: World;
+  wid: string;
+  op: 'read' | 'create' | 'update' | 'delete';
+  payload?: SnapshotDoc;
+  before?: SnapshotDoc;
+}): boolean {
+  const { auth, world, wid, op, payload, before } = args;
+  if (!isMember(auth, world, wid)) return false;
+  const role = memberRole(world, wid, auth.uid!);
+  switch (op) {
+    case 'read': return true;
+    case 'create':
+      return (role === 'owner' || role === 'editor') && payload?.createdBy === auth.uid;
+    case 'delete':
+      return role === 'owner' || (role === 'editor' && before?.createdBy === auth.uid);
+    case 'update': return false; // immutable
+  }
+}
+
+// 模拟 Firestore 引擎：若同一路径匹配多条 match 规则，只要任一规则 allow，则最终判定为 allowed。
+function evaluateWriteRequest(evaluatedRules: boolean[]): boolean {
+  return evaluatedRules.some(result => result === true);
 }
 
 // ============================================================
@@ -457,6 +509,101 @@ describe('firestore.rules — verification harness', () => {
 
     it('stranger cannot delete someone else\'s index entry', () => {
       expect(userWorkspaceIndex({ auth: { uid: STRANGER }, world: buildWorld(), uid: EDITOR, wid: 'ws-1', op: 'delete' })).toBe(false);
+    });
+  });
+
+  // --------------------------------------------------------
+  // 5. v1.22.2 Snapshot Rules & Overlap Regression Tests
+  // --------------------------------------------------------
+  describe('snapshots/{snapshotId} — rules hardening and overlap validation', () => {
+    const world = buildWorld();
+
+    describe('Personal snapshots (legacy vs v1.22.2)', () => {
+      it('personal snapshot update must be denied', () => {
+        // 专用快照规则本身直接 Deny
+        expect(personalSnapshotRule({ auth: { uid: OWNER }, uid: OWNER, op: 'update' })).toBe(false);
+      });
+
+      it('broad recursive project rules must not bypass snapshot-specific rules', () => {
+        // 模拟 v1.22.1：当有通用递归 allow write: if isSelf(uid) 时：
+        const userScopeV1_22_1 = isSelf({ uid: OWNER }, OWNER); // 旧版没有 Collection 白名单过滤，直接返回 true
+        const snapshotRule = personalSnapshotRule({ auth: { uid: OWNER }, uid: OWNER, op: 'update' }); // 返回 false
+
+        // 模拟 Firestore 真实引擎的 OR 评估：
+        const allowedInV1 = evaluateWriteRequest([userScopeV1_22_1, snapshotRule]);
+        expect(allowedInV1).toBe(true); // 🚨 漏洞证实：快照 update 确实在 v1.22.1 被通用规则直接绕过了！
+
+        // 模拟 v1.22.2：通用规则修补后，写操作只能作用于业务白名单，对于 snapshots 集合，通用 write 返回 false：
+        const userScopeV1_22_2 = userScope({ uid: OWNER }, OWNER, 'snapshots').write; // 返回 false
+        const allowedInV2 = evaluateWriteRequest([userScopeV1_22_2, snapshotRule]);
+        expect(allowedInV2).toBe(false); // ✅ 漏洞修复：在 v1.22.2 下，快照 update 被正确且严密地 Deny 了！
+      });
+    });
+
+    describe('Workspace snapshots permission enforcement', () => {
+      it('workspace editor cannot update own snapshot', () => {
+        const payload: SnapshotDoc = { id: 'snap-1', createdBy: EDITOR };
+        const snapshotRule = workspaceSnapshotRule({ auth: { uid: EDITOR }, world, wid: 'ws-1', op: 'update', payload });
+        const workspaceScopeRule = workspaceBusiness({ auth: { uid: EDITOR }, world, wid: 'ws-1', op: 'write', pathCollection: 'snapshots' });
+
+        // 专用规则 Deny + 白名单拦截通用规则
+        const allowed = evaluateWriteRequest([snapshotRule, workspaceScopeRule]);
+        expect(allowed).toBe(false);
+      });
+
+      it('workspace editor cannot update others snapshot', () => {
+        const payload: SnapshotDoc = { id: 'snap-1', createdBy: OWNER };
+        const snapshotRule = workspaceSnapshotRule({ auth: { uid: EDITOR }, world, wid: 'ws-1', op: 'update', payload });
+        const workspaceScopeRule = workspaceBusiness({ auth: { uid: EDITOR }, world, wid: 'ws-1', op: 'write', pathCollection: 'snapshots' });
+
+        const allowed = evaluateWriteRequest([snapshotRule, workspaceScopeRule]);
+        expect(allowed).toBe(false);
+      });
+
+      it('workspace editor can delete own snapshot', () => {
+        const before: SnapshotDoc = { id: 'snap-1', createdBy: EDITOR };
+        const snapshotRule = workspaceSnapshotRule({ auth: { uid: EDITOR }, world, wid: 'ws-1', op: 'delete', before });
+        const workspaceScopeRule = workspaceBusiness({ auth: { uid: EDITOR }, world, wid: 'ws-1', op: 'write', pathCollection: 'snapshots' });
+
+        const allowed = evaluateWriteRequest([snapshotRule, workspaceScopeRule]);
+        expect(allowed).toBe(true); // Editor can delete own snapshot
+      });
+
+      it('workspace editor cannot delete others snapshot', () => {
+        const before: SnapshotDoc = { id: 'snap-1', createdBy: OWNER };
+        const snapshotRule = workspaceSnapshotRule({ auth: { uid: EDITOR }, world, wid: 'ws-1', op: 'delete', before });
+        const workspaceScopeRule = workspaceBusiness({ auth: { uid: EDITOR }, world, wid: 'ws-1', op: 'write', pathCollection: 'snapshots' });
+
+        const allowed = evaluateWriteRequest([snapshotRule, workspaceScopeRule]);
+        expect(allowed).toBe(false); // Editor cannot delete others snapshot
+      });
+
+      it('workspace owner can delete any snapshot', () => {
+        const before: SnapshotDoc = { id: 'snap-1', createdBy: EDITOR };
+        const snapshotRule = workspaceSnapshotRule({ auth: { uid: OWNER }, world, wid: 'ws-1', op: 'delete', before });
+        const workspaceScopeRule = workspaceBusiness({ auth: { uid: OWNER }, world, wid: 'ws-1', op: 'write', pathCollection: 'snapshots' });
+
+        const allowed = evaluateWriteRequest([snapshotRule, workspaceScopeRule]);
+        expect(allowed).toBe(true); // Owner can delete any snapshot
+      });
+
+      it('viewer cannot create snapshot', () => {
+        const payload: SnapshotDoc = { id: 'snap-1', createdBy: VIEWER };
+        const snapshotRule = workspaceSnapshotRule({ auth: { uid: VIEWER }, world, wid: 'ws-1', op: 'create', payload });
+        const workspaceScopeRule = workspaceBusiness({ auth: { uid: VIEWER }, world, wid: 'ws-1', op: 'write', pathCollection: 'snapshots' });
+
+        const allowed = evaluateWriteRequest([snapshotRule, workspaceScopeRule]);
+        expect(allowed).toBe(false);
+      });
+
+      it('viewer cannot delete snapshot', () => {
+        const before: SnapshotDoc = { id: 'snap-1', createdBy: EDITOR };
+        const snapshotRule = workspaceSnapshotRule({ auth: { uid: VIEWER }, world, wid: 'ws-1', op: 'delete', before });
+        const workspaceScopeRule = workspaceBusiness({ auth: { uid: VIEWER }, world, wid: 'ws-1', op: 'write', pathCollection: 'snapshots' });
+
+        const allowed = evaluateWriteRequest([snapshotRule, workspaceScopeRule]);
+        expect(allowed).toBe(false);
+      });
     });
   });
 });
