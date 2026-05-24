@@ -88,8 +88,12 @@ export function runCalculation(
     const skuForecasts = forecasts.filter((f) => f.skuId === sku.id);
     for (const fc of skuForecasts) {
       if (fc.forecastPcs <= 0) continue;
-      const result = calculateSkuMonth(sku, fc, params);
-      skuResults.push(result);
+      try {
+        const result = calculateSkuMonth(sku, fc, params);
+        skuResults.push(result);
+      } catch (e) {
+        console.error(`Skipping forecast ${fc.id} due to calculation error:`, e);
+      }
     }
   }
 

@@ -1,8 +1,14 @@
 {
   "env": {
-    "ANTHROPIC_AUTH_TOKEN": "3f7d3f36-e354-4576-89c3-b214e146f7a3",
-    "ANTHROPIC_BASE_URL": "http://127.0.0.1:9999/v1",
-    "ANTHROPIC_MODEL": "ark-code-latest"
+    "ANTHROPIC_AUTH_TOKEN": "bce-v3/ALTAKSP-YLay3qUpnjnfvtVQLSzY2/7bcda1bba01b5c9da9c54e1e754c66981e15bbdb",
+    "ANTHROPIC_BASE_URL": "https://qianfan.baidubce.com/anthropic/coding",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1,
+    "API_TIMEOUT_MS": 600000,
+    "ANTHROPIC_MODEL": "qianfan-code-latest",
+    "ANTHROPIC_SMALL_FAST_MODEL": "qianfan-code-latest",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "qianfan-code-latest",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "qianfan-code-latest",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "qianfan-code-latest"
   },
   "permissions": {
     "allow": [

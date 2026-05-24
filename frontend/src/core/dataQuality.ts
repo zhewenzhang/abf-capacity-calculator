@@ -46,6 +46,7 @@ export interface DataQualityIssue {
 export interface DataQualitySummary {
   status: 'ok' | 'warning' | 'error';
   confidence: 'high' | 'medium' | 'low' | 'blocked';
+  confidenceScore: number; // 0-100
   issues: DataQualityIssue[];
 }
 
@@ -65,6 +66,7 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
     return {
       status: 'ok',
       confidence: 'blocked',
+      confidenceScore: 0,
       issues: [
         {
           id: 'no-data-blocked',
@@ -422,18 +424,26 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
   let status: DataQualitySummary['status'] = 'ok';
   let confidence: DataQualitySummary['confidence'] = 'high';
 
-  if (hasErrors) {
-    status = 'error';
+  const enriched = issues.map(enrichWithImpact);
+  const highCount = enriched.filter((i) => i.decisionImpact === 'high').length;
+  const mediumCount = enriched.filter((i) => i.decisionImpact === 'medium').length;
+
+  // Deduction logic: high -25, medium -5
+  const confidenceScore = Math.max(0, 100 - highCount * 25 - mediumCount * 5);
+
+  if (confidenceScore <= 40 || hasErrors) {
     confidence = 'low';
-  } else if (hasWarnings) {
-    status = 'warning';
+    status = 'error';
+  } else if (confidenceScore <= 80 || hasWarnings) {
     confidence = 'medium';
+    status = 'warning';
   }
 
   return {
     status,
     confidence,
-    issues: issues.map(enrichWithImpact),
+    confidenceScore,
+    issues: enriched,
   };
 }
 
@@ -442,7 +452,7 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
  * Producers do not need to set this manually. The enrichment is layered ON TOP of
  * severity so a "warning" can still be high-impact (e.g., orphan forecast warnings).
  */
-function enrichWithImpact(issue: DataQualityIssue): DataQualityIssue {
+export function enrichWithImpact(issue: DataQualityIssue): DataQualityIssue {
   if (issue.decisionImpact !== undefined) return issue;
   const id = issue.id;
   let impact: 'high' | 'medium' | 'low' = 'low';

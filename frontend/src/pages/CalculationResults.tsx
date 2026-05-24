@@ -624,14 +624,14 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                     pagination={false}
                     size="small"
                     columns={[
-                      { title: t('results.bpAttr.period'), dataIndex: 'period', key: 'period', width: 110 },
-                      { title: t('results.bpAttr.dimension'), dataIndex: 'dimension', key: 'dimension', width: 120, render: (v: string) => t(`attr.dimension.${v}`) },
-                      { title: t('results.bpAttr.driver'), dataIndex: 'label', key: 'label', width: 180 },
+                      { title: t('results.bpAttr.period'), dataIndex: 'period', key: 'period', width: 120 },
+                      { title: t('results.bpAttr.dimension'), dataIndex: 'dimension', key: 'dimension', width: 130, render: (v: string) => t(`attr.dimension.${v}`) },
+                      { title: t('results.bpAttr.driver'), dataIndex: 'label', key: 'label', width: 220 },
                       {
                         title: t('results.bpAttr.shareOfGap'),
                         dataIndex: 'shareOfGap',
                         key: 'shareOfGap',
-                        width: 100,
+                        width: 110,
                         align: 'right',
                         render: (v: number) => `${v.toFixed(1)}%`,
                       },
@@ -639,7 +639,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                         title: t('results.bpAttr.gapContribution'),
                         dataIndex: 'gapContributionMillionTwd',
                         key: 'gapContributionMillionTwd',
-                        width: 150,
+                        width: 160,
                         align: 'right',
                         render: (v: number) => `${v.toFixed(1)} M TWD`,
                       },
@@ -647,7 +647,9 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                         title: t('results.riskBrief.reason'),
                         dataIndex: 'reasonMessage',
                         key: 'reasonMessage',
-                        render: (_v: unknown, record: typeof analysisPayload.bpAttribution.topDrivers[0]) => t(record.reasonMessage),
+                        render: (_v: unknown, record: typeof analysisPayload.bpAttribution.topDrivers[0]) => (
+                          <div style={{ whiteSpace: 'normal', fontSize: 13 }}>{t(record.reasonMessage)}</div>
+                        ),
                       },
                     ]}
                   />
@@ -671,11 +673,12 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                           pagination={false}
                           size="small"
                           columns={[
-                            { title: t('results.priceImpact.year'), dataIndex: 'year', key: 'year', width: 90 },
+                            { title: t('results.priceImpact.year'), dataIndex: 'year', key: 'year', width: 100 },
                             {
                               title: t('results.priceImpact.baseRevenue'),
                               dataIndex: 'baseRevenueMillionTwd',
                               key: 'baseRevenueMillionTwd',
+                              width: 150,
                               align: 'right',
                               render: (v: number) => `${v.toFixed(1)} M TWD`,
                             },
@@ -683,6 +686,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                               title: t('results.priceImpact.scenarioRevenue'),
                               dataIndex: 'scenarioRevenueMillionTwd',
                               key: 'scenarioRevenueMillionTwd',
+                              width: 150,
                               align: 'right',
                               render: (v: number) => `${v.toFixed(1)} M TWD`,
                             },
@@ -690,9 +694,10 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                               title: t('results.priceImpact.revenueDelta'),
                               dataIndex: 'revenueDeltaMillionTwd',
                               key: 'revenueDeltaMillionTwd',
+                              width: 160,
                               align: 'right',
                               render: (v: number) => (
-                                <Tag color={v > 0 ? 'green' : v < 0 ? 'red' : 'default'}>
+                                <Tag color={v > 0 ? 'green' : v < 0 ? 'red' : 'default'} style={{ margin: 0 }}>
                                   {v > 0 ? '+' : ''}{v.toFixed(1)} M TWD
                                 </Tag>
                               ),
@@ -701,6 +706,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                               title: t('results.priceImpact.baseAttainment'),
                               dataIndex: 'baseBpAttainment',
                               key: 'baseBpAttainment',
+                              width: 130,
                               align: 'right',
                               render: (v: number | null) => v === null ? '-' : `${(v * 100).toFixed(1)}%`,
                             },
@@ -708,6 +714,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                               title: t('results.priceImpact.scenarioAttainment'),
                               dataIndex: 'scenarioBpAttainment',
                               key: 'scenarioBpAttainment',
+                              width: 130,
                               align: 'right',
                               render: (v: number | null) => v === null ? '-' : `${(v * 100).toFixed(1)}%`,
                             },
@@ -715,9 +722,10 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                               title: t('results.priceImpact.attainmentDelta'),
                               dataIndex: 'bpAttainmentDelta',
                               key: 'bpAttainmentDelta',
+                              width: 140,
                               align: 'right',
                               render: (v: number | null) => v === null ? '-' : (
-                                <Tag color={v > 0 ? 'green' : v < 0 ? 'red' : 'default'}>
+                                <Tag color={v > 0 ? 'green' : v < 0 ? 'red' : 'default'} style={{ margin: 0 }}>
                                   {v > 0 ? '+' : ''}{(v * 100).toFixed(1)}pp
                                 </Tag>
                               ),
@@ -745,28 +753,31 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                         title: t('results.capacityImpact.scenario'),
                         dataIndex: 'scenarioId',
                         key: 'scenarioId',
-                        width: 200,
+                        width: 220,
                         render: (v: string) => t(`results.capacityImpact.scenarioName.${v}`),
                       },
                       {
                         title: t('results.capacityImpact.shortageBefore'),
                         dataIndex: 'shortageMonthsBefore',
                         key: 'shortageMonthsBefore',
+                        width: 140,
                         align: 'right',
                       },
                       {
                         title: t('results.capacityImpact.shortageAfter'),
                         dataIndex: 'shortageMonthsAfter',
                         key: 'shortageMonthsAfter',
+                        width: 140,
                         align: 'right',
                         render: (v: number, r: typeof analysisPayload.capacityImpact.scenarios[0]) => (
-                          <Tag color={v < r.shortageMonthsBefore ? 'green' : 'default'}>{v}</Tag>
+                          <Tag color={v < r.shortageMonthsBefore ? 'green' : 'default'} style={{ margin: 0 }}>{v}</Tag>
                         ),
                       },
                       {
                         title: t('results.capacityImpact.resolvedCount'),
                         dataIndex: 'resolvedShortageMonths',
                         key: 'resolvedShortageMonths',
+                        width: 110,
                         align: 'right',
                         render: (v: string[]) => v.length,
                       },
@@ -774,6 +785,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                         title: t('results.capacityImpact.maxCoreUtilBefore'),
                         dataIndex: 'maxCoreUtilBefore',
                         key: 'maxCoreUtilBefore',
+                        width: 160,
                         align: 'right',
                         render: (v: number | null) => v === null ? t('results.capacityImpact.overflow') : `${(v * 100).toFixed(1)}%`,
                       },
@@ -781,6 +793,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                         title: t('results.capacityImpact.maxCoreUtilAfter'),
                         dataIndex: 'maxCoreUtilAfter',
                         key: 'maxCoreUtilAfter',
+                        width: 160,
                         align: 'right',
                         render: (v: number | null) => v === null ? t('results.capacityImpact.overflow') : `${(v * 100).toFixed(1)}%`,
                       },
@@ -788,6 +801,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                         title: t('results.capacityImpact.maxBuUtilBefore'),
                         dataIndex: 'maxBuUtilBefore',
                         key: 'maxBuUtilBefore',
+                        width: 160,
                         align: 'right',
                         render: (v: number | null) => v === null ? t('results.capacityImpact.overflow') : `${(v * 100).toFixed(1)}%`,
                       },
@@ -795,6 +809,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                         title: t('results.capacityImpact.maxBuUtilAfter'),
                         dataIndex: 'maxBuUtilAfter',
                         key: 'maxBuUtilAfter',
+                        width: 160,
                         align: 'right',
                         render: (v: number | null) => v === null ? t('results.capacityImpact.overflow') : `${(v * 100).toFixed(1)}%`,
                       },

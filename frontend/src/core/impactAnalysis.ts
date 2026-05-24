@@ -229,13 +229,13 @@ export function buildCapacityImpact(
 
   const baseCalc = runCalculation(skus, forecasts, capacityPlans, params);
   const beforeShortage = shortageMonthsOf(baseCalc.monthlySummaries);
-  const beforeShortageSet = new Set(beforeShortage);
   const maxCoreBefore = maxUtilOf(baseCalc.monthlySummaries, 'core');
   const maxBuBefore = maxUtilOf(baseCalc.monthlySummaries, 'bu');
 
   const scenarios: CapacityImpactScenario[] = [];
   let bestScenarioId: string | null = null;
   let bestResolved = 0;
+  let bestUtilImprovement = 0;
 
   for (const cfg of CAPACITY_SCENARIOS) {
     const scenarioPlans = cloneCapacityPlans(capacityPlans, cfg.core, cfg.bu);
@@ -244,13 +244,25 @@ export function buildCapacityImpact(
     const afterShortageSet = new Set(afterShortage);
     const resolved = beforeShortage.filter((m) => !afterShortageSet.has(m));
     const remaining = beforeShortage.filter((m) => afterShortageSet.has(m));
-    // New shortage months that didn't exist before should never happen for +N% capacity,
-    // but keep the model honest by also reporting "remaining" purely from before-set.
-    void beforeShortageSet;
+    
+    const maxCoreAfter = maxUtilOf(sCalc.monthlySummaries, 'core');
+    const maxBuAfter = maxUtilOf(sCalc.monthlySummaries, 'bu');
+    
+    // Calculate total util improvement (simplified)
+    const utilBefore = (maxCoreBefore ?? 1) + (maxBuBefore ?? 1);
+    const utilAfter = (maxCoreAfter ?? 1) + (maxBuAfter ?? 1);
+    const utilImprovement = utilBefore - utilAfter;
+
     if (resolved.length > bestResolved) {
       bestResolved = resolved.length;
       bestScenarioId = cfg.id;
+    } else if (resolved.length === bestResolved && utilImprovement > bestUtilImprovement) {
+      bestUtilImprovement = utilImprovement;
+      if (bestResolved === 0 && utilImprovement > 0) {
+        bestScenarioId = cfg.id;
+      }
     }
+
     scenarios.push({
       scenarioId: cfg.id,
       coreCapacityDeltaPct: cfg.core,
@@ -260,9 +272,9 @@ export function buildCapacityImpact(
       resolvedShortageMonths: resolved,
       remainingShortageMonths: remaining,
       maxCoreUtilBefore: maxCoreBefore,
-      maxCoreUtilAfter: maxUtilOf(sCalc.monthlySummaries, 'core'),
+      maxCoreUtilAfter: maxCoreAfter,
       maxBuUtilBefore: maxBuBefore,
-      maxBuUtilAfter: maxUtilOf(sCalc.monthlySummaries, 'bu'),
+      maxBuUtilAfter: maxBuAfter,
     });
   }
 

@@ -84,7 +84,7 @@ export function buildKeyFindings(input: KeyFindingsInput): KeyFinding[] {
     const lastMonth = input.risk.shortageMonths[input.risk.shortageMonths.length - 1];
     out.push({
       id: 'kf-capacity-shortage',
-      severity: months >= 6 ? 'critical' : 'warning',
+      severity: months >= 3 ? 'critical' : 'warning',
       source: 'capacity',
       title: `${months} month(s) under capacity shortage`,
       titleMessage: msg('keyFindings.capacity.shortage.title', { months }),
@@ -97,57 +97,72 @@ export function buildKeyFindings(input: KeyFindingsInput): KeyFinding[] {
   // 3) Capacity Improvement Impact — best scenario that resolves the most months.
   if (input.capacityImpact && input.capacityImpact.bestScenarioId) {
     const best = input.capacityImpact.scenarios.find((s) => s.scenarioId === input.capacityImpact!.bestScenarioId);
-    if (best && best.resolvedShortageMonths.length > 0) {
-      out.push({
-        id: 'kf-capacity-remedy',
-        severity: 'positive',
-        source: 'capacity',
-        title: `Scenario ${best.scenarioId} resolves ${best.resolvedShortageMonths.length} shortage month(s)`,
-        titleMessage: msg('keyFindings.capacity.remedy.title', {
-          scenario: best.scenarioId,
-          resolved: best.resolvedShortageMonths.length,
-        }),
-        detail: `Adding capacity per "${best.scenarioId}" removes ${best.resolvedShortageMonths.length} of ${best.shortageMonthsBefore} shortage months.`,
-        detailMessage: msg('keyFindings.capacity.remedy.detail', {
-          scenario: best.scenarioId,
-          resolved: best.resolvedShortageMonths.length,
-          before: best.shortageMonthsBefore,
-        }),
-        evidence: {
-          scenarioId: best.scenarioId,
-          resolved: best.resolvedShortageMonths.length,
-          before: best.shortageMonthsBefore,
-        },
-      });
+    if (best) {
+      const resolvedCount = best.resolvedShortageMonths.length;
+      const beforeU = best.maxCoreUtilBefore ?? 1;
+      const afterU = best.maxCoreUtilAfter ?? 1;
+      const utilImproved = afterU < beforeU;
+      
+      if (resolvedCount > 0 || utilImproved) {
+        out.push({
+          id: 'kf-capacity-remedy',
+          severity: 'positive',
+          source: 'capacity',
+          title: resolvedCount > 0 
+            ? `Scenario ${best.scenarioId} resolves ${resolvedCount} shortage month(s)`
+            : `Scenario ${best.scenarioId} reduces peak utilization`,
+          titleMessage: msg('keyFindings.capacity.remedy.title', {
+            scenario: best.scenarioId,
+            resolved: resolvedCount,
+          }),
+          detail: resolvedCount > 0
+            ? `Adding capacity per "${best.scenarioId}" removes ${resolvedCount} of ${best.shortageMonthsBefore} shortage months.`
+            : `Adding capacity per "${best.scenarioId}" reduces peak utilization from ${(beforeU * 100).toFixed(0)}% to ${(afterU * 100).toFixed(0)}%.`,
+          detailMessage: msg('keyFindings.capacity.remedy.detail', {
+            scenario: best.scenarioId,
+            resolved: resolvedCount,
+            before: best.shortageMonthsBefore,
+          }),
+          evidence: {
+            scenarioId: best.scenarioId,
+            resolved: resolvedCount,
+            before: best.shortageMonthsBefore,
+          },
+        });
+      }
     }
   }
 
   // 4) BP miss — worst yearly miss period.
   if (input.bp) {
-    let worst: { period: string; gap: number; attainment: number | null } | null = null;
+    let worst: { period: string; gap: number; attainment: number | null; status: 'miss' | 'watch' } | null = null;
     for (const r of input.bp.yearly) {
-      if (r.status !== 'miss' || r.gapMillionTwd === null) continue;
-      const gap = Math.abs(r.gapMillionTwd);
-      if (!worst || gap > worst.gap) {
-        worst = { period: r.period, gap, attainment: r.attainment };
+      if ((r.status === 'miss' || r.status === 'watch') && r.gapMillionTwd !== null) {
+        const gap = Math.abs(r.gapMillionTwd);
+        if (!worst || gap > worst.gap) {
+          worst = { period: r.period, gap, attainment: r.attainment, status: r.status };
+        }
       }
     }
     if (worst) {
-      const attStr = worst.attainment !== null ? (worst.attainment * 100).toFixed(1) : '—';
+      const attVal = worst.attainment ?? 0;
+      const attainmentStr = worst.attainment !== null ? (worst.attainment * 100).toFixed(1) : '—';
       const gapStr = worst.gap.toFixed(1);
+      const statusLabel = worst.status === 'miss' ? 'miss' : 'watch';
+      const severity: 'critical' | 'warning' = worst.status === 'miss' ? 'critical' : 'warning';
       out.push({
         id: 'kf-bp-miss',
-        severity: 'critical',
+        severity,
         source: 'bp',
-        title: `BP miss in ${worst.period}: ${attStr}% attainment, gap ${gapStr}M TWD`,
+        title: `BP ${statusLabel} in ${worst.period}: ${attainmentStr}% attainment, gap ${gapStr}M TWD`,
         titleMessage: msg('keyFindings.bp.miss.title', {
           period: worst.period,
-          attainment: attStr,
+          attainment: attainmentStr + '%',
           gap: gapStr,
         }),
         detail: `BP target missed in ${worst.period}. See BP Gap Attribution for the customers and SKUs that carry the biggest share of the gap.`,
         detailMessage: msg('keyFindings.bp.miss.detail', { period: worst.period }),
-        evidence: { period: worst.period, attainment: worst.attainment, gapMillionTwd: worst.gap },
+        evidence: { period: worst.period, attainment: attVal, gapMillionTwd: worst.gap },
       });
     }
   }
