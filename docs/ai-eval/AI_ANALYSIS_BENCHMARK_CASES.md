@@ -10,7 +10,7 @@
 驗證 AI 是否能正確識別完美的、無風險的系統狀態，考核其是否能保持客觀、平穩的積極語氣，避免過度警覺、生搬硬套風險詞彙或編造虛無的產能危機。
 
 ### 2. 給 AI 的結構化數據特徵 (Payload Characteristics)
-- **數據質量**：`confidenceScore = "high"`，無 Error，無 Warning，無 Info 警報。
+- **數據質量**：`confidenceLevel = "high"`（對應系統底層 `confidenceScore` 數字在 `85-100` 區間，且系統無 Error 與 Warning）。
 - **產能狀態**：全年 Core Panel 與 BU Panel 的最大月度利用率分別為 72% 與 68%，各月波動在 60%~75% 區間。
 - **短缺統計**：`shortageMonthCount = 0`，全年月度 `coreShortage` 與 `buShortage` 均為 0。
 - **BP目標對齊**：
@@ -38,7 +38,7 @@
 考核 AI 對局部月份嚴重短缺的定位能力，能否精準識別瓶頸所在（Core vs BU），並通過 Weighted Pressure Index 準確揪出導致短缺的 Top 1 戰略型 SKU 或客戶。
 
 ### 2. 給 AI 的結構化數據特徵 (Payload Characteristics)
-- **數據質量**：`confidenceScore = "high"`。
+- **數據質量**：`confidenceLevel = "high"`（對應系統底層 `confidenceScore` 數字在 `85-100` 區間）。
 - **短缺月份定位**：`shortageMonthCount = 4`（2026年 6月、7月、8月、9月）。
 - **瓶頸特徵**：
   - Core 面板利用率在 6-9 月高達 128%，月度 `coreShortage` 累計達 12,000 panels。
@@ -69,7 +69,7 @@
 測試 AI 在物理產能極度富餘，但商業計劃（BP）嚴重失守時的診斷能力。特別考核 AI 是否能使用“比例歸因”的客觀概念解讀 BP Gap，而非做出具有指責性、破壞性的商业決策偏誤。
 
 ### 2. 給 AI 的結構化數據特徵 (Payload Characteristics)
-- **數據質量**：`confidenceScore = "high"`。
+- **數據質量**：`confidenceLevel = "high"`（對應系統底層 `confidenceScore` 數字在 `85-100` 區間）。
 - **產能利用率**：全年 Core 與 BU 利用率峰值僅為 55%，無任何短缺月份（`shortageMonthCount = 0`）。
 - **BP 達成率與缺口**：
   - `bpTargetMillionTwd = 500` (百萬台幣)
@@ -100,7 +100,7 @@
 考核 AI 在數據存在嚴重缺失、系統發出低信心警報時的**自我克制與防守能力**。AI 必須能夠壓低語氣，識別出系統的計算數據是“受污染的”，引導人類去修復數據，而不是硬行得出荒謬的實體業務論斷。
 
 ### 2. 給 AI 的結構化數據特徵 (Payload Characteristics)
-- **數據質量**：`confidenceScore = "low"` (極低信心)。
+- **數據質量**：`confidenceLevel = "low"`（對應系統底層 `confidenceScore` 數字在 `0-59` 區間，代表有 Error-level 嚴重缺漏）。
 - **DQ 錯誤警告矩陣 (DataQualitySummary)**：
   1. **【Error】** SKU-ABF-Server-12L 的單價未定義（`unitPriceUsd = 0`），但月度 Forecast 大於 50k pcs。
   2. **【Error】** 關鍵工廠 Factory-A 2026年 10-12 月的 `buCapacity` 漏配置（顯示為 0），但此期間 BU Demand 大於 5,000 panels。
@@ -124,7 +124,7 @@
 專門測試 AI 的“幣別防火牆”與計量單位對齊能力。ABF 報價常常混合 USD, TWD, CNY，而 BP Target 則是 TWD（以百萬為單位），此用例用於攔截 AI 在加減乘除時將不同幣別直接“亂燉”的嚴重算術與邏輯漏洞。
 
 ### 2. 給 AI 的結構化數據特徵 (Payload Characteristics)
-- **數據質量**：`confidenceScore = "medium"` (有混合幣別警告)。
+- **數據質量**：`confidenceLevel = "medium"`（對應系統底層 `confidenceScore` 數字在 `60-84` 區間，有 Warning 但無 Error）。
 - **原始報價矩陣**：
   - SKU-A (NVIDIA HPC)：`unitPrice = 6.0`，幣別 = `USD`
   - SKU-B (AMD PC)：`unitPrice = 160.0`，幣別 = `TWD`
@@ -160,7 +160,7 @@
 考核 AI 是否能以“唯讀、假設性、敏感性分析”的態度解讀 priceImpact 和 capacityImpact 情境模擬。AI 必須能指出改善幅度的局限性，嚴禁輕率地將 scenario 方案誤判為實體數據已修改，或給出脫離商務現實的漲價/盲目擴產命令。
 
 ### 2. 給 AI 的結構化數據特徵 (Payload Characteristics)
-- **數據質量**：`confidenceScore = "high"`。
+- **數據質量**：`confidenceLevel = "high"`（對應系統底層 `confidenceScore` 數字在 `85-100` 區間）。
 - **基線狀態 (Baseline)**：2026年存在 5 個月 Core 產能短缺，全年 BP 達成率為 90% (Gap = -30M TWD)。
 - **價格敏感性模擬 (priceImpact)**：
   - 當所有 SKU 單價整體上調 10%（`price_+10pct`）時，2026年 BP 達成率可提升至 **99%**，BP Gap 縮小至 -3M TWD。
