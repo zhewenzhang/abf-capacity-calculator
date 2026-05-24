@@ -139,9 +139,9 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
     return buildBpAnalysis(model.skuResults, skus, model.monthlySummaries, bpTargets, currencySettings);
   }, [model, skus, bpTargets, currencySettings]);
 
-  const riskBrief = useMemo(() => {
+  const analysisPayload = useMemo(() => {
     if (!model || !params) return null;
-    const payload = buildAnalysisContractPayload(
+    return buildAnalysisContractPayload(
       skus,
       forecasts,
       capacityPlans,
@@ -149,8 +149,12 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
       model,
       bpAnalysisModel
     );
-    return buildRiskBrief(payload);
   }, [skus, forecasts, capacityPlans, params, model, bpAnalysisModel]);
+
+  const riskBrief = useMemo(() => {
+    if (!analysisPayload) return null;
+    return buildRiskBrief(analysisPayload);
+  }, [analysisPayload]);
 
   // --- Reusable util cell render ---
   const renderUtil = (val: number | null, demand: number) => {
@@ -566,7 +570,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
           />
 
           {/* Risk Brief View */}
-          {view === 'risk' && riskBrief && (
+          {view === 'risk' && riskBrief && analysisPayload && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Executive Summary */}
               <Card title={t('results.riskBrief.executiveSummaryTitle')} bordered={false} size="small">
@@ -579,6 +583,225 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                   )}
                 />
               </Card>
+
+              {/* Phase 5.3B — Key Findings */}
+              {analysisPayload.keyFindings.length > 0 && (
+                <Card title={t('results.keyFindings.title')} bordered={false} size="small"
+                  extra={<Text type="secondary" style={{ fontSize: 12 }}>{t('results.keyFindings.subtitle')}</Text>}
+                >
+                  <List
+                    dataSource={analysisPayload.keyFindings}
+                    renderItem={(f) => (
+                      <List.Item style={{ borderBottom: '1px solid #f0f0f0', padding: '8px 0' }}>
+                        <div style={{ width: '100%' }}>
+                          <Tag color={
+                            f.severity === 'critical' ? 'red' :
+                            f.severity === 'warning' ? 'orange' :
+                            f.severity === 'positive' ? 'green' : 'blue'
+                          } style={{ marginRight: 8 }}>
+                            {t(`keyFindings.severity.${f.severity}`)}
+                          </Tag>
+                          <Tag color="default" style={{ marginRight: 8 }}>{t(`keyFindings.source.${f.source}`)}</Tag>
+                          <Text strong>{t(f.titleMessage)}</Text>
+                          <div style={{ marginTop: 4 }}>
+                            <Text type="secondary" style={{ fontSize: 13 }}>{t(f.detailMessage)}</Text>
+                          </div>
+                        </div>
+                      </List.Item>
+                    )}
+                  />
+                </Card>
+              )}
+
+              {/* Phase 5.3B — BP Gap Attribution */}
+              {analysisPayload.bpAttribution.topDrivers.length > 0 && (
+                <Card title={t('results.bpAttr.title')} bordered={false} size="small"
+                  extra={<Text type="secondary" style={{ fontSize: 12 }}>{t('results.bpAttr.subtitle')}</Text>}
+                >
+                  <Table
+                    dataSource={analysisPayload.bpAttribution.topDrivers}
+                    rowKey={(r) => `${r.dimension}-${r.label}-${r.period}`}
+                    pagination={false}
+                    size="small"
+                    columns={[
+                      { title: t('results.bpAttr.period'), dataIndex: 'period', key: 'period', width: 110 },
+                      { title: t('results.bpAttr.dimension'), dataIndex: 'dimension', key: 'dimension', width: 120, render: (v: string) => t(`attr.dimension.${v}`) },
+                      { title: t('results.bpAttr.driver'), dataIndex: 'label', key: 'label', width: 180 },
+                      {
+                        title: t('results.bpAttr.shareOfGap'),
+                        dataIndex: 'shareOfGap',
+                        key: 'shareOfGap',
+                        width: 100,
+                        align: 'right',
+                        render: (v: number) => `${v.toFixed(1)}%`,
+                      },
+                      {
+                        title: t('results.bpAttr.gapContribution'),
+                        dataIndex: 'gapContributionMillionTwd',
+                        key: 'gapContributionMillionTwd',
+                        width: 150,
+                        align: 'right',
+                        render: (v: number) => `${v.toFixed(1)} M TWD`,
+                      },
+                      {
+                        title: t('results.riskBrief.reason'),
+                        dataIndex: 'reasonMessage',
+                        key: 'reasonMessage',
+                        render: (_v: unknown, record: typeof analysisPayload.bpAttribution.topDrivers[0]) => t(record.reasonMessage),
+                      },
+                    ]}
+                  />
+                </Card>
+              )}
+
+              {/* Phase 5.3B — Price Impact */}
+              {analysisPayload.priceImpact.scenarios.length > 0 && (
+                <Card title={t('results.priceImpact.title')} bordered={false} size="small"
+                  extra={<Text type="secondary" style={{ fontSize: 12 }}>{t('results.priceImpact.subtitle')}</Text>}
+                >
+                  <Tabs
+                    size="small"
+                    items={analysisPayload.priceImpact.scenarios.map((sc) => ({
+                      key: sc.scenarioId,
+                      label: `${sc.priceDeltaPct > 0 ? '+' : ''}${(sc.priceDeltaPct * 100).toFixed(0)}%`,
+                      children: (
+                        <Table
+                          dataSource={sc.yearly}
+                          rowKey="year"
+                          pagination={false}
+                          size="small"
+                          columns={[
+                            { title: t('results.priceImpact.year'), dataIndex: 'year', key: 'year', width: 90 },
+                            {
+                              title: t('results.priceImpact.baseRevenue'),
+                              dataIndex: 'baseRevenueMillionTwd',
+                              key: 'baseRevenueMillionTwd',
+                              align: 'right',
+                              render: (v: number) => `${v.toFixed(1)} M TWD`,
+                            },
+                            {
+                              title: t('results.priceImpact.scenarioRevenue'),
+                              dataIndex: 'scenarioRevenueMillionTwd',
+                              key: 'scenarioRevenueMillionTwd',
+                              align: 'right',
+                              render: (v: number) => `${v.toFixed(1)} M TWD`,
+                            },
+                            {
+                              title: t('results.priceImpact.revenueDelta'),
+                              dataIndex: 'revenueDeltaMillionTwd',
+                              key: 'revenueDeltaMillionTwd',
+                              align: 'right',
+                              render: (v: number) => (
+                                <Tag color={v > 0 ? 'green' : v < 0 ? 'red' : 'default'}>
+                                  {v > 0 ? '+' : ''}{v.toFixed(1)} M TWD
+                                </Tag>
+                              ),
+                            },
+                            {
+                              title: t('results.priceImpact.baseAttainment'),
+                              dataIndex: 'baseBpAttainment',
+                              key: 'baseBpAttainment',
+                              align: 'right',
+                              render: (v: number | null) => v === null ? '-' : `${(v * 100).toFixed(1)}%`,
+                            },
+                            {
+                              title: t('results.priceImpact.scenarioAttainment'),
+                              dataIndex: 'scenarioBpAttainment',
+                              key: 'scenarioBpAttainment',
+                              align: 'right',
+                              render: (v: number | null) => v === null ? '-' : `${(v * 100).toFixed(1)}%`,
+                            },
+                            {
+                              title: t('results.priceImpact.attainmentDelta'),
+                              dataIndex: 'bpAttainmentDelta',
+                              key: 'bpAttainmentDelta',
+                              align: 'right',
+                              render: (v: number | null) => v === null ? '-' : (
+                                <Tag color={v > 0 ? 'green' : v < 0 ? 'red' : 'default'}>
+                                  {v > 0 ? '+' : ''}{(v * 100).toFixed(1)}pp
+                                </Tag>
+                              ),
+                            },
+                          ]}
+                        />
+                      ),
+                    }))}
+                  />
+                </Card>
+              )}
+
+              {/* Phase 5.3B — Capacity Improvement Impact */}
+              {analysisPayload.capacityImpact.scenarios.length > 0 && (
+                <Card title={t('results.capacityImpact.title')} bordered={false} size="small"
+                  extra={<Text type="secondary" style={{ fontSize: 12 }}>{t('results.capacityImpact.subtitle')}</Text>}
+                >
+                  <Table
+                    dataSource={analysisPayload.capacityImpact.scenarios}
+                    rowKey="scenarioId"
+                    pagination={false}
+                    size="small"
+                    columns={[
+                      {
+                        title: t('results.capacityImpact.scenario'),
+                        dataIndex: 'scenarioId',
+                        key: 'scenarioId',
+                        width: 200,
+                        render: (v: string) => t(`results.capacityImpact.scenarioName.${v}`),
+                      },
+                      {
+                        title: t('results.capacityImpact.shortageBefore'),
+                        dataIndex: 'shortageMonthsBefore',
+                        key: 'shortageMonthsBefore',
+                        align: 'right',
+                      },
+                      {
+                        title: t('results.capacityImpact.shortageAfter'),
+                        dataIndex: 'shortageMonthsAfter',
+                        key: 'shortageMonthsAfter',
+                        align: 'right',
+                        render: (v: number, r: typeof analysisPayload.capacityImpact.scenarios[0]) => (
+                          <Tag color={v < r.shortageMonthsBefore ? 'green' : 'default'}>{v}</Tag>
+                        ),
+                      },
+                      {
+                        title: t('results.capacityImpact.resolvedCount'),
+                        dataIndex: 'resolvedShortageMonths',
+                        key: 'resolvedShortageMonths',
+                        align: 'right',
+                        render: (v: string[]) => v.length,
+                      },
+                      {
+                        title: t('results.capacityImpact.maxCoreUtilBefore'),
+                        dataIndex: 'maxCoreUtilBefore',
+                        key: 'maxCoreUtilBefore',
+                        align: 'right',
+                        render: (v: number | null) => v === null ? t('results.capacityImpact.overflow') : `${(v * 100).toFixed(1)}%`,
+                      },
+                      {
+                        title: t('results.capacityImpact.maxCoreUtilAfter'),
+                        dataIndex: 'maxCoreUtilAfter',
+                        key: 'maxCoreUtilAfter',
+                        align: 'right',
+                        render: (v: number | null) => v === null ? t('results.capacityImpact.overflow') : `${(v * 100).toFixed(1)}%`,
+                      },
+                      {
+                        title: t('results.capacityImpact.maxBuUtilBefore'),
+                        dataIndex: 'maxBuUtilBefore',
+                        key: 'maxBuUtilBefore',
+                        align: 'right',
+                        render: (v: number | null) => v === null ? t('results.capacityImpact.overflow') : `${(v * 100).toFixed(1)}%`,
+                      },
+                      {
+                        title: t('results.capacityImpact.maxBuUtilAfter'),
+                        dataIndex: 'maxBuUtilAfter',
+                        key: 'maxBuUtilAfter',
+                        align: 'right',
+                        render: (v: number | null) => v === null ? t('results.capacityImpact.overflow') : `${(v * 100).toFixed(1)}%`,
+                      },
+                    ]}
+                  />
+                </Card>
+              )}
 
               {/* Top Risk Periods */}
               {riskBrief.topRiskPeriods.length > 0 && (

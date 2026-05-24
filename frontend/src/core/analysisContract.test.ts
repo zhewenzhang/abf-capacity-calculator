@@ -97,7 +97,7 @@ describe('analysisContract', () => {
     );
 
     expect(payload).toBeDefined();
-    expect(payload.version).toBe('1.0');
+    expect(payload.version).toBe('1.1');
     expect(payload.appVersion).toBe('v1.16.0');
     expect(payload.generatedAt).toBeDefined();
     expect(payload.timeRange.months).toContain('2026-01');
@@ -115,6 +115,11 @@ describe('analysisContract', () => {
     expect(payload.riskAttribution.shortageMonths).toBeDefined();
     expect(Array.isArray(payload.riskAttribution.drivers)).toBe(true);
     expect(Array.isArray(payload.riskAttribution.skuHealthSignals)).toBe(true);
+    // v1.1 additions
+    expect(payload.bpAttribution).toBeDefined();
+    expect(payload.priceImpact).toBeDefined();
+    expect(payload.capacityImpact).toBeDefined();
+    expect(Array.isArray(payload.keyFindings)).toBe(true);
   });
 
   it('exposes riskAttribution drivers in shortage scenarios', () => {

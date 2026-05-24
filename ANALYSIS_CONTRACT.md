@@ -195,3 +195,84 @@ To ensure operational stability, data privacy, and deterministic analysis, **no 
 - **Price Impact Sensitivity**: Analyze how unit price fluctuations affect overall BP attainment.
 - **Capacity Scenario Planning**: Dynamically adjust factory shift parameters or introduce hypothetical plants to simulate bottleneck relief.
 - **SKU Intelligence**: Introduce structural yield matrices that dynamically adapt yield predictions based on historical manufacturing feedback.
+
+---
+
+## 9. Analysis Contract v1.1 — Decision Analysis Depth (v1.20.0)
+
+Phase 5.3B bumps `AnalysisContractPayload.version` from `'1.0'` to **`'1.1'`** and adds four new fields plus a `decisionImpact` enrichment on every Data Quality issue. **No changes** to capacity/BP/currency core formulas, Firestore schema, or AI integration scope.
+
+### 9.1 Schema additions (v1.1)
+
+| Field | Type | Source module | Purpose |
+|-------|------|---------------|---------|
+| `bpAttribution` | `BpAttributionModel` | `core/bpAttribution.ts` | Proportional breakdown of BP gap by customer/SKU/size/application at year/quarter/month granularity. Includes `topDrivers` (≤5). |
+| `priceImpact` | `PriceImpactModel` | `core/impactAnalysis.ts` | Read-only ±5% / ±10% price scenarios — per year base vs scenario revenue/attainment + `mostSensitiveYear`. |
+| `capacityImpact` | `CapacityImpactModel` | `core/impactAnalysis.ts` | Read-only +10% Core / +10% BU / +10% Both capacity scenarios — resolved shortage months, max-util shifts, `bestScenarioId`. |
+| `keyFindings` | `KeyFinding[]` | `core/keyFindings.ts` | Deterministic top-5 cross-module summary sorted by severity rank → id. |
+| `riskAttribution.weightConfig` | `PressureWeightConfig` | `core/riskAttribution.ts` | Exposes `coreWeight` and `buWeight` used to compute `weightedPressureIndex`. Defaults: `{ coreWeight: 1.3, buWeight: 1.0 }`. |
+
+Every `DataQualityIssue` also gains an optional `decisionImpact: 'high' | 'medium' | 'low'` field (id-pattern derived, with severity fallback). This drives Key Findings filtering and `results.dq.*` UI badges.
+
+### 9.2 Weighted Pressure Index (analysis-only)
+
+The v1.17.0 `capacityPressureIndex = shortageCoreDemand + shortageBuDemand` is preserved (renamed `rawCapacityPressureShare` / kept under `capacityPressureIndex`). v1.20.0 adds a parallel **`weightedPressureIndex`**:
+
+```
+weightedPressureIndex = shortageCoreDemand * coreWeight + shortageBuDemand * buWeight
+```
+
+Defaults: `coreWeight = 1.3`, `buWeight = 1.0` — reflecting the assumption that Core constraints are operationally harder to relieve than BU constraints. **This is ranking-only**:
+
+- Capacity, demand, revenue, shortage, BP gap, and utilization formulas are **unchanged**.
+- Weighting only re-orders attribution drivers and SKU pressure shares in the Risk Brief.
+- The raw (unweighted) share is preserved alongside the weighted share so consumers can compare.
+
+### 9.3 BP Gap Attribution (proportional, not causal)
+
+`bpAttribution` answers: *"For each period that missed BP, which customers/SKUs/sizes/applications carried what share of the gap?"*
+
+```
+shareOfGap(driver, period)        = driver_revenue / period_revenue
+gapContributionMillionTwd(driver) = period_gap_million_twd * shareOfGap(driver, period)
+Σ gapContributionMillionTwd       ≈ period_gap_million_twd   (within rounding)
+```
+
+This is **proportional attribution**: a driver's share of revenue in that period maps to a share of the gap. It is **not a causal model** — the reason text (`bpAttr.driver.reason`) explicitly states "比例歸因，非嚴格因果" / "(proportional attribution, not strict causal)". `topDrivers` is capped at 5 across all granularities to keep the UI digestible.
+
+### 9.4 Price & Capacity Impact (read-only deterministic scenarios)
+
+Both modules deep-clone SKUs, forecasts, and capacity plans, run them through the existing `buildAnalyticsModel` / `buildBpAnalysis` pipeline, and report deltas vs base:
+
+- **Price scenarios**: `[-0.10, -0.05, +0.05, +0.10]` applied to every SKU's `unitPrice` (currency preserved). Output: per-year `baseRevenueUsd`, `scenarioRevenueUsd`, `baseAttainment`, `scenarioAttainment`, `attainmentDelta`, plus `mostSensitiveYear` (largest |attainmentDelta|).
+- **Capacity scenarios**: `capacity_core_+10pct`, `capacity_bu_+10pct`, `capacity_both_+10pct` applied to every `CapacityPlan`'s `corePanelPerDay` / `buPanelPerDay`. Output: `resolvedShortageMonths`, `remainingShortageMonths`, `maxCoreUtilBefore/After`, `maxBuUtilBefore/After`, plus `bestScenarioId` (most shortage months resolved, falls back to `null` when +10% is insufficient).
+
+**Read-only guarantee**: originals are never mutated. Tests assert deep equality of inputs before and after scenario runs.
+
+### 9.5 Key Findings (deterministic top-5)
+
+`buildKeyFindings(input)` collects candidate findings from six sources, ranks them by severity (`critical=0 < warning=1 < info=2 < positive=3`) then by stable `id`, and returns the top 5.
+
+| Source | Trigger | Severity |
+|--------|---------|----------|
+| Data Quality | `decisionImpact === 'high'` issue | `critical` or `warning` (issue's own) |
+| Capacity (shortage) | Any shortage months — `critical` if ≥6, else `warning` | dynamic |
+| Capacity (remedy) | A capacity scenario resolves shortage | `positive` |
+| BP miss | Worst-attainment year < 100% | `critical` |
+| BP top driver | `bpAttribution.topDrivers[0]` carries ≥30% of gap | `warning` |
+| Price sensitivity | `|mostSensitiveYear.attainmentDelta|` ≥ 10 pp | `warning` |
+| SKU Health | Any SKU classified `capacityDrainer` or `lowValueHighLoad` | `warning` |
+
+Hard cap: `MAX_FINDINGS = 5`. Order is fully deterministic — same inputs always yield the same list.
+
+### 9.6 New assumption lines (v1.1)
+
+Three lines added to `payload.assumptions` to make the new semantics explicit to downstream consumers:
+
+1. `assumptions.weightedPressure` — "Weighted Pressure Index uses Core×{coreWeight} + BU×{buWeight}. Analysis-only; does not change demand or capacity formulas."
+2. `assumptions.bpAttribution` — "BP Gap Attribution is proportional (revenue-share-based), not a causal model."
+3. `assumptions.impactScenarios` — "Price and Capacity Impact scenarios are read-only: inputs are cloned and re-run through the existing calculation engine."
+
+### 9.7 i18n coverage
+
+All v1.1 output strings — `bpAttr.driver.reason`, every `keyFindings.*` title/detail, and the Results-page section labels — ship with both `en.ts` and `zhTW.ts` entries. `i18nKeys.test.ts` enforces key parity; `i18nOutputs.test.ts` asserts both languages render with no leftover `{placeholder}` tokens and no raw `.key` echo.

@@ -183,3 +183,54 @@ The `i18nOutputs.test.ts` suite asserts that every Risk Brief / Data Quality
 message resolves to a non-empty string in both languages and contains no
 unresolved `{placeholder}` tokens. Run it (or the full `npx vitest run` gate)
 after adding new keys.
+
+## Weighted Pressure Index (v1.20.0)
+
+`core/riskAttribution.ts` now produces two parallel capacity-pressure metrics per SKU:
+
+| Field | Formula | Purpose |
+|-------|---------|---------|
+| `capacityPressureIndex` (raw, v1.17.0) | `shortageCoreDemand + shortageBuDemand` | Backward-compatible unweighted proxy. |
+| `weightedPressureIndex` (v1.20.0) | `shortageCoreDemand × coreWeight + shortageBuDemand × buWeight` | Default weights: `coreWeight = 1.3`, `buWeight = 1.0`. Reflects the assumption that Core constraints are harder to relieve operationally. |
+
+Both shares (`rawCapacityPressureShare` and `capacityPressureShare`) are kept on `SkuHealthSignal` so callers can compare. **Weighting is analysis-only**: it does not modify capacity / demand / shortage / utilization / revenue formulas. Weights are configurable through `PressureWeightConfig` and the active configuration is exposed on `RiskAttributionModel.weightConfig` and `payload.riskAttribution.weightConfig`.
+
+## Scenario Methodology (v1.20.0)
+
+`core/impactAnalysis.ts` provides two read-only scenario engines used by `payload.priceImpact` and `payload.capacityImpact`.
+
+### Read-only invariant
+
+Both engines **deep-clone** the input SKUs, forecasts, and capacity plans before running the existing `buildAnalyticsModel` / `buildBpAnalysis` pipeline. Originals are never mutated — tests assert deep equality of inputs before and after scenario runs. This means you can call them repeatedly inside a `useMemo` without side effects on the live editing state.
+
+### Price scenarios
+
+- Deltas: `[-0.10, -0.05, +0.05, +0.10]`
+- Applied to every SKU's `unitPrice` (currency preserved — TWD/CNY still convert to USD via the existing exchange-rate pipeline).
+- Per scenario, per year: `baseRevenueUsd`, `scenarioRevenueUsd`, `baseAttainment`, `scenarioAttainment`, `attainmentDelta` (in percentage points).
+- `mostSensitiveYear` = the year with the largest `|attainmentDelta|` across all scenarios.
+
+### Capacity scenarios
+
+- Scenarios: `capacity_core_+10pct`, `capacity_bu_+10pct`, `capacity_both_+10pct`.
+- Applied to every `CapacityPlan`'s `corePanelPerDay` / `buPanelPerDay`.
+- Per scenario: `resolvedShortageMonths`, `remainingShortageMonths`, `maxCoreUtilBefore/After`, `maxBuUtilBefore/After`.
+- `bestScenarioId` = scenario that resolves the most shortage months. Falls back to `null` when +10% is insufficient (the UI shows "No scenario fully resolves the bottleneck within +10%" in that case).
+
+## BP Gap Attribution (v1.20.0)
+
+`core/bpAttribution.ts` answers: *"For each period that missed BP, which customers/SKUs/sizes/applications carried what share of the gap?"*
+
+- Granularity: `yearly`, `quarterly`, `monthly`.
+- Dimensions: `customer`, `sku`, `size`, `application`.
+- `shareOfGap(driver, period) = driver_revenue / period_revenue`
+- `gapContributionMillionTwd = period_gap × shareOfGap` — sums back to the period gap within rounding.
+- `topDrivers` is capped at 5 across all granularities.
+
+**Proportional, not causal.** The reason text says so explicitly ("比例歸因，非嚴格因果" / "proportional attribution, not strict causal") — a customer carrying 30% of a year's revenue is *assigned* 30% of that year's BP gap, but this does not mean reducing their revenue would close the gap proportionally.
+
+## Key Findings (v1.20.0)
+
+`core/keyFindings.ts` provides a deterministic top-5 cross-module summary, sorted by severity rank (`critical < warning < info < positive`) then by stable `id`. Sources: data quality (high impact), capacity shortage/remedy, BP miss/top driver, price sensitivity, SKU health drainers. See `ANALYSIS_CONTRACT.md` §9.5 for the trigger matrix.
+
+`MAX_FINDINGS = 5` is a hard cap. Same inputs always yield the same list.

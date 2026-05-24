@@ -29,6 +29,18 @@ export interface DataQualityIssue {
   affectedPeriods?: string[];
   affectedSkuIds?: string[];
   evidence?: Record<string, string | number | boolean | null>;
+  /**
+   * Phase 5.3B decision-impact priority. Independent of `severity`:
+   * - `high` blocks core analytics or distorts BP/capacity numbers (orphan forecast,
+   *   missing capacity, missing exchange rate, BU demand vs zero BU capacity).
+   * - `medium` adds noise / partial coverage (zero price, partial-year forecast,
+   *   missing BP target, unsupported currency).
+   * - `low` is informational (capacity without demand, BP allocation info, fixed working days).
+   *
+   * If not explicitly assigned in the producer, `enrichDataQualityWithImpact` below
+   * fills it deterministically by id pattern + severity.
+   */
+  decisionImpact?: 'high' | 'medium' | 'low';
 }
 
 export interface DataQualitySummary {
@@ -62,6 +74,7 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
           detail: 'Load products and monthly forecasts to unlock full capacity risk analytics.',
           titleMessage: msg('dq.noData.title'),
           detailMessage: msg('dq.noData.detail'),
+          decisionImpact: 'low',
         },
       ],
     };
@@ -420,6 +433,50 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
   return {
     status,
     confidence,
-    issues,
+    issues: issues.map(enrichWithImpact),
   };
+}
+
+/**
+ * Phase 5.3B — assign decisionImpact to each issue deterministically by id pattern.
+ * Producers do not need to set this manually. The enrichment is layered ON TOP of
+ * severity so a "warning" can still be high-impact (e.g., orphan forecast warnings).
+ */
+function enrichWithImpact(issue: DataQualityIssue): DataQualityIssue {
+  if (issue.decisionImpact !== undefined) return issue;
+  const id = issue.id;
+  let impact: 'high' | 'medium' | 'low' = 'low';
+  if (
+    id.startsWith('forecast-orphan-sku-') ||
+    id === 'forecast-missing-capacity' ||
+    id === 'bu-demand-zero-capacity' ||
+    id === 'missing-constant-twd-rate' ||
+    id === 'missing-yearly-twd-rate' ||
+    id === 'missing-constant-cny-rate' ||
+    id === 'missing-yearly-cny-rate' ||
+    id.startsWith('sku-missing-attr-')
+  ) {
+    impact = 'high';
+  } else if (
+    id.startsWith('sku-zero-price-') ||
+    id.startsWith('forecast-zero-price-') ||
+    id.startsWith('forecast-partial-year-') ||
+    id.startsWith('sku-unsupported-currency-') ||
+    id.startsWith('forecast-missing-bp-target-') ||
+    id.startsWith('bp-target-zero-forecast-')
+  ) {
+    impact = 'medium';
+  } else if (
+    id === 'capacity-without-forecast' ||
+    id === 'bp-target-evenly-allocated' ||
+    id === 'fixed-working-days' ||
+    id === 'no-data-blocked'
+  ) {
+    impact = 'low';
+  } else {
+    // Fallback: derive from severity
+    if (issue.severity === 'error') impact = 'high';
+    else if (issue.severity === 'warning') impact = 'medium';
+  }
+  return { ...issue, decisionImpact: impact };
 }

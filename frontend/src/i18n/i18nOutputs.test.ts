@@ -208,3 +208,64 @@ describe('Data Quality — i18n output (EN/zh-TW)', () => {
     expect(zh.length).toBeGreaterThan(0);
   });
 });
+
+describe('Phase 5.3B — i18n output for new analysis modules', () => {
+  it('BP attribution driver reason renders in both languages with no leftover placeholders', () => {
+    const skus = [makeSku({ unitPrice: 5 })];
+    const forecasts: Forecast[] = [];
+    const plans: CapacityPlan[] = [];
+    for (let i = 1; i <= 12; i++) {
+      const month = `2026-${String(i).padStart(2, '0')}`;
+      forecasts.push(makeForecast({ id: `fc-${i}`, month, forecastPcs: 1000 }));
+      plans.push(makeCapacityPlan({ id: `cp-${i}`, month }));
+    }
+    const model = buildAnalyticsModel(skus, forecasts, plans, defaultParams);
+    const bp = buildBpAnalysis(
+      model.skuResults,
+      skus,
+      model.monthlySummaries,
+      { '2026': 100000 },
+      defaultParams.currencySettings!
+    );
+    const payload = buildAnalysisContractPayload(skus, forecasts, plans, defaultParams, model, bp);
+    expect(payload.bpAttribution.topDrivers.length).toBeGreaterThan(0);
+    for (const d of payload.bpAttribution.topDrivers) {
+      for (const lang of ['en', 'zh-TW'] as const) {
+        const out = translateFor(lang, d.reasonMessage);
+        expect(out).not.toBe(d.reasonMessage.key);
+        expect(out).not.toMatch(/\{[a-zA-Z]+\}/);
+      }
+    }
+  });
+
+  it('Key Findings titles and details render in both languages', () => {
+    const skus = [makeSku({ unitPrice: 5 })];
+    const forecasts: Forecast[] = [];
+    const plans: CapacityPlan[] = [];
+    for (let i = 1; i <= 12; i++) {
+      const month = `2026-${String(i).padStart(2, '0')}`;
+      forecasts.push(makeForecast({ id: `fc-${i}`, month, forecastPcs: 1000 }));
+      plans.push(makeCapacityPlan({ id: `cp-${i}`, month }));
+    }
+    const model = buildAnalyticsModel(skus, forecasts, plans, defaultParams);
+    const bp = buildBpAnalysis(
+      model.skuResults,
+      skus,
+      model.monthlySummaries,
+      { '2026': 100000 },
+      defaultParams.currencySettings!
+    );
+    const payload = buildAnalysisContractPayload(skus, forecasts, plans, defaultParams, model, bp);
+    expect(payload.keyFindings.length).toBeGreaterThan(0);
+    for (const f of payload.keyFindings) {
+      for (const lang of ['en', 'zh-TW'] as const) {
+        const title = translateFor(lang, f.titleMessage);
+        const detail = translateFor(lang, f.detailMessage);
+        expect(title).not.toBe(f.titleMessage.key);
+        expect(detail).not.toBe(f.detailMessage.key);
+        expect(title).not.toMatch(/\{[a-zA-Z]+\}/);
+        expect(detail).not.toMatch(/\{[a-zA-Z]+\}/);
+      }
+    }
+  });
+});

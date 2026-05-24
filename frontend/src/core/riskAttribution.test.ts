@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildRiskAttributionModel, HIGH_SHARE, LOW_SHARE } from './riskAttribution';
+import { buildRiskAttributionModel, HIGH_SHARE, LOW_SHARE, DEFAULT_PRESSURE_WEIGHT_CONFIG } from './riskAttribution';
 import { buildAnalyticsModel } from './analytics';
 import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS } from './defaults';
 import type { SKU, Forecast, CapacityPlan, ProjectParameters } from '../types';
@@ -286,6 +286,71 @@ describe('riskAttribution — Phase 5.2 Risk Driver Attribution', () => {
     expect((smallSig!.revenueShare ?? 100)).toBeLessThanOrEqual(LOW_SHARE);
     expect((smallSig!.capacityPressureShare ?? 0)).toBeGreaterThanOrEqual(HIGH_SHARE);
     expect(smallSig!.classification).toBe('lowValueHighLoad');
+  });
+
+  // Phase 5.3B — Weighted Pressure tests
+
+  it('weightConfig is exposed and defaults to coreWeight 1.3 / buWeight 1.0', () => {
+    const sku = makeSku();
+    const { forecasts, capacityPlans } = buildShortageScenario([sku]);
+    const analytics = buildAnalyticsModel([sku], forecasts, capacityPlans, defaultParams);
+    const model = buildRiskAttributionModel(analytics, [sku]);
+    expect(model.weightConfig).toEqual(DEFAULT_PRESSURE_WEIGHT_CONFIG);
+    expect(DEFAULT_PRESSURE_WEIGHT_CONFIG.coreWeight).toBeGreaterThan(DEFAULT_PRESSURE_WEIGHT_CONFIG.buWeight);
+  });
+
+  it('weighted pressure index = core*coreWeight + bu*buWeight on each SKU signal', () => {
+    const sku = makeSku();
+    const { forecasts, capacityPlans } = buildShortageScenario([sku]);
+    const analytics = buildAnalyticsModel([sku], forecasts, capacityPlans, defaultParams);
+    const model = buildRiskAttributionModel(analytics, [sku], undefined, { coreWeight: 2, buWeight: 0.5 });
+    const sig = model.skuHealthSignals.find((s) => s.skuCode === 'SKU-001')!;
+    const expected = sig.shortageCoreDemand * 2 + sig.shortageBuDemand * 0.5;
+    expect(sig.weightedPressureIndex).toBeCloseTo(expected, 5);
+    // raw pressure is unweighted
+    expect(sig.capacityPressureIndex).toBeCloseTo(sig.shortageCoreDemand + sig.shortageBuDemand, 5);
+  });
+
+  it('equal weights 1/1 produce capacityPressureShare equivalent to raw share', () => {
+    const skuCore = makeSku({ id: 'sc', skuCode: 'COREHEAVY', customer: 'C-core', chipLengthMm: 18, chipWidthMm: 18, layerCount: 8 });
+    const skuBu = makeSku({ id: 'sb', skuCode: 'BUHEAVY', customer: 'C-bu', chipLengthMm: 6, chipWidthMm: 6, layerCount: 18 });
+    const { forecasts, capacityPlans } = buildShortageScenario([skuCore, skuBu]);
+    const analytics = buildAnalyticsModel([skuCore, skuBu], forecasts, capacityPlans, defaultParams);
+    const equal = buildRiskAttributionModel(analytics, [skuCore, skuBu], undefined, { coreWeight: 1, buWeight: 1 });
+    for (const sig of equal.skuHealthSignals) {
+      if (sig.rawCapacityPressureShare !== undefined && sig.capacityPressureShare !== undefined) {
+        expect(sig.capacityPressureShare).toBeCloseTo(sig.rawCapacityPressureShare, 5);
+      }
+    }
+  });
+
+  it('higher coreWeight raises capacityPressureShare for core-heavy SKU vs equal weights', () => {
+    // Construct two SKUs with very different Core vs BU consumption (size & layer differ).
+    const skuCore = makeSku({ id: 'sc', skuCode: 'COREHEAVY', customer: 'C-core', chipLengthMm: 22, chipWidthMm: 22, layerCount: 8 });
+    const skuBu = makeSku({ id: 'sb', skuCode: 'BUHEAVY', customer: 'C-bu', chipLengthMm: 5, chipWidthMm: 5, layerCount: 20 });
+    const { forecasts, capacityPlans } = buildShortageScenario([skuCore, skuBu]);
+    const analytics = buildAnalyticsModel([skuCore, skuBu], forecasts, capacityPlans, defaultParams);
+    const equal = buildRiskAttributionModel(analytics, [skuCore, skuBu], undefined, { coreWeight: 1, buWeight: 1 });
+    const coreHeavy = buildRiskAttributionModel(analytics, [skuCore, skuBu], undefined, { coreWeight: 3, buWeight: 1 });
+    const equalCoreSig = equal.skuHealthSignals.find((s) => s.skuCode === 'COREHEAVY')!;
+    const weightedCoreSig = coreHeavy.skuHealthSignals.find((s) => s.skuCode === 'COREHEAVY')!;
+    expect(weightedCoreSig.capacityPressureShare).toBeGreaterThan(equalCoreSig.capacityPressureShare ?? 0);
+  });
+
+  it('weight changes do not affect revenue / Core / BU demand values', () => {
+    const sku = makeSku();
+    const { forecasts, capacityPlans } = buildShortageScenario([sku]);
+    const analytics = buildAnalyticsModel([sku], forecasts, capacityPlans, defaultParams);
+    const a = buildRiskAttributionModel(analytics, [sku], undefined, { coreWeight: 1, buWeight: 1 });
+    const b = buildRiskAttributionModel(analytics, [sku], undefined, { coreWeight: 5, buWeight: 0.1 });
+    const sigA = a.skuHealthSignals.find((s) => s.skuCode === 'SKU-001')!;
+    const sigB = b.skuHealthSignals.find((s) => s.skuCode === 'SKU-001')!;
+    expect(sigA.revenueUsd).toBeCloseTo(sigB.revenueUsd, 5);
+    expect(sigA.coreDemand).toBeCloseTo(sigB.coreDemand, 5);
+    expect(sigA.buDemand).toBeCloseTo(sigB.buDemand, 5);
+    expect(sigA.shortageCoreDemand).toBeCloseTo(sigB.shortageCoreDemand, 5);
+    expect(sigA.shortageBuDemand).toBeCloseTo(sigB.shortageBuDemand, 5);
+    expect(sigA.capacityPressureIndex).toBeCloseTo(sigB.capacityPressureIndex, 5);
   });
 
   // Test 12: watchList for SKU with moderate but neither dominant nor invalid

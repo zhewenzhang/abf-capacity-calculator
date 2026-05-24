@@ -1,5 +1,5 @@
 /**
- * Risk Driver Attribution (Phase 5.2)
+ * Risk Driver Attribution (Phase 5.2, weighted in Phase 5.3B)
  *
  * Differs from analytics matrices:
  * - Matrices answer "who contributes most overall".
@@ -8,7 +8,16 @@
  * SKU Health Signals is a deterministic MVP classification combining revenue share
  * and capacity-pressure share. It is NOT AI judgment and NOT a final causal model.
  *
- * MVP capacityPressureIndex = shortageCoreDemand + shortageBuDemand (unweighted).
+ * Phase 5.2 raw pressure index:
+ *   capacityPressureIndex = shortageCoreDemand + shortageBuDemand
+ *
+ * Phase 5.3B weighted pressure index (analysis-only ranking weight, NOT a capacity
+ * formula change — Core / BU panel demand & capacity computations in
+ * calculationEngine remain untouched):
+ *   weightedPressureIndex = shortageCoreDemand * coreWeight + shortageBuDemand * buWeight
+ *
+ * Both indices coexist on RiskAttributionModel / SkuHealthSignal so consumers can
+ * inspect raw values and the weighted ranking side-by-side.
  */
 
 import type { SKU } from '../types';
@@ -73,18 +82,44 @@ export interface SkuHealthSignal {
   buDemand: number;
   shortageCoreDemand: number;
   shortageBuDemand: number;
+  /** Raw capacity pressure index = shortageCoreDemand + shortageBuDemand (unweighted, Phase 5.2). */
+  capacityPressureIndex: number;
+  /** Weighted capacity pressure index (Phase 5.3B). Analysis-only ranking weight, not a capacity formula. */
+  weightedPressureIndex: number;
   revenueShare?: number; // 0-100 of total revenue
-  capacityPressureShare?: number; // 0-100 of total capacity pressure index
+  capacityPressureShare?: number; // 0-100 of total weighted pressure index (used for classification)
+  /** Share of raw (unweighted) capacity pressure — for reference only. */
+  rawCapacityPressureShare?: number;
   classification: SkuHealthClassification;
   /** Legacy English reasons; UI should prefer reasonMessages. */
   reasons: string[];
   reasonMessages: LocalizedMessage[];
 }
 
+export interface PressureWeightConfig {
+  coreWeight: number;
+  buWeight: number;
+}
+
+/**
+ * Default analysis-only pressure ranking weights. Core is weighted higher than BU
+ * because Core capacity is typically the more constrained resource in ABF panels:
+ * once Core is saturated, no amount of BU headroom can rescue the affected SKUs.
+ *
+ * NOTE: This weight is used purely for ranking / health classification, NOT for
+ * any production capacity formula. See ANALYTICS_GUIDE.md → "Weighted Pressure".
+ */
+export const DEFAULT_PRESSURE_WEIGHT_CONFIG: PressureWeightConfig = {
+  coreWeight: 1.3,
+  buWeight: 1.0,
+};
+
 export interface RiskAttributionModel {
   shortageMonths: string[];
   drivers: RiskDriver[];
   skuHealthSignals: SkuHealthSignal[];
+  /** Analysis-only ranking weights used for weightedPressureIndex (Phase 5.3B). */
+  weightConfig: PressureWeightConfig;
 }
 
 // ============================================================
@@ -342,11 +377,12 @@ function collectInvalidSkuIds(skus: SKU[]): Set<string> {
 export function buildRiskAttributionModel(
   model: AnalyticsModel,
   skus: SKU[],
-  bpAnalysis?: BpAnalysisModel
+  bpAnalysis?: BpAnalysisModel,
+  weightConfig: PressureWeightConfig = DEFAULT_PRESSURE_WEIGHT_CONFIG
 ): RiskAttributionModel {
   // Empty state
   if (!model || model.skuResults.length === 0 || skus.length === 0) {
-    return { shortageMonths: [], drivers: [], skuHealthSignals: [] };
+    return { shortageMonths: [], drivers: [], skuHealthSignals: [], weightConfig };
   }
 
   const skuMap = new Map<string, SKU>();
@@ -507,7 +543,8 @@ export function buildRiskAttributionModel(
   }
 
   let totalRevenue = 0;
-  let totalPressureIndex = 0;
+  let totalRawPressureIndex = 0;
+  let totalWeightedPressureIndex = 0;
 
   for (const r of model.skuResults) {
     const agg = skuAgg.get(r.skuId);
@@ -519,7 +556,9 @@ export function buildRiskAttributionModel(
     if (shortageMonthSet.has(r.month)) {
       agg.shortageCoreDemand += r.corePanelDemand;
       agg.shortageBuDemand += r.buPanelDemand;
-      totalPressureIndex += r.corePanelDemand + r.buPanelDemand;
+      totalRawPressureIndex += r.corePanelDemand + r.buPanelDemand;
+      totalWeightedPressureIndex +=
+        r.corePanelDemand * weightConfig.coreWeight + r.buPanelDemand * weightConfig.buWeight;
     }
   }
 
@@ -532,8 +571,11 @@ export function buildRiskAttributionModel(
       continue;
     }
     const revenueShare = safeShare(agg.revenueUsd, totalRevenue);
-    const pressureValue = agg.shortageCoreDemand + agg.shortageBuDemand;
-    const capacityPressureShare = safeShare(pressureValue, totalPressureIndex);
+    const rawPressure = agg.shortageCoreDemand + agg.shortageBuDemand;
+    const weightedPressure =
+      agg.shortageCoreDemand * weightConfig.coreWeight + agg.shortageBuDemand * weightConfig.buWeight;
+    const rawCapacityPressureShare = safeShare(rawPressure, totalRawPressureIndex);
+    const capacityPressureShare = safeShare(weightedPressure, totalWeightedPressureIndex);
     const { classification, reasons, reasonMessages } = classifySku(agg, revenueShare, capacityPressureShare, invalidSkuIds);
     signals.push({
       skuId: agg.skuId,
@@ -544,15 +586,18 @@ export function buildRiskAttributionModel(
       buDemand: agg.buDemand,
       shortageCoreDemand: agg.shortageCoreDemand,
       shortageBuDemand: agg.shortageBuDemand,
+      capacityPressureIndex: rawPressure,
+      weightedPressureIndex: weightedPressure,
       revenueShare,
       capacityPressureShare,
+      rawCapacityPressureShare,
       classification,
       reasons,
       reasonMessages,
     });
   }
 
-  // Sort: dataIncomplete first (operational blocker), then by pressure share desc, then by revenue desc
+  // Sort: dataIncomplete first (operational blocker), then by weighted pressure share desc, then by revenue desc
   const priorityOrder: Record<SkuHealthClassification, number> = {
     dataIncomplete: 0,
     lowValueHighLoad: 1,
@@ -578,5 +623,6 @@ export function buildRiskAttributionModel(
     shortageMonths,
     drivers,
     skuHealthSignals: signals.slice(0, TOP_N_HEALTH),
+    weightConfig,
   };
 }
