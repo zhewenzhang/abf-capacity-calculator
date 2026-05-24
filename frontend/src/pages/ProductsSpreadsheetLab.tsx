@@ -4,7 +4,7 @@ import { SaveOutlined, UndoOutlined, PlusOutlined, ReloadOutlined, DownloadOutli
 import { DataSheetGrid, textColumn, intColumn, floatColumn, keyColumn } from 'react-datasheet-grid';
 import 'react-datasheet-grid/dist/style.css';
 import { getSKUs, batchSaveSKUs } from '../services/skuService';
-import { ExperimentalBanner } from '../components/common';
+import { ExperimentalBanner, PageLoading } from '../components/common';
 import { validateSKU } from '../core/validation';
 import { calculateSkuUpp, calculateSkuYieldEstimate, normalizeSkuDraft } from '../core/skuDerived';
 import { currencyOrUsd, normalizeCurrencyCode } from '../core/currency';
@@ -263,7 +263,7 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ scope }
     ];
   }, []);
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>;
+  if (loading) return <PageLoading />;
 
   return (
     <div>
@@ -308,13 +308,15 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ scope }
       </Space>
 
       {/* Grid */}
-      <DataSheetGrid<SheetRow>
-        value={rows}
-        onChange={handleChange}
-        columns={columns}
-        rowHeight={32}
-        height={Math.min(600, window.innerHeight - 280)}
-      />
+      <div className="spreadsheet-wrapper">
+        <DataSheetGrid<SheetRow>
+          value={rows}
+          onChange={handleChange}
+          columns={columns}
+          rowHeight={32}
+          height={Math.min(600, window.innerHeight - 280)}
+        />
+      </div>
     </div>
   );
 };

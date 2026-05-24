@@ -161,3 +161,141 @@ body {
 .rdg-cell.dirty-cell:hover {
   background-color: #ffe7ba !important;
 }
+
+/* =====================================================
+   react-datasheet-grid Visual Consistency (v1.27.0)
+   Align with Ant Design visual language
+   ===================================================== */
+
+/* Base grid container */
+.dsg-container {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 13px;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* Header row - match Ant Design Table header (#fafafa background) */
+.dsg-header-row {
+  background: #fafafa !important;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.dsg-header-row .dsg-cell {
+  background: #fafafa !important;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* Cell styling */
+.dsg-cell {
+  padding: 6px 8px !important;
+  border-right: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* Active cell selection - use Ant Design primary blue */
+.dsg-cell-active {
+  box-shadow: inset 0 0 0 2px #1677ff !important;
+  outline: none;
+}
+
+/* Selection highlight */
+.dsg-cell-selected {
+  background-color: #e6f4ff !important;
+}
+
+/* Disabled / Read-only cells - subtle gray background */
+.dsg-cell-disabled,
+.dsg-cell[disabled] {
+  background-color: #fafafa !important;
+  color: rgba(0, 0, 0, 0.45) !important;
+  cursor: not-allowed;
+}
+
+/* Row hover */
+.dsg-row:hover .dsg-cell:not(.dsg-cell-active) {
+  background-color: #fafafa;
+}
+
+/* Dirty cell - Ant Design warning color (#faad14) */
+.dsg-cell.dirty-cell {
+  background-color: #fffbe6 !important;
+  border-color: #faad14 !important;
+}
+
+.dsg-cell.dirty-cell:hover {
+  background-color: #fff1b8 !important;
+}
+
+/* Scrollbar styling for grid containers */
+.dsg-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dsg-container::-webkit-scrollbar-track {
+  background: #fafafa;
+}
+
+.dsg-container::-webkit-scrollbar-thumb {
+  background: #d9d9d9;
+  border-radius: 4px;
+}
+
+.dsg-container::-webkit-scrollbar-thumb:hover {
+  background: #bfbfbf;
+}
+
+/* Spreadsheet grid wrapper for horizontal scroll */
+.spreadsheet-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 6px;
+}
+
+.spreadsheet-wrapper .dsg-container {
+  min-width: max-content;
+}
+
+/* =====================================================
+   Empty State Component (v1.27.0)
+   ===================================================== */
+
+.empty-state-container {
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.empty-state-container .ant-empty-description {
+  display: block;
+}
+
+/* =====================================================
+   Card / Section Spacing Consistency (v1.27.0)
+   ===================================================== */
+
+/* Consistent section card margins */
+.section-card + .section-card {
+  margin-top: 16px;
+}
+
+/* Page-level card spacing */
+.page-card {
+  margin-bottom: 16px;
+}
+
+/* Alert spacing consistency */
+.page-alert {
+  margin-bottom: 8px;
+}
+
+/* Toolbar card compact style */
+.toolbar-card {
+  margin-bottom: 8px;
+}
+
+.toolbar-card .ant-card-body {
+  padding: 8px 12px;
+}

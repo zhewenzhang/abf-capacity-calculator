@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Button, message, Alert, Card, Row, Col, Tag, Typography, Select, Spin } from 'antd';
+import { Button, message, Alert, Card, Row, Col, Tag, Typography, Select } from 'antd';
 import { SaveOutlined, UndoOutlined, ExperimentOutlined } from '@ant-design/icons';
 import { DataSheetGrid, textColumn, intColumn, keyColumn } from 'react-datasheet-grid';
 import 'react-datasheet-grid/dist/style.css';
@@ -8,7 +8,7 @@ import { getForecasts, batchSaveForecasts, deleteForecast } from '../services/fo
 import type { SKU, Forecast, ProjectScope } from '../types';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
-import { ExperimentalBanner } from '../components/common';
+import { ExperimentalBanner, EmptyState, PageLoading } from '../components/common';
 
 const { Text } = Typography;
 
@@ -321,11 +321,7 @@ const ForecastsSpreadsheetLab: React.FC<ForecastsSpreadsheetLabProps> = ({ scope
 
   // ---------- Render ----------
   if (loading) {
-    return (
-      <div style={{ padding: 40, textAlign: 'center' }}>
-        <Spin size="large" tip={t('common.loading')} />
-      </div>
-    );
+    return <PageLoading />;
   }
 
   if (error) {
@@ -334,12 +330,9 @@ const ForecastsSpreadsheetLab: React.FC<ForecastsSpreadsheetLabProps> = ({ scope
 
   if (skus.length === 0) {
     return (
-      <Alert
-        message={t('forecastsLab.noSkus')}
+      <EmptyState
+        title={t('forecastsLab.noSkus')}
         description={t('forecastsLab.noSkusDesc')}
-        type="info"
-        showIcon
-        style={{ margin: 16 }}
       />
     );
   }
@@ -430,7 +423,7 @@ const ForecastsSpreadsheetLab: React.FC<ForecastsSpreadsheetLabProps> = ({ scope
       )}
 
       {/* Data grid */}
-      <div style={{ overflowX: 'auto' }}>
+      <div className="spreadsheet-wrapper">
         <DataSheetGrid<ForecastSheetRow>
           value={rows}
           onChange={handleRowsChange}
@@ -441,18 +434,6 @@ const ForecastsSpreadsheetLab: React.FC<ForecastsSpreadsheetLabProps> = ({ scope
           cellClassName={cellClassName}
         />
       </div>
-
-      {/* Horizontal scroll hint for narrow screens */}
-      <style>{`
-        .dirty-cell {
-          background-color: #fff7e6 !important;
-        }
-        @media (max-width: 1200px) {
-          .dsg-container {
-            min-width: 1000px;
-          }
-        }
-      `}</style>
     </div>
   );
 };

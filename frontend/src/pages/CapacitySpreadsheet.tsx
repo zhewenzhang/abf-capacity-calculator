@@ -8,7 +8,7 @@ import { getParameters } from '../services/parameterService';
 import type { CapacityMetric, ProjectScope } from '../types';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
-import { ExperimentalBanner } from '../components/common';
+import { ExperimentalBanner, EmptyState, PageLoading } from '../components/common';
 
 const { Text } = Typography;
 
@@ -305,16 +305,13 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ scope }) => {
   ];
 
   // ---------- Render ----------
-  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>{t('capacityLab.loading')}</div>;
+  if (loading) return <PageLoading />;
   if (error) return <Alert message={error} type="error" showIcon style={{ margin: 16 }} />;
   if (factories.length === 0) {
     return (
-      <Alert
-        message={t('capacityLab.noFactories')}
+      <EmptyState
+        title={t('capacityLab.noFactories')}
         description={t('capacityLab.setupFactories')}
-        type="warning"
-        showIcon
-        style={{ margin: 16 }}
       />
     );
   }
