@@ -46,6 +46,8 @@ A browser-based ABF (Ajinomoto Build-up Film) substrate capacity planning tool b
 
 ## Project Documentation
 
+### 技術文件
+
 | Document | Purpose |
 |----------|---------|
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Architecture, data flow, development rules, Firebase/Ant Design strategy, service modules |
@@ -53,8 +55,38 @@ A browser-based ABF (Ajinomoto Build-up Film) substrate capacity planning tool b
 | [UI_GUIDELINES.md](UI_GUIDELINES.md) | Ant Design theme tokens, shared components, table standards, severity coloring, language/currency conventions |
 | [ANALYTICS_GUIDE.md](ANALYTICS_GUIDE.md) | Dashboard/Results purpose, key metrics, matrix layout standard, AnalyticsModel structure |
 | [ANALYSIS_CONTRACT.md](ANALYSIS_CONTRACT.md) | Metric registry, data quality criteria, deterministic risk brief logic, AI export policy |
-| [docs/WORKSPACE_COLLABORATION.md](docs/WORKSPACE_COLLABORATION.md) | Workspace data model, roles, Firestore paths, invite flow, security rules |
+
+### 使用手冊
+
+| Document | Purpose |
+|----------|---------|
+| [docs/user-guide/README.md](docs/user-guide/README.md) | 使用手冊總覽與快速開始 |
+| [docs/user-guide/PRODUCTS.md](docs/user-guide/PRODUCTS.md) | 產品管理頁面操作說明 |
+| [docs/user-guide/FORECASTS.md](docs/user-guide/FORECASTS.md) | 預測管理頁面操作說明 |
+| [docs/user-guide/CAPACITY.md](docs/user-guide/CAPACITY.md) | 產能規劃頁面操作說明 |
+| [docs/user-guide/BP_TARGETS.md](docs/user-guide/BP_TARGETS.md) | 營業目標 BP 頁面操作說明 |
+| [docs/user-guide/RESULTS_AND_RISK_BRIEF.md](docs/user-guide/RESULTS_AND_RISK_BRIEF.md) | 分析結果與風險摘要說明 |
+| [docs/user-guide/WORKSPACE_COLLABORATION.md](docs/user-guide/WORKSPACE_COLLABORATION.md) | 工作區協作功能說明 |
+
+### 產品與開發
+
+| Document | Purpose |
+|----------|---------|
+| [docs/product/PROJECT_DEVELOPMENT_REVIEW_2026_05.md](docs/product/PROJECT_DEVELOPMENT_REVIEW_2026_05.md) | 專案開發歷程回顧與未來規劃 |
+| [docs/product/DEVELOPMENT_PRINCIPLES.md](docs/product/DEVELOPMENT_PRINCIPLES.md) | 開發紅線與設計原則 |
+
+### 品質保證
+
+| Document | Purpose |
+|----------|---------|
+| [docs/qa/SMOKE_TEST_MASTER_CHECKLIST.md](docs/qa/SMOKE_TEST_MASTER_CHECKLIST.md) | 完整煙霧測試檢查清單 |
 | [docs/WORKSPACE_SMOKE_TEST.md](docs/WORKSPACE_SMOKE_TEST.md) | Two-account manual checklist for verifying shared workspaces end-to-end |
+
+### 其他
+
+| Document | Purpose |
+|----------|---------|
+| [docs/WORKSPACE_COLLABORATION.md](docs/WORKSPACE_COLLABORATION.md) | Workspace data model, roles, Firestore paths, invite flow, security rules |
 | [docs/AI_BRIEF_EXPORT.md](docs/AI_BRIEF_EXPORT.md) | AI Brief Export feature: usage, sanitization, guardrails, security policy |
 | [docs/ai-eval/README.md](docs/ai-eval/README.md) | AI analysis evaluation kit: rubric, benchmark cases, scorecards, external AI test runbook, and safety guardrails |
 
