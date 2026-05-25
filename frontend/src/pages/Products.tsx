@@ -32,12 +32,18 @@ import type { ColumnsType } from 'antd/es/table';
 import * as XLSX from 'xlsx';
 import { getSKUs, saveSKU, deleteSKU, batchSaveSKUs } from '../services/skuService';
 import { saveVersion, getVersions, restoreVersion, deleteVersion } from '../services/skuVersionService';
-import type { CurrencyCode, SKU, SizeCategory, ProjectScope } from '../types';
+import { getForecasts } from '../services/forecastService';
+import { getCapacityPlans } from '../services/capacityService';
+import { getParameters } from '../services/parameterService';
+import type { CurrencyCode, SKU, SizeCategory, ProjectScope, Forecast, CapacityPlan, ProjectParameters } from '../types';
 import { canEdit } from '../services/projectScope';
-import { normalizeCurrencyCode } from '../core/currency';
+import { normalizeCurrencyCode, DEFAULT_CURRENCY_SETTINGS } from '../core/currency';
 import { validateSKU } from '../core/validation';
-import { DEFAULT_YIELD_MATRIX } from '../core/defaults';
+import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_WORKING_DAYS } from '../core/defaults';
 import { useI18n } from '../i18n';
+import { buildDataQualitySummary } from '../core/dataQuality';
+import { filterIssuesByDomain, findAllIssuesAffectingSku } from '../core/dataQualityVisibility';
+import { DataQualityBadge, DataQualityAlert } from '../components/common';
 
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -98,6 +104,11 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
   const [skus, setSkus] = useState<SKU[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // DQ visibility - additional data for full DQ summary
+  const [forecasts, setForecasts] = useState<Forecast[]>([]);
+  const [capacityPlans, setCapacityPlans] = useState<CapacityPlan[]>([]);
+  const [params, setParams] = useState<ProjectParameters | null>(null);
 
   // Inline add form
   const [addMode, setAddMode] = useState(false);
@@ -189,8 +200,16 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getSKUs(scope);
-      setSkus(data);
+      const [skuData, fcData, cpData, paramData] = await Promise.all([
+        getSKUs(scope),
+        getForecasts(scope).catch(() => [] as Forecast[]),
+        getCapacityPlans(scope).catch(() => [] as CapacityPlan[]),
+        getParameters(scope).catch(() => null),
+      ]);
+      setSkus(skuData);
+      setForecasts(fcData);
+      setCapacityPlans(cpData);
+      setParams(paramData);
     } catch (e: any) {
       setError(e.message || 'Failed to load SKUs');
     } finally {
@@ -214,6 +233,38 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
     loadSKUs();
     loadVersions();
   }, [scope]);
+
+  // --- DQ Visibility: Build summary and filter product-domain issues ---
+  const dqSummary = useMemo(() => {
+    if (skus.length === 0) return null;
+    return buildDataQualitySummary({
+      skus,
+      forecasts,
+      capacityPlans,
+      params: params ?? {
+        yieldMatrix: DEFAULT_YIELD_MATRIX,
+        panelParams: DEFAULT_PANEL_PARAMS,
+        defaultWorkingDays: DEFAULT_WORKING_DAYS,
+        currencySettings: DEFAULT_CURRENCY_SETTINGS,
+      },
+    });
+  }, [skus, forecasts, capacityPlans, params]);
+
+  const productDqIssues = useMemo(() => {
+    if (!dqSummary) return [];
+    return filterIssuesByDomain(dqSummary, 'products');
+  }, [dqSummary]);
+
+  const skuDqIssuesMap = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof findAllIssuesAffectingSku>>();
+    for (const sku of skus) {
+      const issues = findAllIssuesAffectingSku(productDqIssues, sku.id);
+      if (issues.length > 0) {
+        map.set(sku.id, issues);
+      }
+    }
+    return map;
+  }, [skus, productDqIssues]);
 
   // Filter by date
   const filteredSkus = useMemo(() => {
@@ -410,7 +461,33 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
 
   // --- Table columns ---
   const columns: ColumnsType<SKU> = [
-    { title: t('products.skuCode'), dataIndex: 'skuCode', key: 'skuCode', width: 120, sorter: (a, b) => a.skuCode.localeCompare(b.skuCode) },
+    {
+      title: t('products.skuCode'),
+      dataIndex: 'skuCode',
+      key: 'skuCode',
+      width: 140,
+      sorter: (a, b) => a.skuCode.localeCompare(b.skuCode),
+      render: (v: string, record: SKU) => {
+        const issues = skuDqIssuesMap.get(record.id);
+        if (!issues || issues.length === 0) return v;
+        const highestSeverity = issues.some((i) => i.severity === 'error') ? 'error' : issues.some((i) => i.severity === 'warning') ? 'warning' : 'info';
+        const tooltipContent = (
+          <div>
+            {issues.map((issue) => (
+              <div key={issue.id}>
+                {t(issue.detailMessage.key, issue.detailMessage.params as Record<string, string | number>)}
+              </div>
+            ))}
+          </div>
+        );
+        return (
+          <span>
+            {v}
+            <DataQualityBadge severity={highestSeverity} message={tooltipContent} />
+          </span>
+        );
+      },
+    },
     { title: t('products.customer'), dataIndex: 'customer', key: 'customer', width: 100 },
     { title: t('products.deviceName'), dataIndex: 'deviceName', key: 'deviceName', width: 100 },
     { title: t('products.osat'), dataIndex: 'osat', key: 'osat', width: 70 },
@@ -434,8 +511,38 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
       },
     },
     {
-      title: t('products.unitPrice'), dataIndex: 'unitPrice', key: 'unitPrice', width: 110, align: 'right' as const,
-      render: (v: number, r: SKU) => `${v?.toFixed(2)} ${r.unitPriceCurrency ?? 'USD'}`,
+      title: t('products.unitPrice'),
+      dataIndex: 'unitPrice',
+      key: 'unitPrice',
+      width: 130,
+      align: 'right' as const,
+      render: (v: number, r: SKU) => {
+        const issues = skuDqIssuesMap.get(r.id);
+        const zeroPriceIssue = issues?.find((i) => i.id === `sku-zero-price-${r.id}`);
+        const currencyIssue = issues?.find((i) => i.id === `sku-unsupported-currency-${r.id}`);
+
+        const priceText = `${v?.toFixed(2)} ${r.unitPriceCurrency ?? 'USD'}`;
+
+        if (!zeroPriceIssue && !currencyIssue) return priceText;
+
+        // Combine all DQ messages for this cell
+        const dqMessages: React.ReactNode[] = [];
+        if (zeroPriceIssue) {
+          dqMessages.push(t(zeroPriceIssue.detailMessage.key, zeroPriceIssue.detailMessage.params as Record<string, string | number>));
+        }
+        if (currencyIssue) {
+          dqMessages.push(t(currencyIssue.detailMessage.key, currencyIssue.detailMessage.params as Record<string, string | number>));
+        }
+
+        return (
+          <span>
+            <span style={zeroPriceIssue ? { backgroundColor: '#fffbe6', padding: '0 4px', borderRadius: 2 } : undefined}>
+              {priceText}
+            </span>
+            <DataQualityBadge severity="warning" message={<div>{dqMessages.map((m, i) => <div key={i}>{m}</div>)}</div>} />
+          </span>
+        );
+      },
     },
     { title: t('products.coreType'), dataIndex: 'coreType', key: 'coreType', width: 90, render: (v: string) => v || '-' },
     { title: t('products.coreThickness').replace(' (mm)', ''), key: 'coreThick', width: 80, render: (_: any, r: SKU) => r.coreThicknessMm ? `${r.coreThicknessMm}mm` : '-' },
@@ -477,6 +584,15 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
           message={t('common.readOnlyMode')}
           description={t('common.readOnlyDesc')}
           type="info" showIcon className="abf-alert-page"
+        />
+      )}
+
+      {/* DQ Alert for product-domain issues */}
+      {productDqIssues.length > 0 && (
+        <DataQualityAlert
+          issues={productDqIssues}
+          severityFilter={['error', 'warning']}
+          maxIssues={3}
         />
       )}
 

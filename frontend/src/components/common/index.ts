@@ -6,5 +6,7 @@ export { PageHeader } from './PageHeader';
 export { StatusTag } from './StatusTag';
 export { ActionBar } from './ActionBar';
 export { UnitText } from './UnitText';
+export { DataQualityBadge, DataQualityBadgeList } from './DataQualityBadge';
+export { DataQualityAlert, DataQualityIndicator } from './DataQualityAlert';
 export { default as PageLoading } from './PageLoading';
 export { default as EmptyState } from './EmptyState';

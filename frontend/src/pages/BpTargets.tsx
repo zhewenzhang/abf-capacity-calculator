@@ -1,13 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Button, message, Alert, Card } from 'antd';
-import { SaveOutlined, UndoOutlined } from '@ant-design/icons';
+import { Button, message, Alert, Card, Tooltip } from 'antd';
+import { SaveOutlined, UndoOutlined, WarningOutlined } from '@ant-design/icons';
 import { DataSheetGrid, textColumn, floatColumn, keyColumn } from 'react-datasheet-grid';
 import 'react-datasheet-grid/dist/style.css';
 import { getParameters, saveParameters } from '../services/parameterService';
-import type { ProjectScope } from '../types';
+import { getForecasts } from '../services/forecastService';
+import { getSKUs } from '../services/skuService';
+import type { ProjectScope, Forecast, SKU, ProjectParameters } from '../types';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
-import { PageLoading, ActionBar, UnitText } from '../components/common';
+import { PageLoading, ActionBar, UnitText, DataQualityAlert } from '../components/common';
+import { buildDataQualitySummary } from '../core/dataQuality';
+import { filterIssuesByDomain, findIssueByYear } from '../core/dataQualityVisibility';
 import {
   recordToRows,
   rowsToRecord,
@@ -28,6 +32,11 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
   const [rows, setRows] = useState<BpSheetRow[]>([]);
   const [savedSnapshot, setSavedSnapshot] = useState<BpSheetRow[]>([]);
 
+  // DQ visibility - additional data
+  const [forecasts, setForecasts] = useState<Forecast[]>([]);
+  const [skus, setSkus] = useState<SKU[]>([]);
+  const [params, setParams] = useState<ProjectParameters | null>(null);
+
   const writable = canEdit(scope.role);
 
   // ---------- Load parameters ----------
@@ -35,10 +44,18 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getParameters(scope);
-      const bpRecord = data.bpTargets?.yearlyRevenueTargetsMillionTwd || {};
+      const [paramData, fcData, skuData] = await Promise.all([
+        getParameters(scope),
+        getForecasts(scope).catch(() => [] as Forecast[]),
+        getSKUs(scope).catch(() => [] as SKU[]),
+      ]);
+      setParams(paramData);
+      setForecasts(fcData);
+      setSkus(skuData);
+
+      const bpRecord = paramData.bpTargets?.yearlyRevenueTargetsMillionTwd || {};
       const sheetRows = recordToRows(bpRecord, t('bpTargets.targetCol'));
-      
+
       setRows(JSON.parse(JSON.stringify(sheetRows)));
       setSavedSnapshot(JSON.parse(JSON.stringify(sheetRows)));
     } catch (e: any) {
@@ -51,6 +68,39 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // ---------- DQ Visibility ----------
+  const dqSummary = useMemo(() => {
+    if (!params || skus.length === 0) return null;
+    return buildDataQualitySummary({
+      skus,
+      forecasts,
+      capacityPlans: [],
+      params,
+    });
+  }, [skus, forecasts, params]);
+
+  const bpDqIssues = useMemo(() => {
+    if (!dqSummary) return [];
+    return filterIssuesByDomain(dqSummary, 'bp');
+  }, [dqSummary]);
+
+  // Build a map of year -> DQ issue for cell-level indicators
+  const yearDqIssueMap = useMemo(() => {
+    const map = new Map<string, { type: 'zero-forecast' | 'missing-target'; issue: NonNullable<ReturnType<typeof findIssueByYear>> }>();
+    for (let y = START_YEAR; y <= END_YEAR; y++) {
+      const zeroFcIssue = findIssueByYear(bpDqIssues, String(y), 'bp-target-zero-forecast');
+      if (zeroFcIssue) {
+        map.set(String(y), { type: 'zero-forecast', issue: zeroFcIssue });
+        continue;
+      }
+      const missingTargetIssue = findIssueByYear(bpDqIssues, String(y), 'forecast-missing-bp-target');
+      if (missingTargetIssue) {
+        map.set(String(y), { type: 'missing-target', issue: missingTargetIssue });
+      }
+    }
+    return map;
+  }, [bpDqIssues]);
 
   // ---------- Dirty check ----------
   const isDirty = useMemo(() => {
@@ -84,10 +134,22 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
   const columns = useMemo(() => {
     const yearCols = [];
     for (let year = START_YEAR; year <= END_YEAR; year++) {
+      const yearStr = String(year);
+      const dqInfo = yearDqIssueMap.get(yearStr);
+
       yearCols.push(
-        keyColumn<BpSheetRow, any>(String(year), {
+        keyColumn<BpSheetRow, any>(yearStr, {
           ...floatColumn,
-          title: String(year),
+          title: (
+            <span>
+              {yearStr}
+              {dqInfo && (
+                <Tooltip title={t(dqInfo.issue.detailMessage.key, dqInfo.issue.detailMessage.params as Record<string, string | number>)}>
+                  <WarningOutlined style={{ color: '#faad14', marginLeft: 4, fontSize: 12 }} />
+                </Tooltip>
+              )}
+            </span>
+          ),
           basis: 110,
           grow: 0,
           shrink: 0,
@@ -176,6 +238,15 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
           type="info"
           showIcon
           className="abf-alert-page"
+        />
+      )}
+
+      {/* DQ Alert for BP-domain issues */}
+      {bpDqIssues.length > 0 && (
+        <DataQualityAlert
+          issues={bpDqIssues}
+          severityFilter={['warning']}
+          maxIssues={3}
         />
       )}
 

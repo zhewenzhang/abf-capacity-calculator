@@ -43,10 +43,15 @@ import {
 import { getCapacityPlans, batchSaveCapacityPlans } from '../services/capacityService';
 import { getParameters, saveParameters } from '../services/parameterService';
 import { saveVersion, getVersions, deleteVersion, restoreVersion } from '../services/versionService';
+import { getSKUs } from '../services/skuService';
+import { getForecasts } from '../services/forecastService';
 import { generateDefaultCapacityPlans, generateMonths } from '../core/defaults';
-import type { CapacityPlan, FactoryDef, ProjectParameters, ProjectScope } from '../types';
+import { buildDataQualitySummary } from '../core/dataQuality';
+import { filterIssuesByDomain } from '../core/dataQualityVisibility';
+import type { CapacityPlan, FactoryDef, ProjectParameters, ProjectScope, SKU, Forecast } from '../types';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
+import { DataQualityAlert } from '../components/common';
 
 const { Text } = Typography;
 
@@ -87,6 +92,10 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ scope }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
+
+  // DQ visibility - additional data
+  const [skus, setSkus] = useState<SKU[]>([]);
+  const [forecasts, setForecasts] = useState<Forecast[]>([]);
 
   // Editable factories
   const [factories, setFactories] = useState<FactoryDef[]>([]);
@@ -147,12 +156,16 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ scope }) => {
     setLoading(true);
     setError(null);
     try {
-      const [planData, params] = await Promise.all([
+      const [planData, params, skuData, fcData] = await Promise.all([
         getCapacityPlans(scope),
         getParameters(scope),
+        getSKUs(scope).catch(() => [] as SKU[]),
+        getForecasts(scope).catch(() => [] as Forecast[]),
       ]);
       setPlans(planData);
       setWorkingDays(params.defaultWorkingDays || 28);
+      setSkus(skuData);
+      setForecasts(fcData);
 
       const loadedFactories = (params as any).factories;
       if (loadedFactories && loadedFactories.length > 0) {
@@ -186,6 +199,27 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ scope }) => {
   useEffect(() => {
     loadPlans();
   }, [scope]);
+
+  // ---------- DQ Visibility ----------
+  const dqSummary = useMemo(() => {
+    if (skus.length === 0 || plans.length === 0) return null;
+    return buildDataQualitySummary({
+      skus,
+      forecasts,
+      capacityPlans: plans,
+      params: {
+        yieldMatrix: {} as any,
+        panelParams: {} as any,
+        defaultWorkingDays: workingDays,
+        currencySettings: {} as any,
+      },
+    });
+  }, [skus, forecasts, plans, workingDays]);
+
+  const capacityDqIssues = useMemo(() => {
+    if (!dqSummary) return [];
+    return filterIssuesByDomain(dqSummary, 'capacity');
+  }, [dqSummary]);
 
   const getCell = useCallback(
     (month: string, factoryId: string): CellData => {
@@ -627,6 +661,15 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ scope }) => {
       {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       {!writable && (
         <Alert message={t('common.readOnlyMode')} description={t('common.readOnlyDesc')} type="info" showIcon className="abf-alert-page" />
+      )}
+
+      {/* DQ Alert for capacity-domain issues */}
+      {capacityDqIssues.length > 0 && (
+        <DataQualityAlert
+          issues={capacityDqIssues}
+          severityFilter={['error', 'warning']}
+          maxIssues={3}
+        />
       )}
 
       {/* View mode + toolbar */}

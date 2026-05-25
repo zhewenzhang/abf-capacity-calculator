@@ -16,6 +16,7 @@ import {
   Tag,
   Typography,
   Switch,
+  Tooltip,
 } from 'antd';
 import {
   UploadOutlined,
@@ -31,10 +32,17 @@ import type { ColumnsType } from 'antd/es/table';
 import * as XLSX from 'xlsx';
 import { getForecasts, batchSaveForecasts, deleteForecast } from '../services/forecastService';
 import { getSKUs } from '../services/skuService';
-import type { Forecast, SKU, ProjectScope } from '../types';
+import { getParameters } from '../services/parameterService';
+import { getCapacityPlans } from '../services/capacityService';
+import type { Forecast, SKU, ProjectScope, CapacityPlan, ProjectParameters } from '../types';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
 import { buildYearlyGrowthForecasts } from '../core/forecastGrowth';
+import { buildDataQualitySummary } from '../core/dataQuality';
+import { filterIssuesByDomain, findAllIssuesAffectingSku } from '../core/dataQualityVisibility';
+import { DataQualityAlert, DataQualityBadge } from '../components/common';
+import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_WORKING_DAYS } from '../core/defaults';
+import { DEFAULT_CURRENCY_SETTINGS } from '../core/currency';
 import { Segmented } from 'antd';
 
 const { Text } = Typography;
@@ -117,6 +125,10 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // DQ visibility - additional data
+  const [capacityPlans, setCapacityPlans] = useState<CapacityPlan[]>([]);
+  const [params, setParams] = useState<ProjectParameters | null>(null);
+
   // editingCells stores RAW PCS values (not K)
   // key = "skuId-month", value = number (PCS)
   const [editingCells, setEditingCells] = useState<Record<string, number>>({});
@@ -145,12 +157,16 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
     setLoading(true);
     setError(null);
     try {
-      const [skuData, fcData] = await Promise.all([
+      const [skuData, fcData, cpData, paramData] = await Promise.all([
         getSKUs(scope),
         getForecasts(scope),
+        getCapacityPlans(scope).catch(() => [] as CapacityPlan[]),
+        getParameters(scope).catch(() => null),
       ]);
       setSkus(skuData);
       setForecasts(fcData);
+      setCapacityPlans(cpData);
+      setParams(paramData);
     } catch (e: any) {
       setError(e.message || 'Failed to load data');
     } finally {
@@ -159,6 +175,39 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
   }, [scope]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // ---------- DQ Visibility ----------
+  const dqSummary = useMemo(() => {
+    if (skus.length === 0) return null;
+    return buildDataQualitySummary({
+      skus,
+      forecasts,
+      capacityPlans,
+      params: params ?? {
+        yieldMatrix: DEFAULT_YIELD_MATRIX,
+        panelParams: DEFAULT_PANEL_PARAMS,
+        defaultWorkingDays: DEFAULT_WORKING_DAYS,
+        currencySettings: DEFAULT_CURRENCY_SETTINGS,
+      },
+    });
+  }, [skus, forecasts, capacityPlans, params]);
+
+  const forecastDqIssues = useMemo(() => {
+    if (!dqSummary) return [];
+    return filterIssuesByDomain(dqSummary, 'forecast');
+  }, [dqSummary]);
+
+  // Build a map of SKU ID -> DQ issues for row-level indicators
+  const skuDqIssuesMap = useMemo(() => {
+    const map = new Map<string, typeof forecastDqIssues>();
+    for (const sku of skus) {
+      const issues = findAllIssuesAffectingSku(forecastDqIssues, sku.id);
+      if (issues.length > 0) {
+        map.set(sku.id, issues);
+      }
+    }
+    return map;
+  }, [skus, forecastDqIssues]);
 
   // Build forecast lookup: skuId -> month -> Forecast
   const forecastMap = useMemo(() => {
@@ -733,6 +782,26 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
       width: 110,
       fixed: 'left' as const,
       sorter: (a, b) => a.skuCode.localeCompare(b.skuCode),
+      render: (skuCode: string, sku: SKU) => {
+        const issues = skuDqIssuesMap.get(sku.id);
+        if (issues && issues.length > 0) {
+          // Find highest severity
+          const hasError = issues.some(i => i.severity === 'error');
+          const severity = hasError ? 'error' : 'warning';
+          const badgeMessage = issues.map(i => t(i.detailMessage.key, i.detailMessage.params as Record<string, string | number>)).join('; ');
+          return (
+            <Space size={4}>
+              {skuCode}
+              <Tooltip title={badgeMessage}>
+                <span style={{ cursor: 'pointer' }}>
+                  <DataQualityBadge severity={severity} message={badgeMessage} size={12} />
+                </span>
+              </Tooltip>
+            </Space>
+          );
+        }
+        return skuCode;
+      },
     },
     { title: t('forecasts.customer'), dataIndex: 'customer', key: 'customer', width: 100, fixed: 'left' as const },
     { title: t('forecasts.device'), dataIndex: 'deviceName', key: 'deviceName', width: 100, fixed: 'left' as const },
@@ -777,6 +846,15 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
       {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       {!writable && (
         <Alert message={t('common.readOnlyMode')} description={t('common.readOnlyDesc')} type="info" showIcon className="abf-alert-page" />
+      )}
+
+      {/* DQ Alert for forecast-domain issues */}
+      {forecastDqIssues.length > 0 && (
+        <DataQualityAlert
+          issues={forecastDqIssues}
+          severityFilter={['error', 'warning']}
+          maxIssues={3}
+        />
       )}
 
       {/* Toolbar */}
