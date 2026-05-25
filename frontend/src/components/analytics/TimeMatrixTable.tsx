@@ -1,6 +1,7 @@
 import React from 'react';
 import { Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { formatNumber, isValidNumber } from '../../core/formatters';
 
 export interface TimeMatrixRow {
   /** Row label (displayed text) */
@@ -43,10 +44,11 @@ export const TimeMatrixTable: React.FC<TimeMatrixTableProps> = ({
       key: col,
       width: 100,
       align: 'right' as const,
-      render: (val: number | undefined) => {
-        if (val === undefined || val === 0) return '-';
+      render: (val: number | undefined | null) => {
+        // Use unified formatter - 0 is valid, null/undefined/NaN show '—'
+        if (!isValidNumber(val)) return '—';
         if (formatValue) return formatValue(val);
-        return val.toLocaleString();
+        return formatNumber(val);
       },
     })),
   ];

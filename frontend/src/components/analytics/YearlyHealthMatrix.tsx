@@ -3,7 +3,7 @@ import { Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { TimeMatrixRow } from './TimeMatrixTable';
 import type { CurrencySettings } from '../../core/currency';
-import { formatCurrency } from '../../core/currency';
+import { formatCurrencyDisplay, formatPercent, formatNumber, isValidNumber } from '../../core/formatters';
 
 const { Text } = Typography;
 
@@ -19,14 +19,17 @@ export interface YearlyHealthMatrixProps {
  */
 export const YearlyHealthMatrix: React.FC<YearlyHealthMatrixProps> = ({ rows, years, currencySettings }) => {
   const fmtCellValue = (metricType: string | undefined, val: number, year: string): React.ReactNode => {
+    // Handle invalid values first
+    if (!isValidNumber(val)) return '—';
+
     if (metricType === 'revenue') {
-      return formatCurrency(val, currencySettings, year);
+      return formatCurrencyDisplay(val, currencySettings, { year });
     }
     if (metricType === 'utilization') {
       if (val >= 999) return <Tag color="red">Over</Tag>;
-      if (val > 100) return <Tag color="red">{val.toFixed(1)}%</Tag>;
-      if (val >= 85) return <Tag color="orange">{val.toFixed(1)}%</Tag>;
-      return <Tag color="green">{val.toFixed(1)}%</Tag>;
+      if (val > 100) return <Tag color="red">{formatPercent(val, { inputIsPercent: true })}</Tag>;
+      if (val >= 85) return <Tag color="orange">{formatPercent(val, { inputIsPercent: true })}</Tag>;
+      return <Tag color="green">{formatPercent(val, { inputIsPercent: true })}</Tag>;
     }
     if (metricType === 'bottleneck') {
       if (val === 0) return <Tag color="green">None</Tag>;
@@ -34,10 +37,10 @@ export const YearlyHealthMatrix: React.FC<YearlyHealthMatrixProps> = ({ rows, ye
       return <Tag color="red">BU</Tag>;
     }
     if (metricType === 'shortage') {
-      if (val > 0) return <Text type="danger">{val}</Text>;
+      if (val > 0) return <Text type="danger">{formatNumber(val)}</Text>;
       return '0';
     }
-    return val.toLocaleString();
+    return formatNumber(val);
   };
 
   const columns: ColumnsType<any> = [
@@ -55,14 +58,15 @@ export const YearlyHealthMatrix: React.FC<YearlyHealthMatrixProps> = ({ rows, ye
       key: year,
       width: 110,
       align: 'right' as const,
-      render: (val: number | undefined, r: any) => {
+      render: (val: number | undefined | null, r: any) => {
         const mt = r.metricType as string | undefined;
-        if (val === undefined || val === 0) {
-          if (mt === 'utilization') return '-';
+        // Handle null/undefined/NaN - but 0 is valid data
+        if (!isValidNumber(val)) {
           if (mt === 'bottleneck') return <Tag color="green">None</Tag>;
-          if (mt === 'shortage') return '0';
-          return '-';
+          return '—';
         }
+        // Special case: utilization of 0 means no demand, not "missing"
+        if (val === 0 && mt === 'utilization') return '0.0%';
         return fmtCellValue(mt, val, year);
       },
     })),

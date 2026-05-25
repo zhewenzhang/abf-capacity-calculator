@@ -42,7 +42,7 @@ const BpTargetsPage = lazy(() => import('./pages/BpTargets'));
 const { Sider, Content } = Layout;
 const { Title } = Typography;
 
-const APP_VERSION = 'v1.32.0';
+const APP_VERSION = 'v1.33.0';
 
 // --- Sidebar with i18n ---
 const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }> = ({ current, onMenuClick }) => {
