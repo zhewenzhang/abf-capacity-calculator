@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Button, message, Tag, Space, Typography } from 'antd';
+import { Button, message, Tag, Space, Typography, Alert } from 'antd';
 import { SaveOutlined, UndoOutlined, PlusOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/icons';
 import { DataSheetGrid, textColumn, intColumn, floatColumn, keyColumn } from 'react-datasheet-grid';
 import 'react-datasheet-grid/dist/style.css';
@@ -145,9 +145,11 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ scope }
   useEffect(() => { loadSKUs(); }, [loadSKUs]);
 
   const handleChange = useCallback((newRows: SheetRow[]) => {
+    // Guard: Prevent state changes for viewers
+    if (!writable) return;
     const derived = newRows.map(r => deriveRow(r));
     setRows(derived);
-  }, []);
+  }, [writable]);
 
   const handleValidate = useCallback(() => {
     const validated = rows.map(r => {
@@ -233,21 +235,21 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ scope }
     const fc = { ...floatColumn };
     const ic = { ...intColumn };
     return [
-      keyColumn<SheetRow, 'skuCode'>('skuCode', { ...tc, title: 'SKU Code', width: 100 }),
-      keyColumn<SheetRow, 'customer'>('customer', { ...tc, title: 'Customer', width: 90 }),
-      keyColumn<SheetRow, 'deviceName'>('deviceName', { ...tc, title: 'Device', width: 90 }),
-      keyColumn<SheetRow, 'osat'>('osat', { ...tc, title: 'OSAT', width: 70 }),
-      keyColumn<SheetRow, 'application'>('application', { ...tc, title: 'Application', width: 90 }),
-      keyColumn<SheetRow, 'productGrade'>('productGrade', { ...tc, title: 'Grade', width: 70 }),
-      keyColumn<SheetRow, 'sizeCategory'>('sizeCategory', { ...tc, title: 'Size', width: 70 }),
-      keyColumn<SheetRow, 'chipLengthMm'>('chipLengthMm', { ...fc, title: 'Chip L (mm)', width: 80 }),
-      keyColumn<SheetRow, 'chipWidthMm'>('chipWidthMm', { ...fc, title: 'Chip W (mm)', width: 80 }),
-      keyColumn<SheetRow, 'layerCount'>('layerCount', { ...ic, title: 'Layers', width: 60 }),
-      keyColumn<SheetRow, 'unitPrice'>('unitPrice', { ...fc, title: 'Price', width: 80 }),
-      keyColumn<SheetRow, 'unitPriceCurrency'>('unitPriceCurrency', { ...tc, title: 'Currency', width: 80 }),
-      keyColumn<SheetRow, 'coreType'>('coreType', { ...tc, title: 'Core', width: 80 }),
-      keyColumn<SheetRow, 'coreThicknessMm'>('coreThicknessMm', { ...fc, title: 'Thick (mm)', width: 75 }),
-      keyColumn<SheetRow, 'abfType'>('abfType', { ...tc, title: 'ABF', width: 60 }),
+      keyColumn<SheetRow, 'skuCode'>('skuCode', { ...tc, title: 'SKU Code', width: 100, disabled: !writable }),
+      keyColumn<SheetRow, 'customer'>('customer', { ...tc, title: 'Customer', width: 90, disabled: !writable }),
+      keyColumn<SheetRow, 'deviceName'>('deviceName', { ...tc, title: 'Device', width: 90, disabled: !writable }),
+      keyColumn<SheetRow, 'osat'>('osat', { ...tc, title: 'OSAT', width: 70, disabled: !writable }),
+      keyColumn<SheetRow, 'application'>('application', { ...tc, title: 'Application', width: 90, disabled: !writable }),
+      keyColumn<SheetRow, 'productGrade'>('productGrade', { ...tc, title: 'Grade', width: 70, disabled: !writable }),
+      keyColumn<SheetRow, 'sizeCategory'>('sizeCategory', { ...tc, title: 'Size', width: 70, disabled: !writable }),
+      keyColumn<SheetRow, 'chipLengthMm'>('chipLengthMm', { ...fc, title: 'Chip L (mm)', width: 80, disabled: !writable }),
+      keyColumn<SheetRow, 'chipWidthMm'>('chipWidthMm', { ...fc, title: 'Chip W (mm)', width: 80, disabled: !writable }),
+      keyColumn<SheetRow, 'layerCount'>('layerCount', { ...ic, title: 'Layers', width: 60, disabled: !writable }),
+      keyColumn<SheetRow, 'unitPrice'>('unitPrice', { ...fc, title: 'Price', width: 80, disabled: !writable }),
+      keyColumn<SheetRow, 'unitPriceCurrency'>('unitPriceCurrency', { ...tc, title: 'Currency', width: 80, disabled: !writable }),
+      keyColumn<SheetRow, 'coreType'>('coreType', { ...tc, title: 'Core', width: 80, disabled: !writable }),
+      keyColumn<SheetRow, 'coreThicknessMm'>('coreThicknessMm', { ...fc, title: 'Thick (mm)', width: 75, disabled: !writable }),
+      keyColumn<SheetRow, 'abfType'>('abfType', { ...tc, title: 'ABF', width: 60, disabled: !writable }),
       { title: 'UPP', width: 50, disabled: true, cellRenderer: ({ rowData }: any) => rowData.upp ?? '-' },
       { title: 'Yield', width: 55, disabled: true, cellRenderer: ({ rowData }: any) => rowData.yieldEstimate != null ? `${(rowData.yieldEstimate * 100).toFixed(0)}%` : '-' },
       {
@@ -261,9 +263,20 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ scope }
         },
       },
     ];
-  }, []);
+  }, [writable]);
 
   if (loading) return <PageLoading />;
+
+  // Read-only warning for viewers
+  const readOnlyWarning = !writable && (
+    <Alert
+      message="Read-only Mode"
+      description="You are a viewer in this workspace. Editing is disabled."
+      type="warning"
+      showIcon
+      style={{ marginBottom: 8 }}
+    />
+  );
 
   return (
     <div>
@@ -281,6 +294,9 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ scope }
           </>
         }
       />
+
+      {/* Read-only warning for viewers */}
+      {readOnlyWarning}
 
       {/* Toolbar */}
       <Space wrap style={{ marginBottom: 8 }}>

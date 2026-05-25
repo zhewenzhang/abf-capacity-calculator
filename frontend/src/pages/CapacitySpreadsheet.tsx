@@ -153,19 +153,24 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ scope }) => {
           grow: 0,
           shrink: 0,
           minWidth: 60,
+          disabled: !writable,
         } as any)
       ),
     ];
-  }, []);
+  }, [t, writable]);
 
   // ---------- Row change handlers ----------
   const handleCoreRowsChange = useCallback((newRows: CapacitySheetRow[]) => {
+    // Guard: Prevent state changes for viewers
+    if (!writable) return;
     setCoreRows(newRows);
-  }, []);
+  }, [writable]);
 
   const handleBuRowsChange = useCallback((newRows: CapacitySheetRow[]) => {
+    // Guard: Prevent state changes for viewers
+    if (!writable) return;
     setBuRows(newRows);
-  }, []);
+  }, [writable]);
 
   // ---------- Dirty count per tab ----------
   const coreDirtyCount = useMemo(() => {
@@ -271,15 +276,17 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ scope }) => {
         </Space>
       ),
       children: (
-        <DataSheetGrid<CapacitySheetRow>
-          value={coreRows}
-          onChange={handleCoreRowsChange}
-          columns={columns}
-          rowHeight={36}
-          height={gridHeight}
-          lockRows={true}
-          cellClassName={buildCellClassName('core')}
-        />
+        <div className="spreadsheet-wrapper">
+          <DataSheetGrid<CapacitySheetRow>
+            value={coreRows}
+            onChange={handleCoreRowsChange}
+            columns={columns}
+            rowHeight={36}
+            height={gridHeight}
+            lockRows={true}
+            cellClassName={buildCellClassName('core')}
+          />
+        </div>
       ),
     },
     {
@@ -291,15 +298,17 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ scope }) => {
         </Space>
       ),
       children: (
-        <DataSheetGrid<CapacitySheetRow>
-          value={buRows}
-          onChange={handleBuRowsChange}
-          columns={columns}
-          rowHeight={36}
-          height={gridHeight}
-          lockRows={true}
-          cellClassName={buildCellClassName('bu')}
-        />
+        <div className="spreadsheet-wrapper">
+          <DataSheetGrid<CapacitySheetRow>
+            value={buRows}
+            onChange={handleBuRowsChange}
+            columns={columns}
+            rowHeight={36}
+            height={gridHeight}
+            lockRows={true}
+            cellClassName={buildCellClassName('bu')}
+          />
+        </div>
       ),
     },
   ];
@@ -369,6 +378,17 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ scope }) => {
           type="warning"
           showIcon
           style={{ marginBottom: 8, fontSize: 12 }}
+        />
+      )}
+
+      {/* Read-only warning for viewers */}
+      {!writable && (
+        <Alert
+          message={t('common.readOnlyMode')}
+          description={t('common.readOnlyDesc')}
+          type="warning"
+          showIcon
+          style={{ marginBottom: 8 }}
         />
       )}
 

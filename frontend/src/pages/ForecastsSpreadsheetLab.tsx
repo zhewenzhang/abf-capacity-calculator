@@ -192,8 +192,10 @@ const ForecastsSpreadsheetLab: React.FC<ForecastsSpreadsheetLabProps> = ({ scope
 
   // ---------- Row change handler ----------
   const handleRowsChange = useCallback((newRows: ForecastSheetRow[]) => {
+    // Guard: Prevent state changes for viewers
+    if (!writable) return;
     setRows(newRows);
-  }, []);
+  }, [writable]);
 
   // ---------- Save ----------
   const handleSave = async () => {
