@@ -9,7 +9,7 @@ const SetupPage: React.FC = () => {
   const { t } = useI18n();
 
   return (
-    <div style={{ maxWidth: 800, margin: '80px auto', padding: 24 }}>
+    <div className="abf-page" style={{ maxWidth: 800, margin: '80px auto' }}>
       <Result
         icon={<WarningOutlined />}
         title={t('setup.title')}

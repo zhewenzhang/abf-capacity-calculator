@@ -22,6 +22,7 @@ import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_WORKING_DAYS } from
 import { useI18n } from '../i18n';
 import { useAppPrefs } from '../context/AppPreferencesContext';
 import { DEFAULT_CURRENCY_SETTINGS, type CurrencySettings, normalizeCurrencySettings } from '../core/currency';
+import { ActionBar } from '../components/common';
 
 const { Text } = Typography;
 
@@ -229,22 +230,24 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
     .map(([year, rate]) => ({ year, rate }));
 
   return (
-    <div>
-      {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
+    <div className="abf-page">
+      {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       <WorkspaceSettingsPanel />
       {!writable && (
-        <Alert message={t('common.readOnlyMode')} description={t('common.readOnlyDesc')} type="info" showIcon style={{ marginBottom: 16 }} />
+        <Alert message={t('common.readOnlyMode')} description={t('common.readOnlyDesc')} type="info" showIcon className="abf-alert-page" />
       )}
-      <Space style={{ marginBottom: 16 }}>
+
+      {/* ActionBar with Save / Restore */}
+      <ActionBar>
         <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving} disabled={!writable}>
           {t('parameters.save')}
         </Button>
         <Popconfirm title={t('parameters.restore')} onConfirm={handleRestoreDefaults} disabled={!writable}>
           <Button icon={<UndoOutlined />} disabled={!writable}>{t('parameters.restore')}</Button>
         </Popconfirm>
-      </Space>
+      </ActionBar>
 
-      <Card title={t('parameters.yieldMatrix')} style={{ marginBottom: 16 }}>
+      <Card title={t('parameters.yieldMatrix')} className="abf-section">
         <Table
           columns={yieldColumns}
           dataSource={yieldData}
@@ -254,7 +257,7 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
         />
       </Card>
 
-      <Card title={t('parameters.panelParams')} style={{ marginBottom: 16 }}>
+      <Card title={t('parameters.panelParams')} className="abf-section">
         <Form form={form} layout="inline">
           <Form.Item name="defaultWorkingDays" label={t('parameters.workingDays')}>
             <InputNumber min={1} max={31} />
@@ -277,7 +280,7 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
         </Form>
       </Card>
 
-      <Card title={t('parameters.currencySettings')} style={{ marginBottom: 16 }}>
+      <Card title={t('parameters.currencySettings')} className="abf-section">
         <Form layout="inline">
           <Form.Item label={t('parameters.baseCurrency')}>
             <span style={{ lineHeight: '32px' }}>USD</span>
@@ -367,9 +370,10 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
       </Card>
 
       {/* BP Targets Section - Redirect Card (v1.29.0) */}
-      <Card 
-        title={t('parameters.bpTargetsRedirectCardTitle')} 
-        style={{ marginBottom: 16, border: '1px dashed #d9d9d9' }}
+      <Card
+        title={t('parameters.bpTargetsRedirectCardTitle')}
+        className="abf-section"
+        style={{ border: '1px dashed #d9d9d9' }}
       >
         <Space direction="vertical" style={{ width: '100%' }}>
           <Text type="secondary">

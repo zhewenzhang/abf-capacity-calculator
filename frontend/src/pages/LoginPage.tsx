@@ -24,7 +24,7 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f0f2f5' }}>
+    <div className="abf-page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f0f2f5' }}>
       <Card style={{ width: 400, textAlign: 'center' }}>
         <Title level={3}>{t('app.title')}</Title>
         <p style={{ color: '#666', marginBottom: 24 }}>{t('login.subtitle')}</p>
