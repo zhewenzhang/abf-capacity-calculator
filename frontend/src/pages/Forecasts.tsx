@@ -25,6 +25,7 @@ import {
   ClearOutlined,
   SyncOutlined,
   SaveOutlined,
+  UndoOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import * as XLSX from 'xlsx';
@@ -34,6 +35,7 @@ import type { Forecast, SKU, ProjectScope } from '../types';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
 import { buildYearlyGrowthForecasts } from '../core/forecastGrowth';
+import { Segmented } from 'antd';
 
 const { Text } = Typography;
 
@@ -771,15 +773,15 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
         : handleYearlyGrowth;
 
   return (
-    <div>
-      {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
+    <div className="abf-page">
+      {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       {!writable && (
-        <Alert message={t('common.readOnlyMode')} description={t('common.readOnlyDesc')} type="info" showIcon style={{ marginBottom: 16 }} />
+        <Alert message={t('common.readOnlyMode')} description={t('common.readOnlyDesc')} type="info" showIcon className="abf-alert-page" />
       )}
 
       {/* Toolbar */}
       <Card size="small" style={{ marginBottom: 16 }}>
-        <Row gutter={[12, 8]} align="middle">
+        <Row gutter={[12, 8]} align="middle" wrap>
           <Col>
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleImport} style={{ display: 'none' }} />
             <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>{t('forecasts.template')}</Button>
@@ -800,33 +802,22 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
           </Col>
           {hasChanges && (
             <Col>
-              <Button onClick={handleDiscardEdits}>{t('forecasts.discard')}</Button>
+              <Button icon={<UndoOutlined />} onClick={handleDiscardEdits}>{t('forecasts.discard')}</Button>
             </Col>
           )}
           <Col flex="auto" />
 
-          {/* View mode buttons */}
+          {/* View mode buttons - using Segmented */}
           <Col>
-            <Space.Compact>
-              <Button
-                type={viewMode === 'month' ? 'primary' : 'default'}
-                onClick={() => { setViewMode('month'); setPeriodEditEnabled(false); }}
-              >
-                {t('forecasts.month')}
-              </Button>
-              <Button
-                type={viewMode === 'quarter' ? 'primary' : 'default'}
-                onClick={() => { setViewMode('quarter'); setPeriodEditEnabled(false); }}
-              >
-                {t('forecasts.quarter')}
-              </Button>
-              <Button
-                type={viewMode === 'year' ? 'primary' : 'default'}
-                onClick={() => { setViewMode('year'); setPeriodEditEnabled(false); }}
-              >
-                {t('forecasts.year')}
-              </Button>
-            </Space.Compact>
+            <Segmented
+              value={viewMode}
+              onChange={(v) => { setViewMode(v as ViewMode); setPeriodEditEnabled(false); }}
+              options={[
+                { label: t('forecasts.month'), value: 'month' },
+                { label: t('forecasts.quarter'), value: 'quarter' },
+                { label: t('forecasts.year'), value: 'year' },
+              ]}
+            />
           </Col>
 
           {/* Edit toggle */}

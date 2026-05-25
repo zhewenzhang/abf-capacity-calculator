@@ -420,7 +420,7 @@ const ForecastsSpreadsheetLab: React.FC<ForecastsSpreadsheetLabProps> = ({ scope
         <Alert
           message={t('common.readOnlyMode')}
           description={t('common.readOnlyDesc')}
-          type="warning"
+          type="info"
           showIcon
           className="abf-alert-section"
         />

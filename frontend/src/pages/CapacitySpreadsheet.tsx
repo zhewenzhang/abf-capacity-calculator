@@ -326,14 +326,14 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ scope }) => {
   }
 
   return (
-    <div>
+    <div className="abf-page">
       {/* Experimental banner */}
       <ExperimentalBanner
         label={t('capacityLab.experiment')}
         description={t('capacityLab.experimentalDesc')}
       />
       {/* Toolbar */}
-      <Card size="small" style={{ marginBottom: 8 }}>
+      <Card size="small" className="abf-toolbar" style={{ marginBottom: 8 }}>
         <Row gutter={[12, 8]} align="middle">
           <Col>
             <Tag color="orange">
@@ -386,9 +386,9 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ scope }) => {
         <Alert
           message={t('common.readOnlyMode')}
           description={t('common.readOnlyDesc')}
-          type="warning"
+          type="info"
           showIcon
-          style={{ marginBottom: 8 }}
+          className="abf-alert-section"
         />
       )}
 

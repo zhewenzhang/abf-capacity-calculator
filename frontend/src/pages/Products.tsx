@@ -434,7 +434,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
       },
     },
     {
-      title: t('products.unitPrice'), dataIndex: 'unitPrice', key: 'unitPrice', width: 110,
+      title: t('products.unitPrice'), dataIndex: 'unitPrice', key: 'unitPrice', width: 110, align: 'right' as const,
       render: (v: number, r: SKU) => `${v?.toFixed(2)} ${r.unitPriceCurrency ?? 'USD'}`,
     },
     { title: t('products.coreType'), dataIndex: 'coreType', key: 'coreType', width: 90, render: (v: string) => v || '-' },
@@ -470,13 +470,13 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
   ];
 
   return (
-    <div>
-      {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
+    <div className="abf-page">
+      {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       {!writable && (
         <Alert
           message={t('common.readOnlyMode')}
           description={t('common.readOnlyDesc')}
-          type="info" showIcon style={{ marginBottom: 16 }}
+          type="info" showIcon className="abf-alert-page"
         />
       )}
 

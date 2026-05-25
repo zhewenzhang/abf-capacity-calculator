@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Button, message, Tag, Space, Typography, Alert } from 'antd';
+import { Button, message, Tag, Typography, Alert } from 'antd';
 import { SaveOutlined, UndoOutlined, PlusOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/icons';
 import { DataSheetGrid, textColumn, intColumn, floatColumn, keyColumn } from 'react-datasheet-grid';
 import 'react-datasheet-grid/dist/style.css';
 import { getSKUs, batchSaveSKUs } from '../services/skuService';
-import { ExperimentalBanner, PageLoading } from '../components/common';
+import { ExperimentalBanner, PageLoading, ActionBar } from '../components/common';
+import { useI18n } from '../i18n';
 import { validateSKU } from '../core/validation';
 import { calculateSkuUpp, calculateSkuYieldEstimate, normalizeSkuDraft } from '../core/skuDerived';
 import { currencyOrUsd, normalizeCurrencyCode } from '../core/currency';
@@ -102,6 +103,7 @@ interface ProductsSpreadsheetLabProps {
 
 const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ scope }) => {
   const writable = canEdit(scope.role);
+  const { t } = useI18n();
   const [rows, setRows] = useState<SheetRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -267,61 +269,52 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ scope }
 
   if (loading) return <PageLoading />;
 
-  // Read-only warning for viewers
-  const readOnlyWarning = !writable && (
-    <Alert
-      message="Read-only Mode"
-      description="You are a viewer in this workspace. Editing is disabled."
-      type="warning"
-      showIcon
-      style={{ marginBottom: 8 }}
-    />
-  );
+  const validRowCount = rows.filter(r => !isRowEmpty(r)).length;
+  const dirtyCount = rows.filter((r, idx) => {
+    const saved = savedSnapshot[idx];
+    if (!saved) return r.skuCode != null;
+    return JSON.stringify(r) !== JSON.stringify(saved);
+  }).length;
 
   return (
-    <div>
+    <div className="abf-page">
       <ExperimentalBanner
-        label="Products Spreadsheet Lab"
-        description={
-          <>
-            Excel-like SKU management using <Text code>react-datasheet-grid</Text>.
-            Supports multi-cell paste, horizontal field input, batch validation, and batch save.
-            Data is written to the same Firestore <Text code>skus</Text> collection.
-            <br />
-            <Text type="secondary">
-              Paste tip: Copy rows from Excel (without headers), select the first cell of a blank row, then Ctrl+V.
-            </Text>
-          </>
-        }
+        label={t('productsLab.title')}
+        description={t('productsLab.description')}
       />
 
       {/* Read-only warning for viewers */}
-      {readOnlyWarning}
+      {!writable && (
+        <Alert
+          message={t('common.readOnlyMode')}
+          description={t('common.readOnlyDesc')}
+          type="info"
+          showIcon
+          className="abf-alert-section"
+        />
+      )}
 
       {/* Toolbar */}
-      <Space wrap style={{ marginBottom: 8 }}>
+      <ActionBar info={<Text type="secondary">{validRowCount} {t('productsLab.rows')} &middot; {rows.length} {t('productsLab.total')}</Text>}>
         <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving} disabled={!writable}>
-          Save Valid Rows
+          {t('productsLab.save')} ({dirtyCount})
+        </Button>
+        <Button icon={<UndoOutlined />} onClick={handleDiscard} disabled={dirtyCount === 0}>
+          {t('common.discard')}
         </Button>
         <Button icon={<PlusOutlined />} onClick={handleValidate}>
-          Validate
+          {t('productsLab.validate')}
         </Button>
         <Button icon={<PlusOutlined />} onClick={handleAddRows}>
-          + 20 Blank Rows
+          + 20 {t('productsLab.blankRows')}
         </Button>
         <Button icon={<ReloadOutlined />} onClick={loadSKUs}>
-          Reload
-        </Button>
-        <Button icon={<UndoOutlined />} onClick={handleDiscard}>
-          Discard Changes
+          {t('productsLab.reload')}
         </Button>
         <Button icon={<DownloadOutlined />} onClick={handleExportCSV}>
-          Export CSV
+          {t('productsLab.exportCsv')}
         </Button>
-        <Text type="secondary">
-          {rows.filter(r => !isRowEmpty(r)).length} rows &middot; {rows.length} total
-        </Text>
-      </Space>
+      </ActionBar>
 
       {/* Grid */}
       <div className="spreadsheet-wrapper">
