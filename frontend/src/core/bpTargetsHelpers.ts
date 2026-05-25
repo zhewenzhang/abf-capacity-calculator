@@ -1,6 +1,6 @@
 /**
  * BP Targets 表格数据双向转换与校验助手纯函数
- * v1.28.0 规范版
+ * v1.29.0 规范版
  */
 
 export interface BpSheetRow {

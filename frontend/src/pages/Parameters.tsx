@@ -366,7 +366,7 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
         </Form>
       </Card>
 
-      {/* BP Targets Section - Redirect Card (v1.28.0) */}
+      {/* BP Targets Section - Redirect Card (v1.29.0) */}
       <Card 
         title={t('parameters.bpTargetsRedirectCardTitle')} 
         style={{ marginBottom: 16, border: '1px dashed #d9d9d9' }}
