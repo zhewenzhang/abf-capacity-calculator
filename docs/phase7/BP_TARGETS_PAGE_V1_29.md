@@ -1,6 +1,6 @@
-# BP Targets 營業目標獨立頁面架構說明書 (v1.28.0)
+# BP Targets 營業目標獨立頁面架構說明書 (v1.29.0)
 
-本文件詳盡記錄了 v1.28.0 中實作的 **BP Targets（營業目標）獨立管理頁面** 的技術架構、資料流程、安全機制及系統相容性規約。
+本文件詳盡記錄了 v1.29.0 中實作的 **BP Targets（營業目標）獨立管理頁面** 的技術架構、資料流程、安全機制及系統相容性規約。
 
 ---
 
@@ -67,7 +67,7 @@ ProjectParameters.bpTargets = {
 
 在舊版本中，`Parameters.tsx` 页面直接持有了 `bpTargets` React State，這會在多個瀏覽器視窗併發操作或在 Parameters 頁面僅修改 Panel 參數保存時，意外將舊版或空白的 `bpTargets` 覆寫回資料庫。
 
-為了徹底解決這一隱患，我們在 v1.28.0 中做出了以下重構：
+為了徹底解決這一隱患，我們在 v1.29.0 中做出了以下重構：
 
 1.  **徹底移除直接編輯**：
     *   在 `Parameters.tsx` 中剔除了 `bpTargets` 相關的所有 state 與 input。

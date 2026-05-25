@@ -632,6 +632,8 @@ export const en: Record<string, string> = {
   'bpTargets.saveSuccess': 'BP Targets saved successfully.',
   'bpTargets.discardSuccess': 'Changes discarded.',
   'bpTargets.noChanges': 'No changes to save.',
+  'bpTargets.negativeValueError': 'Negative value is not allowed for year {year}.',
+  'bpTargets.invalidValueError': 'Invalid numeric value for year {year}.',
   'bp.target': 'BP Target',
   'bp.forecast': 'Forecast Revenue',
   'bp.attainment': 'Attainment',

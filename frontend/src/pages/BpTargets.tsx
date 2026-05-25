@@ -136,7 +136,16 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
       // 更新备份快照
       setSavedSnapshot(JSON.parse(JSON.stringify(rows)));
     } catch (e: any) {
-      message.error(e.message || 'Failed to save BP targets');
+      const msg = e.message || '';
+      if (msg.startsWith('NEGATIVE_VALUE:')) {
+        const year = msg.split(':')[1];
+        message.error(t('bpTargets.negativeValueError', { year }));
+      } else if (msg.startsWith('INVALID_VALUE:')) {
+        const year = msg.split(':')[1];
+        message.error(t('bpTargets.invalidValueError', { year }));
+      } else {
+        message.error(msg || 'Failed to save BP targets');
+      }
     } finally {
       setSaving(false);
     }

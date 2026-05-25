@@ -105,12 +105,14 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
   };
 
   const handleRestoreDefaults = async () => {
-    const defaults: ProjectParameters = {
-      defaultWorkingDays: DEFAULT_WORKING_DAYS,
-      yieldMatrix: DEFAULT_YIELD_MATRIX,
-      panelParams: DEFAULT_PANEL_PARAMS,
-    };
     try {
+      const latestParams = await getParameters(scope);
+      const defaults: ProjectParameters = {
+        defaultWorkingDays: DEFAULT_WORKING_DAYS,
+        yieldMatrix: DEFAULT_YIELD_MATRIX,
+        panelParams: DEFAULT_PANEL_PARAMS,
+        bpTargets: latestParams.bpTargets, // 僅做唯讀回填保護，防止清空營業目標
+      };
       await saveParameters(scope, defaults);
       message.success('Defaults restored');
       loadParams();

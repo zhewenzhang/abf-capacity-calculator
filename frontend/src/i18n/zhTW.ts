@@ -641,6 +641,8 @@ export const zhTW: Record<string, string> = {
   'bpTargets.saveSuccess': '營業目標儲存成功。',
   'bpTargets.discardSuccess': '已放棄所做修改。',
   'bpTargets.noChanges': '沒有需要儲存的修改。',
+  'bpTargets.negativeValueError': '{year} 年的營業目標不能為負數。',
+  'bpTargets.invalidValueError': '{year} 年的營業目標請輸入有效數字。',
   'bp.target': 'BP 目標',
   'bp.forecast': '預測營收',
   'bp.attainment': '達成率',

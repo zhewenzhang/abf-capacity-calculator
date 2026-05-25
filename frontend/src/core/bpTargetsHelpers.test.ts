@@ -76,7 +76,7 @@ describe('BP Targets Grid Helper Tests', () => {
           '2026': -50,
         },
       ];
-      expect(() => rowsToRecord(rows)).toThrowError(/Negative value is not allowed for year 2026/);
+      expect(() => rowsToRecord(rows)).toThrowError('NEGATIVE_VALUE:2026');
     });
 
     it('should throw error for non-numeric invalid values', () => {
@@ -86,7 +86,38 @@ describe('BP Targets Grid Helper Tests', () => {
           '2026': 'invalid-number',
         },
       ];
-      expect(() => rowsToRecord(rows)).toThrowError(/Invalid numeric value for year 2026/);
+      expect(() => rowsToRecord(rows)).toThrowError('INVALID_VALUE:2026');
+    });
+  });
+
+  describe('Parameters Protection during Restore Defaults', () => {
+    it('should preserve bpTargets when merging defaults with latest params', () => {
+      const latestParams = {
+        defaultWorkingDays: 22,
+        yieldMatrix: {},
+        panelParams: {},
+        bpTargets: {
+          mode: 'yearly' as const,
+          yearlyRevenueTargetsMillionTwd: { '2026': 1200 },
+        },
+      };
+
+      const defaults = {
+        defaultWorkingDays: 20,
+        yieldMatrix: { 'size': { 'bucket': 0.98 } },
+        panelParams: { panelLengthMm: 500 },
+      };
+
+      const restoredParams = {
+        ...defaults,
+        bpTargets: latestParams.bpTargets, // 僅做唯讀回填保護，確保不受覆寫清空影響
+      };
+
+      expect(restoredParams.bpTargets).toEqual({
+        mode: 'yearly',
+        yearlyRevenueTargetsMillionTwd: { '2026': 1200 },
+      });
+      expect(restoredParams.defaultWorkingDays).toBe(20);
     });
   });
 });

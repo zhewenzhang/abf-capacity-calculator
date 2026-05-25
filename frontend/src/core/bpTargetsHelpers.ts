@@ -66,14 +66,14 @@ export function rowsToRecord(rows: BpSheetRow[]): Record<string, number> {
 
     const num = Number(val);
 
-    // 严防 NaN 及非有限数字
+    // 嚴防 NaN 及非有限數字
     if (isNaN(num) || !isFinite(num)) {
-      throw new Error(`Invalid numeric value for year ${year}: ${val}`);
+      throw new Error(`INVALID_VALUE:${year}`);
     }
 
-    // 严防负数
+    // 嚴防負數
     if (num < 0) {
-      throw new Error(`Negative value is not allowed for year ${year}: ${num}`);
+      throw new Error(`NEGATIVE_VALUE:${year}`);
     }
 
     record[key] = num;
