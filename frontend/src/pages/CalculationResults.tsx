@@ -53,7 +53,7 @@ import {
 } from '../core/analytics';
 import TimeMatrixTable, { type TimeMatrixRow } from '../components/analytics/TimeMatrixTable';
 import { YearlyHealthMatrix } from '../components/analytics/YearlyHealthMatrix';
-import { MetricCard } from '../components/common';
+import { MetricCard, PageLoading } from '../components/common';
 import { buildBpAnalysis } from '../core/bpTargets';
 import BpAnalysisPanel from '../components/analytics/BpAnalysisPanel';
 import type { SkuCalculationResult, MonthlyCapacitySummary, SKU, Forecast, CapacityPlan, ProjectParameters } from '../types';
@@ -776,30 +776,30 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
   ];
 
   if (loading) {
-    return <Spin size="large" />;
+    return <PageLoading />;
   }
 
   return (
-    <div>
-      {error && <Alert message={error} type="error" showIcon />}
+    <div className="abf-page">
+      {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       {!error && model && (
         <>
           {/* Summary KPIs */}
           <Row gutter={16} style={{ marginBottom: 16 }}>
-            <Col span={6}>
+            <Col xs={24} sm={12} md={6}>
               <MetricCard
                 title={t('results.totalRevenue')}
                 value={model.totalRevenue}
                 precision={currencySettings.displayCurrency === 'USD' ? 2 : 0}
               />
             </Col>
-            <Col span={6}>
+            <Col xs={24} sm={12} md={6}>
               <MetricCard title={t('results.totalForecastPcs')} value={model.totalForecastPcs} precision={0} />
             </Col>
-            <Col span={6}>
+            <Col xs={24} sm={12} md={6}>
               <MetricCard title={t('results.calculationRows')} value={model.skuResults.length} />
             </Col>
-            <Col span={6}>
+            <Col xs={24} sm={12} md={6}>
               <MetricCard
                 title={t('results.shortageMonthCount')}
                 value={model.shortageMonthCount}
@@ -1594,6 +1594,16 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
           {/* Change Review View (Phase 6.2 Enhanced) */}
           {view === 'change' && (
             <div>
+              {/* Viewer read-only warning */}
+              {scope.role === 'viewer' && (
+                <Alert
+                  message={t('common.readOnlyMode')}
+                  description={t('common.readOnlyDesc')}
+                  type="info"
+                  showIcon
+                  className="abf-alert-section"
+                />
+              )}
               {/* Snapshot Management Section */}
               <Card
                 title={t('changeReview.versionHistoryTitle')}
