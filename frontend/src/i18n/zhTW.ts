@@ -332,6 +332,8 @@ export const zhTW: Record<string, string> = {
   'dq.bpAllocationInfo.detail': '年度 BP 目標在分析中以平均方式分配到季（年度/4）與月（年度/12）。',
   'dq.fixedWorkingDays.title': '固定工作天數設定',
   'dq.fixedWorkingDays.detail': '所有月度摘要採用固定工作天數（預設：{days} 天/月）。',
+  'dq.currencyRateMissing.title': '匯率設定問題',
+  'dq.currencyRateMissing.tooltip': '匯率設定有問題，可能影響營收計算。',
 
   // SKU Health classification labels
   'health.strategicGrowth': '策略成長',

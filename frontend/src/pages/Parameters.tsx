@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -12,16 +12,22 @@ import {
   Popconfirm,
   Radio,
   Typography,
+  Tooltip,
 } from 'antd';
-import { SaveOutlined, UndoOutlined } from '@ant-design/icons';
+import { SaveOutlined, UndoOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { getParameters, saveParameters } from '../services/parameterService';
-import type { ProjectParameters, SizeCategory, LayerBucket, ProjectScope } from '../types';
+import { getForecasts } from '../services/forecastService';
+import { getSKUs } from '../services/skuService';
+import { getCapacityPlans } from '../services/capacityService';
+import type { ProjectParameters, SizeCategory, LayerBucket, ProjectScope, Forecast, SKU, CapacityPlan } from '../types';
 import { canEdit } from '../services/projectScope';
 import WorkspaceSettingsPanel from '../components/workspace/WorkspaceSettingsPanel';
 import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_WORKING_DAYS } from '../core/defaults';
 import { useI18n } from '../i18n';
 import { useAppPrefs } from '../context/AppPreferencesContext';
 import { DEFAULT_CURRENCY_SETTINGS, type CurrencySettings, normalizeCurrencySettings } from '../core/currency';
+import { buildDataQualitySummary } from '../core/dataQuality';
+import { filterIssuesByDomain } from '../core/dataQualityVisibility';
 
 const { Text } = Typography;
 
@@ -44,21 +50,35 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
   const [form] = Form.useForm();
   const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(DEFAULT_CURRENCY_SETTINGS);
 
+  // DQ visibility - additional data
+  const [skus, setSkus] = useState<SKU[]>([]);
+  const [forecasts, setForecasts] = useState<Forecast[]>([]);
+  const [capacityPlans, setCapacityPlans] = useState<CapacityPlan[]>([]);
+
   const loadParams = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getParameters(scope);
-      setParams(data);
+      const [paramData, skuData, fcData, cpData] = await Promise.all([
+        getParameters(scope),
+        getSKUs(scope).catch(() => [] as SKU[]),
+        getForecasts(scope).catch(() => [] as Forecast[]),
+        getCapacityPlans(scope).catch(() => [] as CapacityPlan[]),
+      ]);
+      setParams(paramData);
+      setSkus(skuData);
+      setForecasts(fcData);
+      setCapacityPlans(cpData);
+      setParams(paramData);
       form.setFieldsValue({
-        defaultWorkingDays: data.defaultWorkingDays || DEFAULT_WORKING_DAYS,
-        panelLengthMm: data.panelParams.panelLengthMm,
-        panelWidthMm: data.panelParams.panelWidthMm,
-        marginLengthMm: data.panelParams.marginLengthMm,
-        marginWidthMm: data.panelParams.marginWidthMm,
-        toleranceMm: data.panelParams.toleranceMm,
+        defaultWorkingDays: paramData.defaultWorkingDays || DEFAULT_WORKING_DAYS,
+        panelLengthMm: paramData.panelParams.panelLengthMm,
+        panelWidthMm: paramData.panelParams.panelWidthMm,
+        marginLengthMm: paramData.panelParams.marginLengthMm,
+        marginWidthMm: paramData.panelParams.marginWidthMm,
+        toleranceMm: paramData.panelParams.toleranceMm,
       });
-      const cs = data.currencySettings;
+      const cs = paramData.currencySettings;
       if (cs) {
         setCurrencySettings(normalizeCurrencySettings({
           ...cs,
@@ -75,6 +95,22 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
   useEffect(() => {
     loadParams();
   }, [scope]);
+
+  // ---------- DQ Visibility ----------
+  const dqSummary = useMemo(() => {
+    if (!params || skus.length === 0) return null;
+    return buildDataQualitySummary({
+      skus,
+      forecasts,
+      capacityPlans,
+      params,
+    });
+  }, [skus, forecasts, capacityPlans, params]);
+
+  const currencyDqIssues = useMemo(() => {
+    if (!dqSummary) return [];
+    return filterIssuesByDomain(dqSummary, 'currency');
+  }, [dqSummary]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -277,7 +313,26 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
         </Form>
       </Card>
 
-      <Card title={t('parameters.currencySettings')} style={{ marginBottom: 16 }}>
+      <Card title={
+        <span>
+          {t('parameters.currencySettings')}
+          {currencyDqIssues.length > 0 && (
+            <Tooltip title={t('dq.currencyRateMissing.tooltip')}>
+              <ExclamationCircleOutlined style={{ color: '#ff4d4f', marginLeft: 8, fontSize: 14 }} />
+            </Tooltip>
+          )}
+        </span>
+      } style={{ marginBottom: 16 }}>
+        {/* DQ Alert for currency issues */}
+        {currencyDqIssues.length > 0 && (
+          <Alert
+            type="error"
+            showIcon
+            message={t('dq.currencyRateMissing.title')}
+            description={currencyDqIssues.map((issue) => t(issue.detailMessage.key, issue.detailMessage.params as Record<string, string | number>)).join(' ')}
+            style={{ marginBottom: 16 }}
+          />
+        )}
         <Form layout="inline">
           <Form.Item label={t('parameters.baseCurrency')}>
             <span style={{ lineHeight: '32px' }}>USD</span>

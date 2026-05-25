@@ -323,6 +323,8 @@ export const en: Record<string, string> = {
   'dq.bpAllocationInfo.detail': 'Yearly BP target targets are evenly allocated to quarter (annual / 4) and month (annual / 12) inside analysis.',
   'dq.fixedWorkingDays.title': 'Fixed Working Days Configuration',
   'dq.fixedWorkingDays.detail': 'Working days are fixed across all monthly summaries (Default: {days} days/month).',
+  'dq.currencyRateMissing.title': 'Currency Exchange Rate Issue',
+  'dq.currencyRateMissing.tooltip': 'Currency exchange rate configuration has issues that may affect revenue calculations.',
 
   // SKU Health classification labels
   'health.strategicGrowth': 'Strategic Growth',
