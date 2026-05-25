@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Row, Col, Table, Typography, Spin, Alert, Tag, Button, Popconfirm, Space, theme } from 'antd';
+import { Card, Row, Col, Table, Typography, Alert, Tag, Button, Popconfirm, Space, theme } from 'antd';
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
@@ -19,7 +19,7 @@ import type { DataQualitySummary } from '../core/dataQuality';
 import { Link } from 'react-router-dom';
 import TimeMatrixTable, { type TimeMatrixRow } from '../components/analytics/TimeMatrixTable';
 import { YearlyHealthMatrix } from '../components/analytics/YearlyHealthMatrix';
-import { MetricCard, SectionCard } from '../components/common';
+import { MetricCard, SectionCard, PageLoading } from '../components/common';
 import { useI18n } from '../i18n';
 import { useAppPrefs } from '../context/AppPreferencesContext';
 import { formatCurrency, formatCurrencyShort, DEFAULT_CURRENCY_SETTINGS, normalizeCurrencySettings } from '../core/currency';
@@ -189,15 +189,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ scope }) => {
 
   // --- Centered loading state with accessibility ---
   if (loading) {
-    return (
-      <div
-        role="status"
-        aria-live="polite"
-        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 320 }}
-      >
-        <Spin size="large" tip={t('common.loading')} />
-      </div>
-    );
+    return <PageLoading />;
   }
 
   // --- Derived token colors for KPI status ---
@@ -214,8 +206,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ scope }) => {
       : colorNeutral;
 
   return (
-    <div>
-      {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
+    <div className="abf-page">
+      {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       {qualitySummary && (
         <Alert
           message={
@@ -248,11 +240,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ scope }) => {
             qualitySummary.status === 'warning' ? 'warning' : 'info'
           }
           showIcon
-          style={{ marginBottom: 16 }}
+          className="abf-alert-section"
         />
       )}
       {totalSkus === 0 && (
-        <Card style={{ marginBottom: 16, background: '#e6f7ff', border: '1px solid #91d5ff' }}>
+        <Card className="toolbar-card abf-alert-section" style={{ background: '#e6f7ff', border: '1px solid #91d5ff' }}>
           <Space direction="vertical" size={8} style={{ width: '100%' }}>
             <Typography.Text strong>{t('dashboard.welcomeTitle')}</Typography.Text>
             <Typography.Text>
