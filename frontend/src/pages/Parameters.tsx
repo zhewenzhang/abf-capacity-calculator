@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   Form,
@@ -32,6 +33,7 @@ const SIZES: SizeCategory[] = ['small', 'medium', 'large', 'xlarge'];
 const BUCKETS: LayerBucket[] = ['4-8L', '10-14L', '16-20L', '20L+'];
 
 const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
+  const navigate = useNavigate();
   const writable = canEdit(scope.role);
   const { t } = useI18n();
   const { prefs, setCurrency } = useAppPrefs();
@@ -41,7 +43,6 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
   const [error, setError] = useState<string | null>(null);
   const [form] = Form.useForm();
   const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(DEFAULT_CURRENCY_SETTINGS);
-  const [bpTargets, setBpTargets] = useState<Record<string, number>>({});
 
   const loadParams = async () => {
     setLoading(true);
@@ -63,11 +64,6 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
           ...cs,
           displayCurrency: prefs.displayCurrency, // Use user preference
         }));
-      }
-      // Load BP targets
-      const bp = data.bpTargets;
-      if (bp?.yearlyRevenueTargetsMillionTwd) {
-        setBpTargets({ ...bp.yearlyRevenueTargetsMillionTwd });
       }
     } catch (e: any) {
       setError(e.message || 'Failed to load parameters');
@@ -96,10 +92,7 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
           toleranceMm: panelValues.toleranceMm,
         },
         currencySettings,
-        bpTargets: {
-          mode: 'yearly' as const,
-          yearlyRevenueTargetsMillionTwd: bpTargets,
-        },
+        bpTargets: params.bpTargets,
       };
       await saveParameters(scope, updated);
       message.success('Parameters saved');
@@ -112,12 +105,14 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
   };
 
   const handleRestoreDefaults = async () => {
-    const defaults: ProjectParameters = {
-      defaultWorkingDays: DEFAULT_WORKING_DAYS,
-      yieldMatrix: DEFAULT_YIELD_MATRIX,
-      panelParams: DEFAULT_PANEL_PARAMS,
-    };
     try {
+      const latestParams = await getParameters(scope);
+      const defaults: ProjectParameters = {
+        defaultWorkingDays: DEFAULT_WORKING_DAYS,
+        yieldMatrix: DEFAULT_YIELD_MATRIX,
+        panelParams: DEFAULT_PANEL_PARAMS,
+        bpTargets: latestParams.bpTargets, // 僅做唯讀回填保護，防止清空營業目標
+      };
       await saveParameters(scope, defaults);
       message.success('Defaults restored');
       loadParams();
@@ -371,32 +366,22 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
         </Form>
       </Card>
 
-      {/* BP Targets Section */}
-      <Card title={t('parameters.bpTargets')} style={{ marginBottom: 16 }}>
+      {/* BP Targets Section - Redirect Card (v1.29.0) */}
+      <Card 
+        title={t('parameters.bpTargetsRedirectCardTitle')} 
+        style={{ marginBottom: 16, border: '1px dashed #d9d9d9' }}
+      >
         <Space direction="vertical" style={{ width: '100%' }}>
-          <Text type="secondary">{t('parameters.bpTargetsNote')}</Text>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 8 }}>
-            {Array.from({ length: 2041 - 2026 + 1 }, (_, i) => 2026 + i).map(year => (
-              <div key={year} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Text style={{ minWidth: 40, fontSize: 13 }}>{year}</Text>
-                <InputNumber
-                  size="small"
-                  min={0}
-                  step={1}
-                  precision={1}
-                  style={{ width: 130 }}
-                  placeholder={t('parameters.bpTargetPlaceholder')}
-                  value={bpTargets[String(year)] ?? undefined}
-                  onChange={(v) => {
-                    setBpTargets(prev => ({
-                      ...prev,
-                      [String(year)]: v ?? 0,
-                    }));
-                  }}
-                />
-              </div>
-            ))}
-          </div>
+          <Text type="secondary">
+            {t('parameters.bpTargetsRedirectCardDesc')}
+          </Text>
+          <Button 
+            type="primary" 
+            onClick={() => navigate('/bp-targets')}
+            style={{ marginTop: 8 }}
+          >
+            {t('parameters.bpTargetsRedirectButton')}
+          </Button>
         </Space>
       </Card>
     </div>

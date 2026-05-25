@@ -37,11 +37,12 @@ const CapacityPlanPage = lazy(() => import('./pages/CapacityPlan'));
 const CapacitySpreadsheetPage = lazy(() => import('./pages/CapacitySpreadsheet'));
 const ParametersPage = lazy(() => import('./pages/Parameters'));
 const CalculationResultsPage = lazy(() => import('./pages/CalculationResults'));
+const BpTargetsPage = lazy(() => import('./pages/BpTargets'));
 
 const { Sider, Content } = Layout;
 const { Title } = Typography;
 
-const APP_VERSION = 'v1.28.0';
+const APP_VERSION = 'v1.29.0';
 
 // --- Sidebar with i18n ---
 const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }> = ({ current, onMenuClick }) => {
@@ -56,6 +57,7 @@ const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }
     { key: 'capacity', icon: <CloudOutlined />, label: t('menu.capacity') },
     { key: 'capacity-lab', icon: <ExperimentOutlined />, label: t('menu.capacityLab') },
     { key: 'parameters', icon: <SettingOutlined />, label: t('menu.parameters') },
+    { key: 'bp-targets', icon: <DollarOutlined />, label: t('menu.bpTargets') },
     { key: 'results', icon: <CalculatorOutlined />, label: t('menu.results') },
   ];
 
@@ -161,7 +163,7 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
   // Derive current menu key from URL path
   const current = useMemo(() => {
     const path = location.pathname.replace(/^\//, '');
-    const validKeys = ['dashboard', 'products', 'products-sheet-lab', 'forecasts', 'forecasts-lab', 'capacity', 'capacity-lab', 'parameters', 'results'];
+    const validKeys = ['dashboard', 'products', 'products-sheet-lab', 'forecasts', 'forecasts-lab', 'capacity', 'capacity-lab', 'parameters', 'bp-targets', 'results'];
     return validKeys.includes(path) ? path : 'dashboard';
   }, [location.pathname]);
 
@@ -174,6 +176,7 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
     capacity: t('capacity.title'),
     'capacity-lab': t('capacityLab.title'),
     parameters: t('parameters.title'),
+    'bp-targets': t('bpTargets.title'),
     results: t('results.title'),
   }), [t]);
 
@@ -208,6 +211,7 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
               <Route path="/capacity" element={<CapacityPlanPage key={routeKey} scope={scope} />} />
               <Route path="/capacity-lab" element={<CapacitySpreadsheetPage key={routeKey} scope={scope} />} />
               <Route path="/parameters" element={<ParametersPage key={routeKey} scope={scope} />} />
+              <Route path="/bp-targets" element={<BpTargetsPage key={routeKey} scope={scope} />} />
               <Route path="/results" element={<CalculationResultsPage key={routeKey} scope={scope} />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
