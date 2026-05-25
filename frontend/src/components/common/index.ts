@@ -4,5 +4,7 @@ export { AppTable } from './AppTable';
 export { ExperimentalBanner } from './ExperimentalBanner';
 export { PageHeader } from './PageHeader';
 export { StatusTag } from './StatusTag';
+export { ActionBar } from './ActionBar';
+export { UnitText } from './UnitText';
 export { default as PageLoading } from './PageLoading';
 export { default as EmptyState } from './EmptyState';

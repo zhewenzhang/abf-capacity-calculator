@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Button, message, Alert, Card, Row, Col, Space } from 'antd';
+import { Button, message, Alert, Card } from 'antd';
 import { SaveOutlined, UndoOutlined } from '@ant-design/icons';
 import { DataSheetGrid, textColumn, floatColumn, keyColumn } from 'react-datasheet-grid';
 import 'react-datasheet-grid/dist/style.css';
@@ -7,7 +7,7 @@ import { getParameters, saveParameters } from '../services/parameterService';
 import type { ProjectScope } from '../types';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
-import { PageLoading } from '../components/common';
+import { PageLoading, ActionBar, UnitText } from '../components/common';
 import {
   recordToRows,
   rowsToRecord,
@@ -167,7 +167,7 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
   if (error) return <Alert message={error} type="error" showIcon style={{ margin: 16 }} />;
 
   return (
-    <div style={{ padding: '8px 4px' }}>
+    <div className="abf-page">
       {/* Viewer read-only warning */}
       {!writable && (
         <Alert
@@ -175,43 +175,32 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
           description={t('common.readOnlyDesc')}
           type="info"
           showIcon
-          style={{ marginBottom: 16 }}
+          className="abf-alert-page"
         />
       )}
 
       {/* Toolbar / Actions */}
-      <Card className="toolbar-card">
-        <Row align="middle" justify="space-between">
-          <Col>
-            <Space>
-              <Button
-                type="primary"
-                icon={<SaveOutlined />}
-                onClick={handleSave}
-                loading={saving}
-                disabled={!writable || !isDirty}
-              >
-                {t('common.save')}
-              </Button>
-              <Button
-                icon={<UndoOutlined />}
-                onClick={handleDiscard}
-                disabled={!writable || !isDirty || saving}
-              >
-                {t('common.discard')}
-              </Button>
-            </Space>
-          </Col>
-          <Col>
-            <span style={{ fontSize: 13, color: '#8c8c8c' }}>
-              {t('parameters.bpTargetsNote')}
-            </span>
-          </Col>
-        </Row>
-      </Card>
+      <ActionBar info={<><UnitText parentheses={false}>Million TWD</UnitText> • {t('parameters.bpTargetsNote')}</>}>
+        <Button
+          type="primary"
+          icon={<SaveOutlined />}
+          onClick={handleSave}
+          loading={saving}
+          disabled={!writable || !isDirty}
+        >
+          {t('common.save')}
+        </Button>
+        <Button
+          icon={<UndoOutlined />}
+          onClick={handleDiscard}
+          disabled={!writable || !isDirty || saving}
+        >
+          {t('common.discard')}
+        </Button>
+      </ActionBar>
 
       {/* Grid rendering with spreadsheet-wrapper for horizontal scroll consistency */}
-      <Card style={{ marginTop: 12 }}>
+      <Card className="abf-section">
         <div className="spreadsheet-wrapper">
           <DataSheetGrid<BpSheetRow>
             value={rows}

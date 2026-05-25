@@ -340,7 +340,7 @@ const ForecastsSpreadsheetLab: React.FC<ForecastsSpreadsheetLabProps> = ({ scope
   }
 
   return (
-    <div>
+    <div className="abf-page">
       {/* Experimental banner */}
       <ExperimentalBanner
         label={t('forecastsLab.experiment')}
@@ -348,7 +348,7 @@ const ForecastsSpreadsheetLab: React.FC<ForecastsSpreadsheetLabProps> = ({ scope
       />
 
       {/* Toolbar */}
-      <Card size="small" style={{ marginBottom: 8 }}>
+      <Card size="small" className="toolbar-card">
         <Row gutter={[12, 8]} align="middle">
           <Col>
             <Tag color="orange">
@@ -387,7 +387,7 @@ const ForecastsSpreadsheetLab: React.FC<ForecastsSpreadsheetLabProps> = ({ scope
           </Col>
           <Col flex="auto" />
           <Col>
-            <Text type="secondary" style={{ fontSize: 12 }}>
+            <Text type="secondary" className="abf-text-nowrap" style={{ fontSize: 12 }}>
               {skus.length} SKUs &middot; {selectedYear}
             </Text>
           </Col>
@@ -400,7 +400,8 @@ const ForecastsSpreadsheetLab: React.FC<ForecastsSpreadsheetLabProps> = ({ scope
         description={t('forecastsLab.infoDesc')}
         type="info"
         showIcon
-        style={{ marginBottom: 8, fontSize: 12 }}
+        className="abf-alert-section"
+        style={{ fontSize: 12 }}
       />
 
       {/* Dirty alert */}
@@ -409,7 +410,8 @@ const ForecastsSpreadsheetLab: React.FC<ForecastsSpreadsheetLabProps> = ({ scope
           message={t('forecastsLab.dirtyCells', { count: dirtySet.size })}
           type="warning"
           showIcon
-          style={{ marginBottom: 8, fontSize: 12 }}
+          className="abf-alert-section"
+          style={{ fontSize: 12 }}
         />
       )}
 
@@ -420,7 +422,7 @@ const ForecastsSpreadsheetLab: React.FC<ForecastsSpreadsheetLabProps> = ({ scope
           description={t('common.readOnlyDesc')}
           type="warning"
           showIcon
-          style={{ marginBottom: 8 }}
+          className="abf-alert-section"
         />
       )}
 

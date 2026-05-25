@@ -299,3 +299,164 @@ body {
 .toolbar-card .ant-card-body {
   padding: 8px 12px;
 }
+
+/* =====================================================
+   ABF UI System Foundation (v1.30.0)
+   Standardized spacing and layout utilities
+   ===================================================== */
+
+/* --- Page Layout --- */
+.abf-page {
+  padding: 0 4px;
+}
+
+.abf-page-header {
+  margin-bottom: 16px;
+}
+
+.abf-page-content {
+  min-height: 400px;
+}
+
+/* --- Section Spacing --- */
+.abf-section {
+  margin-bottom: 16px;
+}
+
+.abf-section + .abf-section {
+  margin-top: 16px;
+}
+
+.abf-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.88);
+  margin-bottom: 8px;
+}
+
+/* --- Toolbar / Action Bar --- */
+.abf-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  background: #fff;
+  border-radius: 6px;
+  border: 1px solid #f0f0f0;
+}
+
+.abf-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.abf-toolbar-info {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+/* --- Sticky Action Bar --- */
+.abf-sticky-actions {
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  padding: 12px 16px;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  z-index: 10;
+}
+
+/* --- Text Utilities --- */
+.abf-text-muted {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.abf-text-secondary {
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.abf-text-unit {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  margin-left: 4px;
+}
+
+.abf-text-nowrap {
+  white-space: nowrap;
+}
+
+/* --- Card Enhancements --- */
+.abf-card-compact .ant-card-body {
+  padding: 12px;
+}
+
+.abf-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.abf-card-header-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* --- Table Wrappers --- */
+.abf-table-wrapper {
+  overflow-x: auto;
+  border-radius: 6px;
+}
+
+.abf-table-compact .ant-table-tbody > tr > td {
+  padding: 6px 8px !important;
+}
+
+/* --- Alert Spacing --- */
+.abf-alert-page {
+  margin-bottom: 16px;
+}
+
+.abf-alert-section {
+  margin-bottom: 8px;
+}
+
+/* --- Empty State --- */
+.abf-empty-state {
+  padding: 48px 24px;
+  text-align: center;
+}
+
+/* --- Data Caveat / Warning --- */
+.abf-caveat {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  font-style: italic;
+}
+
+/* --- Flex Utilities --- */
+.abf-flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.abf-flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.abf-flex-gap-sm {
+  gap: 8px;
+}
+
+.abf-flex-gap-md {
+  gap: 12px;
+}
