@@ -28,15 +28,16 @@
 7. **🚨 抽屉 (Drawer) / 气泡 (Popover) / 模态 (Modal) 的场景精准搭配**：
    * 必须严格按照规格书的策略搭配交互：
      * **Products 属性缺失** -> 右侧极简 `SKU Quick Fix Drawer`
-     * **Forecast 价格为 0** -> 单元格就地激活 InputNumber 编辑态
-     * **孤儿预测重绑定** -> 原地弹出 `Rebind Popover` 带 Select 下拉框
+     * **Forecast 价格为 0** -> 单元格就地激活 InputNumber 编辑态或小气泡
+     * **孤儿预测重绑定** -> 弹出 `Orphan Forecast Guided Modal` 提供多路径跳转
      * **汇率缺失** -> 原地弹出 `Exchange Rate Popover` 输入框
-     * **产能与营业目标缺失** -> `Guided Modal` 引导或 `Navigation` 导航
+     * **产能缺失** -> 一键路由并携带定位参数
+     * **营业目标缺失** -> 顶部 Alert 原地展开 Inline Form 行内小表单就地补值
 8. **🚨 导航修复的一键高亮定位 (Navigation Highlighting)**：
    * 当从其他页面的 DQ 警示一键跳转至 Capacity 或 BpTargets 页面时，你必须在 URL 中携带如 `?focusMonth=2026-03&focusField=corePanel` 的 Query 参数。
    * 目标页面加载时，必须解析此 URL 参数，不仅要将视口滚动锚定至对应输入框，还必须对该输入框应用明显的 CSS 高亮闪烁效果（如定义一个 `.remind-flash` 动效类），以起到强烈的视觉引导效果。
 9. **🚨 严格的输入合法性表单验证 (Form Validation)**：
-   * 在 Quick Fix Drawer 或 Popover 自愈输入框中，必须增加前端的数值范围和非空校验。例如：汇率不能填负数、SKU 层数分类必须是正整数、单价不能小于 0。在点击确认保存时，如校验不通过必须就地标红报错，阻止向后台发送垃圾数据。
+   * 在 Quick Fix Drawer 或 Popover 自愈输入框中，必须增加前端的数值范围和非空校验。例如：汇率不能填负数或零、SKU 层数分类必须是正整数、单价不能小于等于 0。在点击确认保存时，如校验不通过必须就地标红报错，阻止向后台发送垃圾数据。
 10. **🚨 拦截冒泡，防止意外行为**：
     * 当在表格中点击 `DataQualityBadge` 图标时，必须显式调用 `e.stopPropagation()` 和 `e.preventDefault()`。防止点击 Badge 的行为意外触发表格行的选中、勾选、展开或 Spreadsheet 的默认编辑事件。
 
@@ -46,20 +47,22 @@
 
 为了帮你理清如何在 React 页面中优雅挂接 DQ 自愈流，你可以参考以下高内聚的实现结构：
 
+### 1. Products 页面挂接 SKU 快速修复抽屉 (Drawer 模式)
 ```typescript
-// 1. 在 Products.tsx 中优雅挂接 SKU 自愈抽屉
+// Products.tsx
 const ProductsPage: React.FC = () => {
   const { skus, saveSku, currentUserRole } = useWorkspace();
   const [selectedSkuId, setSelectedSkuId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  // 从顶层 dataQuality.ts 获取统一的诊断汇总
+  // 从顶层 dataQuality 引擎中过滤产品域 issues
   const dqSummary = useMemo(() => buildDataQualitySummary({ skus, ... }), [skus]);
   const productIssues = useMemo(() => dqSummary.issues.filter(i => i.domain === 'products'), [dqSummary]);
 
   const handleFixClick = (e: React.MouseEvent, skuId: string) => {
-    e.stopPropagation(); // 阻止表格行冒泡
-    if (currentUserRole === 'Viewer') return; // 只读 Viewer 拦截防线
+    e.stopPropagation(); // 拦截冒泡
+    e.preventDefault();
+    if (currentUserRole === 'Viewer') return; // Viewer 硬拦截
     setSelectedSkuId(skuId);
     setIsDrawerOpen(true);
   };
@@ -81,6 +84,7 @@ const ProductsPage: React.FC = () => {
                     <DataQualityBadge 
                       severity="error"
                       onClick={(e) => handleFixClick(e, record.skuId)} // 就地拉出抽屉
+                      style={{ cursor: currentUserRole === 'Viewer' ? 'not-allowed' : 'pointer' }}
                     />
                   )}
                 </Space>
@@ -90,19 +94,102 @@ const ProductsPage: React.FC = () => {
         ]}
       />
 
-      {/* 2. 独立高内聚的 SKU 快速修复抽屉 */}
       <SkuQuickFixDrawer 
         skuId={selectedSkuId}
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         skus={skus}
         onSave={async (updatedSku) => {
+          // 严格进行合法性防备校验
+          if (!updatedSku.layerCount || updatedSku.layerCount <= 0) throw new Error("Invalid layer count");
           await saveSku(updatedSku.skuId, updatedSku); // 100% 复用现有 API
-          // 状态数组自动响应，DQ Badge 瞬时自愈消除！
+          // 状态数组自动更新响应，DQ Badge 瞬时自愈消除！
         }}
       />
     </div>
   );
+};
+```
+
+### 2. Parameters 页面挂接汇率补齐 (Popover 模式)
+```typescript
+// Parameters.tsx
+const ParametersPage: React.FC = () => {
+  const { parameters, saveParameters, currentUserRole } = useWorkspace();
+  const [popoverVisible, setPopoverVisible] = useState(false);
+
+  const handleExchangeRateFix = async (rateValue: number) => {
+    if (rateValue <= 0) return;
+    const updatedParams = {
+      ...parameters,
+      exchangeRates: {
+        ...parameters.exchangeRates,
+        TWD: rateValue
+      }
+    };
+    await saveParameters(updatedParams); // 复用保存 Service
+    setPopoverVisible(false);
+  };
+
+  return (
+    <Card 
+      title={
+        <Space>
+          <span>汇率与参数设定</span>
+          {currentUserRole !== 'Viewer' ? (
+            <Popover
+              visible={popoverVisible}
+              onVisibleChange={setPopoverVisible}
+              content={
+                <ExchangeRateFixForm 
+                  onSave={handleExchangeRateFix} 
+                  onCancel={() => setPopoverVisible(false)}
+                />
+              }
+              trigger="click"
+            >
+              <DataQualityBadge severity="error" style={{ cursor: 'pointer' }} />
+            </Popover>
+          ) : (
+            <DataQualityBadge severity="error" style={{ cursor: 'not-allowed' }} />
+          )}
+        </Space>
+      }
+    >
+      {/* 参数表单 */}
+    </Card>
+  );
+};
+```
+
+### 3. URL 导航一键高亮定位 (Navigation Highlighting 钩子)
+你可以在目标输入页面中，使用以下逻辑来实现平滑滚动和高亮动画：
+```typescript
+// hooks/useUrlRemediationFocus.ts
+import { useEffect } from 'react';
+
+export const useUrlRemediationFocus = (targetFieldPrefix: string) => {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const focusMonth = params.get('focusMonth'); // YYYY-MM
+    const focusField = params.get('focusField'); // e.g. buPanelPerDay
+
+    if (focusMonth && focusField) {
+      // 拼接 DOM 节点唯一的 ID 或 Class
+      const elementId = `${targetFieldPrefix}-${focusMonth}-${focusField}`;
+      const element = document.getElementById(elementId);
+      if (element) {
+        // 1. 平滑滚动到该视口
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // 2. 施加闪烁高亮动效
+        element.classList.add('remind-flash');
+        const timer = setTimeout(() => {
+          element.classList.remove('remind-flash');
+        }, 3000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, []);
 };
 ```
 
