@@ -2,22 +2,22 @@
 
 ## 一、 发布审查结论
 
-- **发布验收判定**：**Conditional Pass (有条件通过)** ⚠️
-- **依赖锁档同步状态**：**未同步 (滞后)** ❌
-  - `package.json` 升版为了 `"1.35.0"`。
-  - 但 `package-lock.json` **未同步**，依然滞后在 `"1.34.0"`，CC 忘记在本地执行 `npm install` 以同步锁档。
-- **README 版本日志状态**：**未更新** ❌
-  - `README.md` 漏掉了本轮 `v1.35.0 (Data Quality Visibility)` 的 Release notes。
-- **是否需要 v1.35.1 Hotfix**：**否**。但必须在合入 main 之前通过一个同步 commit 修复 package-lock 与 README 债务。
+- **发布验收判定**：**Pass (通过)** ✅
+- **依赖锁档同步状态**：**100% 同步**。
+  - `package.json` 中的 version 已成功递增为 `"1.35.0"`。
+  - `package-lock.json` 中的 version **完美对齐同步修改为 `"1.35.0"`**。CC 在修补 commit `b23bf08` 中完美同步了锁档，表现卓越！
+- **README 版本日志状态**：**100% 补齐**。
+  - `README.md` 已经成功追加了本轮 `v1.35.0 (Data Quality Visibility)` 的 Release notes，历史文档债务彻底清零。
+- **是否需要 v1.35.1 Hotfix**：**否**。代码整体结构极其稳健。
 - **是否存在 P0/P1 问题**：**0 个**。
-- **是否可 merge main**：**否 (No)**。必须先在 AGY 分支由 CC 补充提交锁档同步和 README 变更，然后才能合入 main。
-- **是否需要 deploy**：**否**。在只读阶段无需进行任何托管部署。
+- **是否可 merge main**：**是 (Yes)**。批准合入 main 分支。
+- **是否需要 deploy**：**否**。在只读走查阶段，无任何托管部署需求。
 
 ---
 
-## 二、 核心安全红线与隔离校验 (红线隔离)
+## 二、 只读安全边界与红线校验 (红线隔离)
 
-经对比 521106f 提交，本版本完美守住了核心安全红线，数据隔离层表现极佳：
+经对比最新提交，本版本完美守住了核心安全红线，数据隔离层表现极佳：
 
 - [x] **红线 1：零持久化污染 (Zero DB Write)**
   - 数据质量警示纯粹通过 `<DataQualityBadge>` 和 `<DataQualityAlert>` 在前端 DOM 级做局部渲染与 Tooltip 悬浮展现。
@@ -31,7 +31,7 @@
 
 ## 三、 性能与渲染防线校验 (性能红线)
 
-- [x] **防线 1：避免在 Cell Render 中高频计算 DQ (性能完美)**
+- [x] **防线 1：避免在 Cell Render 中 high-frequency 计算 DQ (性能完美)**
   - 在 `Products.tsx` 与 `Forecasts.tsx` 中，CC 极其优秀地利用了 `useMemo` 缓存机制，在页面加载时一次性计算出全量数据质量汇总 `dqSummary`，并利用 useMemo 在 O(N) 复杂度下建立了 `skuDqIssuesMap` 映射。
   - 在 Table column cell render 时，直接通过 `skuDqIssuesMap.get(record.id)` 进行 O(1) 级的哈希检索，**完美避开了在单元格渲染循环中高频重复跑全表 `buildDataQualitySummary`** 的超级性能陷阱，交互响应极其敏捷。
 
@@ -42,7 +42,7 @@
 五大输入页面前移 Visibility 的覆盖度 100% 达标：
 
 1. **Products.tsx**：
-   - 生产属性缺失的 SKU 首列成功渲染红色 `<ExclamationCircleOutlined />` 并通过 Tooltip 详细显示缺失属性；
+   - 生产属性缺失的 SKU 行首列成功渲染红色 `<ExclamationCircleOutlined />` 并通过 Tooltip 详细显示缺失属性；
    - 零价格 SKU 和不支持的币别在价格单项上成功渲染黄色 Warning。
 2. **Forecasts.tsx**：
    - 孤儿预测 SKU 行首高亮警告，Tooltip 提示缺失关联；零价格预测单元格完美高亮并提示；顶部成功展现 `DataQualityAlert` 面板过滤展示 `'forecast'` 域的问题。
@@ -69,7 +69,7 @@
 - **风格检查 (`npm run lint -- --quiet`)**：**Pass (通过)** ✅
   - ESLint **Zero warnings**，无任何拼写、未使用 import 或规范降级。
 - **生产环境打包 (`npm run build`)**：**Pass (通过)** ✅
-  - Vite 编译和打包快速通过 (built in 1.44s)，无任何打包及 TS 类型编译报错。
+  - Vite 编译和打包快速通过 (built in 1.36s)，无任何打包及 TS 类型编译报错。
 
 ---
 
@@ -82,7 +82,10 @@
 - *无*
 
 ### P2 (版本与依赖锁不一致) 问题：
-1. **package-lock.json 滞后** ❌：`package.json` 中的 version 为 `"1.35.0"`，但 `package-lock.json` 未执行同步更新，依然为 `"1.34.0"`。
-2. **README 日志滞后** ❌：`README.md` 的 Release history 未更新本轮 `v1.35.0` 的发布日志。
+- *无 (在此修补版本中已被彻底解决修复)* ✅
 
-*整改建议*：CC 必须在 `agy/ui-system-visual-qa` 分支上，在本地的 `frontend/` 目录下执行 `npm install` 以自动同步 package-lock，并在 `README.md` 中补齐 v1.35.0 的 Release Notes 提交 push 后，本轮验收方可正式升级为 **Pass** 并批准 merge main。
+---
+
+## 八、 验收总结
+
+经过在此修补 commit `b23bf08` 中的彻底纠治，`v1.35.0` 数据质量前移（Data Quality Visibility Shift-Left）现已处于 **100% 可发布状态 (Release Ready)**。在此正式批准将分支 `agy/ui-system-visual-qa` 合入 main 分支。
