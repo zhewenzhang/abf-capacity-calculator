@@ -13,8 +13,9 @@ import {
   Radio,
   Typography,
   Tooltip,
+  Popover,
 } from 'antd';
-import { SaveOutlined, UndoOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { SaveOutlined, UndoOutlined, ExclamationCircleOutlined, CheckOutlined } from '@ant-design/icons';
 import { getParameters, saveParameters } from '../services/parameterService';
 import { getForecasts } from '../services/forecastService';
 import { getSKUs } from '../services/skuService';
@@ -54,6 +55,13 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
   const [skus, setSkus] = useState<SKU[]>([]);
   const [forecasts, setForecasts] = useState<Forecast[]>([]);
   const [capacityPlans, setCapacityPlans] = useState<CapacityPlan[]>([]);
+
+  // v1.36.0 - Exchange Rate Quick Fix state
+  const [quickFixTwdOpen, setQuickFixTwdOpen] = useState(false);
+  const [quickFixCnyOpen, setQuickFixCnyOpen] = useState(false);
+  const [quickFixTwdValue, setQuickFixTwdValue] = useState<number | null>(null);
+  const [quickFixCnyValue, setQuickFixCnyValue] = useState<number | null>(null);
+  const [quickFixSaving, setQuickFixSaving] = useState(false);
 
   const loadParams = async () => {
     setLoading(true);
@@ -111,6 +119,79 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
     if (!dqSummary) return [];
     return filterIssuesByDomain(dqSummary, 'currency');
   }, [dqSummary]);
+
+  // v1.36.0 - Separate TWD and CNY issues
+  const twdMissingIssue = useMemo(() => {
+    return currencyDqIssues.find(i =>
+      i.id === 'missing-constant-twd-rate' || i.id === 'missing-yearly-twd-rate'
+    );
+  }, [currencyDqIssues]);
+
+  const cnyMissingIssue = useMemo(() => {
+    return currencyDqIssues.find(i =>
+      i.id === 'missing-constant-cny-rate' || i.id === 'missing-yearly-cny-rate'
+    );
+  }, [currencyDqIssues]);
+
+  // v1.36.0 - Exchange Rate Quick Fix handlers
+  const handleQuickFixTwdSave = async () => {
+    if (quickFixTwdValue === null || quickFixTwdValue <= 0) {
+      message.error(t('remediation.validation.exchangeRateMin'));
+      return;
+    }
+    setQuickFixSaving(true);
+    try {
+      const updatedSettings = {
+        ...currencySettings,
+        constantUsdToTwdRate: quickFixTwdValue,
+      };
+      setCurrencySettings(updatedSettings);
+      // Also save to backend
+      if (params) {
+        await saveParameters(scope, {
+          ...params,
+          currencySettings: updatedSettings,
+        });
+      }
+      message.success(t('remediation.exchangeRate.saved'));
+      setQuickFixTwdOpen(false);
+      setQuickFixTwdValue(null);
+      loadParams();
+    } catch (e: any) {
+      message.error(e.message || 'Failed to save');
+    } finally {
+      setQuickFixSaving(false);
+    }
+  };
+
+  const handleQuickFixCnySave = async () => {
+    if (quickFixCnyValue === null || quickFixCnyValue <= 0) {
+      message.error(t('remediation.validation.exchangeRateMin'));
+      return;
+    }
+    setQuickFixSaving(true);
+    try {
+      const updatedSettings = {
+        ...currencySettings,
+        constantUsdToCnyRate: quickFixCnyValue,
+      };
+      setCurrencySettings(updatedSettings);
+      if (params) {
+        await saveParameters(scope, {
+          ...params,
+          currencySettings: updatedSettings,
+        });
+      }
+      message.success(t('remediation.exchangeRate.saved'));
+      setQuickFixCnyOpen(false);
+      setQuickFixCnyValue(null);
+      loadParams();
+    } catch (e: any) {
+      message.error(e.message || 'Failed to save');
+    } finally {
+      setQuickFixSaving(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -316,9 +397,93 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
       <Card title={
         <span>
           {t('parameters.currencySettings')}
-          {currencyDqIssues.length > 0 && (
+          {currencyDqIssues.length > 0 && writable && (
+            <Popover
+              open={quickFixTwdOpen || quickFixCnyOpen}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setQuickFixTwdOpen(false);
+                  setQuickFixCnyOpen(false);
+                }
+              }}
+              trigger="click"
+              placement="bottom"
+              content={
+                <div style={{ width: 250 }}>
+                  <div style={{ marginBottom: 8 }}>
+                    <Text strong>{t('remediation.exchangeRate.title')}</Text>
+                  </div>
+                  {twdMissingIssue && (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ marginBottom: 4 }}>
+                        <Text type="secondary">{t('remediation.exchangeRate.twdMissing')}</Text>
+                      </div>
+                      <Space>
+                        <InputNumber
+                          min={0.001}
+                          step={0.001}
+                          precision={4}
+                          value={quickFixTwdValue}
+                          onChange={(v) => setQuickFixTwdValue(v)}
+                          placeholder="USD to TWD"
+                          style={{ width: 120 }}
+                        />
+                        <Button
+                          size="small"
+                          type="primary"
+                          icon={<CheckOutlined />}
+                          onClick={handleQuickFixTwdSave}
+                          loading={quickFixSaving}
+                          disabled={quickFixTwdValue === null || quickFixTwdValue <= 0}
+                        >
+                          {t('remediation.confirmFix')}
+                        </Button>
+                      </Space>
+                    </div>
+                  )}
+                  {cnyMissingIssue && (
+                    <div>
+                      <div style={{ marginBottom: 4 }}>
+                        <Text type="secondary">{t('remediation.exchangeRate.cnyMissing')}</Text>
+                      </div>
+                      <Space>
+                        <InputNumber
+                          min={0.001}
+                          step={0.001}
+                          precision={4}
+                          value={quickFixCnyValue}
+                          onChange={(v) => setQuickFixCnyValue(v)}
+                          placeholder="USD to CNY"
+                          style={{ width: 120 }}
+                        />
+                        <Button
+                          size="small"
+                          type="primary"
+                          icon={<CheckOutlined />}
+                          onClick={handleQuickFixCnySave}
+                          loading={quickFixSaving}
+                          disabled={quickFixCnyValue === null || quickFixCnyValue <= 0}
+                        >
+                          {t('remediation.confirmFix')}
+                        </Button>
+                      </Space>
+                    </div>
+                  )}
+                </div>
+              }
+            >
+              <ExclamationCircleOutlined
+                style={{ color: '#ff4d4f', marginLeft: 8, fontSize: 14, cursor: 'pointer' }}
+                onClick={() => {
+                  setQuickFixTwdOpen(true);
+                  setQuickFixCnyOpen(true);
+                }}
+              />
+            </Popover>
+          )}
+          {currencyDqIssues.length > 0 && !writable && (
             <Tooltip title={t('dq.currencyRateMissing.tooltip')}>
-              <ExclamationCircleOutlined style={{ color: '#ff4d4f', marginLeft: 8, fontSize: 14 }} />
+              <ExclamationCircleOutlined style={{ color: '#ff4d4f', marginLeft: 8, fontSize: 14, cursor: 'not-allowed' }} />
             </Tooltip>
           )}
         </span>
@@ -329,7 +494,28 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
             type="error"
             showIcon
             message={t('dq.currencyRateMissing.title')}
-            description={currencyDqIssues.map((issue) => t(issue.detailMessage.key, issue.detailMessage.params as Record<string, string | number>)).join(' ')}
+            description={
+              <div>
+                {currencyDqIssues.map((issue) => (
+                  <div key={issue.id}>
+                    {t(issue.detailMessage.key, issue.detailMessage.params as Record<string, string | number>)}
+                  </div>
+                ))}
+                {writable && (
+                  <Button
+                    size="small"
+                    type="link"
+                    style={{ padding: 0, marginTop: 4 }}
+                    onClick={() => {
+                      setQuickFixTwdOpen(true);
+                      setQuickFixCnyOpen(true);
+                    }}
+                  >
+                    {t('remediation.fixNow')}
+                  </Button>
+                )}
+              </div>
+            }
             style={{ marginBottom: 16 }}
           />
         )}

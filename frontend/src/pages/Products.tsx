@@ -41,9 +41,10 @@ import { normalizeCurrencyCode, DEFAULT_CURRENCY_SETTINGS } from '../core/curren
 import { validateSKU } from '../core/validation';
 import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_WORKING_DAYS } from '../core/defaults';
 import { useI18n } from '../i18n';
-import { buildDataQualitySummary } from '../core/dataQuality';
+import { buildDataQualitySummary, type DataQualityIssue } from '../core/dataQuality';
 import { filterIssuesByDomain, findAllIssuesAffectingSku } from '../core/dataQualityVisibility';
 import { DataQualityBadge, DataQualityAlert } from '../components/common';
+import { SkuQuickFixDrawer } from '../components/common/DataQualityQuickFixDrawer';
 
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -119,6 +120,11 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
 
   // Date filter
   const [dateRange, setDateRange] = useState<[string, string] | null>(null);
+
+  // v1.36.0 - Quick Fix Drawer state
+  const [quickFixOpen, setQuickFixOpen] = useState(false);
+  const [quickFixSku, setQuickFixSku] = useState<SKU | null>(null);
+  const [quickFixIssues, setQuickFixIssues] = useState<DataQualityIssue[]>([]);
 
   // Versions
   const [versions, setVersions] = useState<any[]>([]);
@@ -265,6 +271,22 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
     }
     return map;
   }, [skus, productDqIssues]);
+
+  // v1.36.0 - Quick Fix handlers
+  const handleQuickFixClick = (e: React.MouseEvent, sku: SKU) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!writable) return; // Viewer blocked
+    const issues = skuDqIssuesMap.get(sku.id) || [];
+    setQuickFixSku(sku);
+    setQuickFixIssues(issues);
+    setQuickFixOpen(true);
+  };
+
+  const handleQuickFixSuccess = (updatedSku: SKU) => {
+    setSkus((prev) => prev.map((s) => (s.id === updatedSku.id ? updatedSku : s)));
+    loadVersions();
+  };
 
   // Filter by date
   const filteredSkus = useMemo(() => {
@@ -471,7 +493,16 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
         const issues = skuDqIssuesMap.get(record.id);
         if (!issues || issues.length === 0) return v;
         const highestSeverity = issues.some((i) => i.severity === 'error') ? 'error' : issues.some((i) => i.severity === 'warning') ? 'warning' : 'info';
-        const tooltipContent = (
+        const tooltipContent = writable ? (
+          <div>
+            {issues.map((issue) => (
+              <div key={issue.id}>
+                {t(issue.detailMessage.key, issue.detailMessage.params as Record<string, string | number>)}
+              </div>
+            ))}
+            <div style={{ marginTop: 4, color: '#1890ff' }}>{t('remediation.clickToFix')}</div>
+          </div>
+        ) : (
           <div>
             {issues.map((issue) => (
               <div key={issue.id}>
@@ -483,7 +514,12 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
         return (
           <span>
             {v}
-            <DataQualityBadge severity={highestSeverity} message={tooltipContent} />
+            <span
+              onClick={(e) => handleQuickFixClick(e, record)}
+              style={{ cursor: writable ? 'pointer' : 'not-allowed' }}
+            >
+              <DataQualityBadge severity={highestSeverity} message={tooltipContent} />
+            </span>
           </span>
         );
       },
@@ -760,6 +796,16 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
           </div>
         </Space>
       </Card>
+
+      {/* v1.36.0 - Quick Fix Drawer */}
+      <SkuQuickFixDrawer
+        open={quickFixOpen}
+        onClose={() => setQuickFixOpen(false)}
+        sku={quickFixSku}
+        issues={quickFixIssues}
+        scope={scope}
+        onSuccess={handleQuickFixSuccess}
+      />
     </div>
   );
 };

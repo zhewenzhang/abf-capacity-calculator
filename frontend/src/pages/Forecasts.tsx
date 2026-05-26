@@ -38,9 +38,9 @@ import type { Forecast, SKU, ProjectScope, CapacityPlan, ProjectParameters } fro
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
 import { buildYearlyGrowthForecasts } from '../core/forecastGrowth';
-import { buildDataQualitySummary } from '../core/dataQuality';
+import { buildDataQualitySummary, type DataQualityIssue } from '../core/dataQuality';
 import { filterIssuesByDomain, findAllIssuesAffectingSku } from '../core/dataQualityVisibility';
-import { DataQualityAlert, DataQualityBadge } from '../components/common';
+import { DataQualityAlert, DataQualityBadge, OrphanForecastGuidedFixModal } from '../components/common';
 import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_WORKING_DAYS } from '../core/defaults';
 import { DEFAULT_CURRENCY_SETTINGS } from '../core/currency';
 import { Segmented } from 'antd';
@@ -151,6 +151,10 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
   // Whether editing is enabled for quarter/year views
   const [periodEditEnabled, setPeriodEditEnabled] = useState(false);
 
+  // v1.36.0 - Guided Fix Modal state
+  const [guidedFixOpen, setGuidedFixOpen] = useState(false);
+  const [guidedFixIssue, setGuidedFixIssue] = useState<DataQualityIssue | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadData = useCallback(async () => {
@@ -196,6 +200,24 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
     if (!dqSummary) return [];
     return filterIssuesByDomain(dqSummary, 'forecast');
   }, [dqSummary]);
+
+  // v1.36.0 - Separate orphan forecast issues for Guided Fix
+  const orphanForecastIssues = useMemo(() => {
+    return forecastDqIssues.filter(i => i.id.startsWith('forecast-orphan-sku-'));
+  }, [forecastDqIssues]);
+
+  // v1.36.0 - Guided Fix handlers
+  const handleOrphanFixClick = (issue: DataQualityIssue) => {
+    if (!writable) return;
+    setGuidedFixIssue(issue);
+    setGuidedFixOpen(true);
+  };
+
+  const handleGuidedFixEditForecast = () => {
+    // Focus on the row with the orphan forecast - but since orphan SKU doesn't exist in SKU list,
+    // we need to show a message or handle differently
+    message.info(t('remediation.orphanForecast.editForecastHint'));
+  };
 
   // Build a map of SKU ID -> DQ issues for row-level indicators
   const skuDqIssuesMap = useMemo(() => {
@@ -851,9 +873,44 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
       {/* DQ Alert for forecast-domain issues */}
       {forecastDqIssues.length > 0 && (
         <DataQualityAlert
-          issues={forecastDqIssues}
+          issues={forecastDqIssues.filter(i => !i.id.startsWith('forecast-orphan-sku-'))}
           severityFilter={['error', 'warning']}
           maxIssues={3}
+        />
+      )}
+
+      {/* v1.36.0 - Orphan Forecast Alert with Guided Fix */}
+      {orphanForecastIssues.length > 0 && (
+        <Alert
+          type="error"
+          showIcon
+          message={t('remediation.orphanForecast.alertTitle', { count: orphanForecastIssues.length })}
+          description={
+            <div>
+              <ul style={{ margin: '8px 0 0 0', paddingLeft: 20 }}>
+                {orphanForecastIssues.slice(0, 3).map(issue => (
+                  <li key={issue.id}>
+                    <Space>
+                      <span>{t(issue.detailMessage.key, issue.detailMessage.params as Record<string, string | number>)}</span>
+                      {writable && (
+                        <Button
+                          size="small"
+                          type="link"
+                          onClick={() => handleOrphanFixClick(issue)}
+                        >
+                          {t('remediation.fixNow')}
+                        </Button>
+                      )}
+                    </Space>
+                  </li>
+                ))}
+              </ul>
+              {orphanForecastIssues.length > 3 && (
+                <Text type="secondary">+{orphanForecastIssues.length - 3} more</Text>
+              )}
+            </div>
+          }
+          style={{ marginBottom: 16 }}
         />
       )}
 
@@ -1066,6 +1123,15 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
           )}
         </Form>
       </Modal>
+
+      {/* v1.36.0 - Orphan Forecast Guided Fix Modal */}
+      <OrphanForecastGuidedFixModal
+        open={guidedFixOpen}
+        onClose={() => setGuidedFixOpen(false)}
+        issue={guidedFixIssue}
+        scope={scope}
+        onEditForecast={handleGuidedFixEditForecast}
+      />
     </div>
   );
 };

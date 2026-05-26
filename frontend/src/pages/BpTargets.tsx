@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Button, message, Alert, Card, Tooltip } from 'antd';
-import { SaveOutlined, UndoOutlined, WarningOutlined } from '@ant-design/icons';
+import { Button, message, Alert, Card, Tooltip, Popover, InputNumber, Space, Typography } from 'antd';
+import { SaveOutlined, UndoOutlined, WarningOutlined, CheckOutlined } from '@ant-design/icons';
 import { DataSheetGrid, textColumn, floatColumn, keyColumn } from 'react-datasheet-grid';
 import 'react-datasheet-grid/dist/style.css';
 import { getParameters, saveParameters } from '../services/parameterService';
@@ -26,6 +26,7 @@ interface BpTargetsProps {
 
 const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
   const { t } = useI18n();
+  const { Text } = Typography;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +39,11 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
   const [params, setParams] = useState<ProjectParameters | null>(null);
 
   const writable = canEdit(scope.role);
+
+  // v1.36.0 - BP Target Quick Fix state
+  const [quickFixYear, setQuickFixYear] = useState<string | null>(null);
+  const [quickFixValue, setQuickFixValue] = useState<number | null>(null);
+  const [quickFixSaving, setQuickFixSaving] = useState(false);
 
   // ---------- Load parameters ----------
   const loadData = useCallback(async () => {
@@ -130,6 +136,54 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
     return '';
   }, [savedSnapshot]);
 
+  // v1.36.0 - BP Target Quick Fix handlers (defined before columns to avoid hoisting issue)
+  const handleQuickFixOpen = useCallback((year: string) => {
+    if (!writable) return;
+    setQuickFixYear(year);
+    setQuickFixValue(null);
+  }, [writable]);
+
+  const handleQuickFixClose = useCallback(() => {
+    setQuickFixYear(null);
+    setQuickFixValue(null);
+  }, []);
+
+  const handleQuickFixSave = useCallback(async () => {
+    if (!quickFixYear || quickFixValue === null || !writable) return;
+
+    // Validate: must be >= 0
+    if (quickFixValue < 0) {
+      message.error(t('remediation.validation.bpTargetMin'));
+      return;
+    }
+
+    setQuickFixSaving(true);
+    try {
+      const latestParams = await getParameters(scope);
+      const currentTargets = latestParams.bpTargets?.yearlyRevenueTargetsMillionTwd || {};
+      const updatedTargets = {
+        ...currentTargets,
+        [quickFixYear]: quickFixValue,
+      };
+
+      await saveParameters(scope, {
+        ...latestParams,
+        bpTargets: {
+          mode: 'yearly' as const,
+          yearlyRevenueTargetsMillionTwd: updatedTargets,
+        },
+      });
+
+      message.success(t('remediation.bpTarget.saved'));
+      handleQuickFixClose();
+      loadData();
+    } catch (e: any) {
+      message.error(e.message || 'Failed to save');
+    } finally {
+      setQuickFixSaving(false);
+    }
+  }, [quickFixYear, quickFixValue, writable, scope, t, handleQuickFixClose]);
+
   // ---------- Columns definition ----------
   const columns = useMemo(() => {
     const yearCols = [];
@@ -137,17 +191,66 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
       const yearStr = String(year);
       const dqInfo = yearDqIssueMap.get(yearStr);
 
+      // v1.36.0 - Quick Fix Popover for missing BP target
+      const quickFixPopover = dqInfo?.type === 'missing-target' && writable ? (
+        <Popover
+          open={quickFixYear === yearStr}
+          onOpenChange={(open) => open ? handleQuickFixOpen(yearStr) : handleQuickFixClose()}
+          trigger="click"
+          placement="bottom"
+          content={
+            <div style={{ width: 200 }}>
+              <div style={{ marginBottom: 8 }}>
+                <Text>{t('remediation.bpTarget.enterValue')}</Text>
+              </div>
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <InputNumber
+                  min={0}
+                  step={1}
+                  precision={0}
+                  value={quickFixValue}
+                  onChange={(v) => setQuickFixValue(v)}
+                  placeholder="Million TWD"
+                  style={{ width: '100%' }}
+                  addonAfter="M TWD"
+                />
+                <Space>
+                  <Button
+                    size="small"
+                    type="primary"
+                    icon={<CheckOutlined />}
+                    onClick={handleQuickFixSave}
+                    loading={quickFixSaving}
+                    disabled={quickFixValue === null || quickFixValue < 0}
+                  >
+                    {t('remediation.confirmFix')}
+                  </Button>
+                  <Button size="small" onClick={handleQuickFixClose}>
+                    {t('common.cancel')}
+                  </Button>
+                </Space>
+              </Space>
+            </div>
+          }
+        >
+          <WarningOutlined
+            style={{ color: '#faad14', marginLeft: 4, fontSize: 12, cursor: 'pointer' }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </Popover>
+      ) : dqInfo ? (
+        <Tooltip title={t(dqInfo.issue.detailMessage.key, dqInfo.issue.detailMessage.params as Record<string, string | number>)}>
+          <WarningOutlined style={{ color: writable ? '#faad14' : '#faad14', marginLeft: 4, fontSize: 12, cursor: writable ? 'pointer' : 'not-allowed' }} />
+        </Tooltip>
+      ) : null;
+
       yearCols.push(
         keyColumn<BpSheetRow, any>(yearStr, {
           ...floatColumn,
           title: (
             <span>
               {yearStr}
-              {dqInfo && (
-                <Tooltip title={t(dqInfo.issue.detailMessage.key, dqInfo.issue.detailMessage.params as Record<string, string | number>)}>
-                  <WarningOutlined style={{ color: '#faad14', marginLeft: 4, fontSize: 12 }} />
-                </Tooltip>
-              )}
+              {quickFixPopover}
             </span>
           ),
           basis: 110,
@@ -169,7 +272,7 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
       } as any),
       ...yearCols,
     ];
-  }, [t, writable]);
+  }, [t, writable, yearDqIssueMap, quickFixYear, quickFixValue, quickFixSaving]);
 
   // ---------- Save & Discard handlers ----------
   const handleSave = async () => {
