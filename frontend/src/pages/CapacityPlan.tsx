@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Table,
   Button,
@@ -48,6 +49,10 @@ import { getForecasts } from '../services/forecastService';
 import { generateDefaultCapacityPlans, generateMonths } from '../core/defaults';
 import { buildDataQualitySummary } from '../core/dataQuality';
 import { filterIssuesByDomain } from '../core/dataQualityVisibility';
+import {
+  parseRemediationFocusParams,
+  applyRemediationHighlight,
+} from '../core/dataQualityRemediation';
 import type { CapacityPlan, FactoryDef, ProjectParameters, ProjectScope, SKU, Forecast } from '../types';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
@@ -86,12 +91,16 @@ function getLastMonthOfYear(year: number): string {
 const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ scope }) => {
   const writable = canEdit(scope.role);
   const { t } = useI18n();
+  const [searchParams] = useSearchParams();
   const [plans, setPlans] = useState<CapacityPlan[]>([]);
   const [workingDays, setWorkingDays] = useState(28);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
+
+  // v1.36.0 - URL focus params for navigation remediation
+  const focusParams = useMemo(() => parseRemediationFocusParams(searchParams.toString()), [searchParams]);
 
   // DQ visibility - additional data
   const [skus, setSkus] = useState<SKU[]>([]);
@@ -199,6 +208,36 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ scope }) => {
   useEffect(() => {
     loadPlans();
   }, [scope]);
+
+  // v1.36.0 - Handle URL focus params for navigation remediation
+  useEffect(() => {
+    if (focusParams.focusMonth && !loading) {
+      // Wait for data to be loaded, then scroll and highlight
+      const timer = setTimeout(() => {
+        // Try to find the column header for the focus month
+        const columnHeader = document.querySelector(`[data-month="${focusParams.focusMonth}"]`);
+        if (columnHeader) {
+          applyRemediationHighlight(columnHeader as HTMLElement);
+        }
+
+        // Also try to find the total row cell for that month
+        const totalCell = document.querySelector(`[data-month-cell="${focusParams.focusMonth}"]`);
+        if (totalCell) {
+          applyRemediationHighlight(totalCell as HTMLElement);
+        }
+
+        // Focus on specific field if provided
+        if (focusParams.focusField) {
+          const fieldElement = document.getElementById(`capacity-${focusParams.focusMonth}-${focusParams.focusField}`);
+          if (fieldElement) {
+            applyRemediationHighlight(fieldElement);
+          }
+        }
+      }, 300);
+
+      return () => clearTimeout(timer);
+    }
+  }, [focusParams, loading]);
 
   // ---------- DQ Visibility ----------
   const dqSummary = useMemo(() => {
@@ -661,6 +700,17 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ scope }) => {
       {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       {!writable && (
         <Alert message={t('common.readOnlyMode')} description={t('common.readOnlyDesc')} type="info" showIcon className="abf-alert-page" />
+      )}
+
+      {/* v1.36.0 - Focus hint from navigation remediation */}
+      {focusParams.focusMonth && !loading && (
+        <Alert
+          type="info"
+          showIcon
+          message={t('remediation.capacity.focusHint', { month: focusParams.focusMonth })}
+          style={{ marginBottom: 16 }}
+          closable
+        />
       )}
 
       {/* DQ Alert for capacity-domain issues */}

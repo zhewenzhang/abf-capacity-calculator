@@ -989,4 +989,61 @@ export const zhTW: Record<string, string> = {
   'reviewStatus.reviewed': '已審核',
   'reviewStatus.locked': '已鎖定',
   'reviewStatus.archived': '已封存',
+
+  // v1.36.0 — 資料品質修復 (Data Quality Remediation)
+  'remediation.fixNow': '立即修復',
+  'remediation.confirmFix': '確認修復',
+  'remediation.clickToFix': '點擊修復',
+  'remediation.recommended': '推薦',
+  'remediation.goToFix': '前往修復',
+  'remediation.saveFailed': '儲存失敗',
+  'remediation.issuesFound': '發現 {count} 個問題',
+  'remediation.viewerBlocked': '您在此協作空間為檢視者，編輯功能已停用。',
+
+  // Remediation Validation
+  'remediation.validation.required': '此欄位必填。',
+  'remediation.validation.invalidNumber': '請輸入有效的數字。',
+  'remediation.validation.invalidInteger': '請輸入有效的整數。',
+  'remediation.validation.unitPriceMin': '單價必須 >= 0。',
+  'remediation.validation.invalidCurrency': '幣別必須是 USD、TWD 或 CNY。',
+  'remediation.validation.layerCountMin': '層數必須 > 0。',
+  'remediation.validation.invalidSizeCategory': '尺寸必須是 small、medium、large 或 xlarge。',
+  'remediation.validation.exchangeRateMin': '匯率必須 > 0。',
+  'remediation.validation.bpTargetMin': 'BP 目標必須 >= 0。',
+  'remediation.validation.chipDimensionMin': '晶片尺寸必須 > 0。',
+
+  // SKU Quick Fix
+  'remediation.sku.title': '快速修復 SKU',
+  'remediation.sku.saved': 'SKU 屬性已成功更新。',
+  'remediation.sku.note': '填入缺失的屬性後點擊確認修復。變更將立即儲存。',
+
+  // BP Target Quick Fix
+  'remediation.bpTarget.saved': 'BP 目標已成功更新。',
+  'remediation.bpTarget.enterValue': '輸入 BP 目標值：',
+
+  // Exchange Rate Quick Fix
+  'remediation.exchangeRate.title': '快速修復匯率',
+  'remediation.exchangeRate.twdMissing': 'TWD 匯率缺失：',
+  'remediation.exchangeRate.cnyMissing': 'CNY 匯率缺失：',
+  'remediation.exchangeRate.saved': '匯率已成功更新。',
+
+  // Orphan Forecast Guided Fix
+  'remediation.orphanForecast.title': '孤兒預測問題',
+  'remediation.orphanForecast.alertTitle': '偵測到 {count} 筆孤兒預測',
+  'remediation.orphanForecast.issueTitle': '預測引用不存在的 SKU',
+  'remediation.orphanForecast.issueDesc': '{month} 的預測引用了 SKU ID「{skuId}」，但該 SKU 不存在於產品主表中。',
+  'remediation.orphanForecast.impactTitle': '影響：',
+  'remediation.orphanForecast.impactRevenue': '此預測的營收無法計算。',
+  'remediation.orphanForecast.impactAttributes': '產品屬性（尺寸、層數、應用）未知。',
+  'remediation.orphanForecast.impactConfidence': '資料品質可信度降低。',
+  'remediation.orphanForecast.optionsTitle': '修復方式：',
+  'remediation.orphanForecast.createSku': '在產品頁建立 SKU',
+  'remediation.orphanForecast.createSkuDesc': '前往產品頁面建立缺失的 SKU。SKU ID 將自動預填。',
+  'remediation.orphanForecast.editForecast': '編輯預測引用',
+  'remediation.orphanForecast.editForecastDesc': '將預測改為引用現有的 SKU。',
+  'remediation.orphanForecast.editForecastHint': '在資料來源中找到該預測列，將 SKU ID 更新為現有 SKU。',
+  'remediation.orphanForecast.note': '此對話框僅提供引導，不會自動進行任何變更。',
+
+  // Capacity Navigation Fix
+  'remediation.capacity.focusHint': '焦點：{month}。請捲動至此月份的產能輸入欄位。',
 };

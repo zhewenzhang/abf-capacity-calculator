@@ -980,4 +980,61 @@ export const en: Record<string, string> = {
   'reviewStatus.reviewed': 'Reviewed',
   'reviewStatus.locked': 'Locked',
   'reviewStatus.archived': 'Archived',
+
+  // v1.36.0 — Data Quality Remediation
+  'remediation.fixNow': 'Fix Now',
+  'remediation.confirmFix': 'Confirm Fix',
+  'remediation.clickToFix': 'Click to fix',
+  'remediation.recommended': 'Recommended',
+  'remediation.goToFix': 'Go Fix',
+  'remediation.saveFailed': 'Failed to save',
+  'remediation.issuesFound': '{count} issue(s) found',
+  'remediation.viewerBlocked': 'You are a viewer in this workspace. Editing is disabled.',
+
+  // Remediation Validation
+  'remediation.validation.required': 'This field is required.',
+  'remediation.validation.invalidNumber': 'Please enter a valid number.',
+  'remediation.validation.invalidInteger': 'Please enter a valid integer.',
+  'remediation.validation.unitPriceMin': 'Unit price must be >= 0.',
+  'remediation.validation.invalidCurrency': 'Currency must be USD, TWD, or CNY.',
+  'remediation.validation.layerCountMin': 'Layer count must be > 0.',
+  'remediation.validation.invalidSizeCategory': 'Size must be small, medium, large, or xlarge.',
+  'remediation.validation.exchangeRateMin': 'Exchange rate must be > 0.',
+  'remediation.validation.bpTargetMin': 'BP target must be >= 0.',
+  'remediation.validation.chipDimensionMin': 'Chip dimension must be > 0.',
+
+  // SKU Quick Fix
+  'remediation.sku.title': 'Quick Fix SKU',
+  'remediation.sku.saved': 'SKU attributes updated successfully.',
+  'remediation.sku.note': 'Fill in the missing attributes and click Confirm Fix. Changes will be saved immediately.',
+
+  // BP Target Quick Fix
+  'remediation.bpTarget.saved': 'BP target updated successfully.',
+  'remediation.bpTarget.enterValue': 'Enter BP target value:',
+
+  // Exchange Rate Quick Fix
+  'remediation.exchangeRate.title': 'Quick Fix Exchange Rate',
+  'remediation.exchangeRate.twdMissing': 'TWD exchange rate missing:',
+  'remediation.exchangeRate.cnyMissing': 'CNY exchange rate missing:',
+  'remediation.exchangeRate.saved': 'Exchange rate updated successfully.',
+
+  // Orphan Forecast Guided Fix
+  'remediation.orphanForecast.title': 'Orphan Forecast Issue',
+  'remediation.orphanForecast.alertTitle': '{count} orphan forecast(s) detected',
+  'remediation.orphanForecast.issueTitle': 'Forecast references missing SKU',
+  'remediation.orphanForecast.issueDesc': 'Forecast for {month} references SKU ID "{skuId}" which does not exist in Products.',
+  'remediation.orphanForecast.impactTitle': 'Impact:',
+  'remediation.orphanForecast.impactRevenue': 'Revenue from this forecast cannot be calculated.',
+  'remediation.orphanForecast.impactAttributes': 'Product attributes (size, layer, application) are unknown.',
+  'remediation.orphanForecast.impactConfidence': 'Data quality confidence is reduced.',
+  'remediation.orphanForecast.optionsTitle': 'How to fix:',
+  'remediation.orphanForecast.createSku': 'Create SKU in Products',
+  'remediation.orphanForecast.createSkuDesc': 'Navigate to Products page and create the missing SKU. The SKU ID will be pre-filled.',
+  'remediation.orphanForecast.editForecast': 'Edit Forecast Reference',
+  'remediation.orphanForecast.editForecastDesc': 'Change the forecast to reference an existing SKU.',
+  'remediation.orphanForecast.editForecastHint': 'Find the forecast row in your data source and update the SKU ID to an existing SKU.',
+  'remediation.orphanForecast.note': 'This modal provides guidance only. No automatic changes will be made.',
+
+  // Capacity Navigation Fix
+  'remediation.capacity.focusHint': 'Focus: {month}. Scroll to find the capacity input for this month.',
 };
