@@ -399,3 +399,77 @@ describe('runTool — dispatch by tool ID', () => {
     expect(result.toolName).toBe('explainCapacityRisk');
   });
 });
+
+// ============================================================
+// routeQuestion — Traditional Chinese keywords
+// ============================================================
+
+describe('routeQuestion — Traditional Chinese keywords', () => {
+  it('routes "資料品質" to inspectDataQuality', () => {
+    const ctx = makeContext();
+    const result = routeQuestion('資料品質如何？', ctx);
+    expect(result.toolName).toBe('inspectDataQuality');
+  });
+
+  it('routes "產能" to explainCapacityRisk', () => {
+    const ctx = makeContext();
+    const result = routeQuestion('產能是否有風險？', ctx);
+    expect(result.toolName).toBe('explainCapacityRisk');
+  });
+
+  it('routes "瓶頸" to explainCapacityRisk', () => {
+    const ctx = makeContext();
+    const result = routeQuestion('瓶頸在哪裡？', ctx);
+    expect(result.toolName).toBe('explainCapacityRisk');
+  });
+
+  it('routes "差距" to explainBpGap', () => {
+    const ctx = makeContext();
+    const result = routeQuestion('BP 差距分析', ctx);
+    expect(result.toolName).toBe('explainBpGap');
+  });
+
+  it('routes "達成" to explainBpGap', () => {
+    const ctx = makeContext();
+    const result = routeQuestion('目標達成率', ctx);
+    expect(result.toolName).toBe('explainBpGap');
+  });
+
+  it('routes "修復" to suggestDataFixes', () => {
+    const ctx = makeContext();
+    const result = routeQuestion('請提供修復建議', ctx);
+    expect(result.toolName).toBe('suggestDataFixes');
+  });
+
+  it('routes "情境" to explainScenarioImpact', () => {
+    const ctx = makeContext();
+    const result = routeQuestion('情境模擬結果', ctx);
+    expect(result.toolName).toBe('explainScenarioImpact');
+  });
+
+  it('routes "前瞻" to buildLookAheadFocus', () => {
+    const ctx = makeContext();
+    const result = routeQuestion('前瞻分析', ctx);
+    expect(result.toolName).toBe('buildLookAheadFocus');
+  });
+
+  it('routes "未來" to buildLookAheadFocus', () => {
+    const ctx = makeContext();
+    const result = routeQuestion('未來六個月的風險', ctx);
+    expect(result.toolName).toBe('buildLookAheadFocus');
+  });
+
+  it('routes "短缺" to explainCapacityRisk', () => {
+    const ctx = makeContext();
+    const result = routeQuestion('是否有短缺月份？', ctx);
+    expect(result.toolName).toBe('explainCapacityRisk');
+  });
+
+  it('returns unknown with improved fallback for unrecognized Chinese question', () => {
+    const ctx = makeContext();
+    const result = routeQuestion('你好世界', ctx);
+    expect(result.toolName).toBe('unknown');
+    expect(result.caveats.some(c => c.includes('可回答的問題類型'))).toBe(true);
+    expect(result.recommendations.some(r => r.includes('關鍵字'))).toBe(true);
+  });
+});

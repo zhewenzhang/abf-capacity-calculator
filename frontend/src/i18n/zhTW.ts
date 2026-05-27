@@ -1088,6 +1088,18 @@ export const zhTW: Record<string, string> = {
   'copilot.provider.viewerReadonly': '檢視者角色：供應商設定僅供檢視。',
   'copilot.provider.mockInfo': '模擬供應商回傳確定性測試回應，非真實 AI 呼叫。',
   'copilot.provider.notEnabled': '外部供應商在此版本中未啟用。',
+  'copilot.status.deterministic': '確定性分析',
+  'copilot.status.blocked': '已封鎖',
+  'copilot.status.mock': '模擬回應',
+  'copilot.status.warning': '警告',
+  'copilot.status.needsExternalAi': '需外部 AI',
+  'copilot.whyThisAnswer': '為何產生此回答？',
+  'copilot.why.toolUsed': '使用工具：',
+  'copilot.why.dataAnalyzed': '分析資料：',
+  'copilot.why.caveats': '注意事項：',
+  'copilot.why.validationStatus': '驗證狀態：',
+  'copilot.why.validationPassed': '驗證通過',
+  'copilot.why.validationWarning': '驗證警告',
 
   // 情境模擬
   'menu.scenario': '情境模擬',

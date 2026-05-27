@@ -1079,6 +1079,18 @@ export const en: Record<string, string> = {
   'copilot.provider.viewerReadonly': 'Viewer role: provider settings are read-only.',
   'copilot.provider.mockInfo': 'Mock provider returns deterministic test responses. No real AI calls are made.',
   'copilot.provider.notEnabled': 'External provider is not enabled in this build.',
+  'copilot.status.deterministic': 'Deterministic',
+  'copilot.status.blocked': 'Blocked',
+  'copilot.status.mock': 'Mock Response',
+  'copilot.status.warning': 'Warning',
+  'copilot.status.needsExternalAi': 'Needs External AI',
+  'copilot.whyThisAnswer': 'Why this answer?',
+  'copilot.why.toolUsed': 'Tool used:',
+  'copilot.why.dataAnalyzed': 'Data analyzed:',
+  'copilot.why.caveats': 'Caveats:',
+  'copilot.why.validationStatus': 'Validation status:',
+  'copilot.why.validationPassed': 'Validation passed',
+  'copilot.why.validationWarning': 'Validation warning(s)',
 
   // Scenario Planning
   'menu.scenario': 'Scenario Planning',

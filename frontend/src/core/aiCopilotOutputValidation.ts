@@ -204,7 +204,7 @@ const WRITE_ACTION_PATTERNS: ReadonlyArray<{ pattern: RegExp; reason: string }> 
   { pattern: /\bwrite\s+to\s+collection\b/i, reason: 'AI cannot write to Firestore collections' },
   { pattern: /\bsetDoc\b/i, reason: 'AI cannot use Firestore setDoc' },
   { pattern: /\bdeleteDoc\b/i, reason: 'AI cannot use Firestore deleteDoc' },
-  { pattern: /\bauto[- ]?save\b/i, reason: 'AI cannot trigger auto-save' },
+  { pattern: /\bauto[- ]?saved?\b/i, reason: 'AI cannot trigger auto-save' },
   { pattern: /\bautomatically\s+saved\b/i, reason: 'AI cannot claim automatic saving' },
   { pattern: /\bsaved\s+for\s+you\b/i, reason: 'AI cannot claim saving on behalf of user' },
 ];

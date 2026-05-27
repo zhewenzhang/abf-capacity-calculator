@@ -256,6 +256,11 @@ describe('validateNoWriteActions', () => {
     expect(issues.some(i => i.severity === 'blocked')).toBe(true);
   });
 
+  it('blocks "auto-saved"', () => {
+    const issues = validateNoWriteActions('The data is auto-saved to the cloud.');
+    expect(issues.some(i => i.severity === 'blocked')).toBe(true);
+  });
+
   it('blocks "automatically saved"', () => {
     const issues = validateNoWriteActions('Your changes have been automatically saved.');
     expect(issues.some(i => i.severity === 'blocked')).toBe(true);

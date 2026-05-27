@@ -667,71 +667,104 @@ export function buildLookAheadFocus(context: AiCopilotContext): CopilotToolResul
 export function routeQuestion(question: string, context: AiCopilotContext): CopilotToolResult {
   const lower = question.toLowerCase();
 
+  // Data quality — English + Traditional Chinese
   if (
     lower.includes('data') ||
     lower.includes('quality') ||
     lower.includes('missing') ||
     lower.includes('dirty') ||
-    lower.includes('problem')
+    lower.includes('problem') ||
+    lower.includes('資料') ||
+    lower.includes('品質') ||
+    lower.includes('缺失') ||
+    lower.includes('問題')
   ) {
     return inspectDataQuality(context);
   }
 
+  // Capacity risk — English + Traditional Chinese
   if (
     lower.includes('capacity') ||
     lower.includes('shortage') ||
     lower.includes('utilization') ||
-    lower.includes('bottleneck')
+    lower.includes('bottleneck') ||
+    lower.includes('產能') ||
+    lower.includes('短缺') ||
+    lower.includes('稼動') ||
+    lower.includes('瓶頸')
   ) {
     return explainCapacityRisk(context);
   }
 
+  // BP gap — English + Traditional Chinese
   if (
     lower.includes('bp') ||
     lower.includes('gap') ||
     lower.includes('attainment') ||
-    lower.includes('target')
+    lower.includes('target') ||
+    lower.includes('差距') ||
+    lower.includes('達成') ||
+    lower.includes('目標')
   ) {
     return explainBpGap(context);
   }
 
+  // Fix suggestions — English + Traditional Chinese
   if (
     lower.includes('fix') ||
     lower.includes('clean') ||
     lower.includes('repair') ||
-    lower.includes('suggest')
+    lower.includes('suggest') ||
+    lower.includes('修復') ||
+    lower.includes('建議') ||
+    lower.includes('修正')
   ) {
     return suggestDataFixes(context);
   }
 
+  // Scenario impact — English + Traditional Chinese
   if (
     lower.includes('scenario') ||
     lower.includes('what if') ||
-    lower.includes('multiplier')
+    lower.includes('multiplier') ||
+    lower.includes('情境') ||
+    lower.includes('假如') ||
+    lower.includes('乘數')
   ) {
     return explainScenarioImpact(context);
   }
 
+  // Look-ahead — English + Traditional Chinese
   if (
     lower.includes('look ahead') ||
     lower.includes('focus') ||
-    lower.includes('upcoming')
+    lower.includes('upcoming') ||
+    lower.includes('前瞻') ||
+    lower.includes('焦點') ||
+    lower.includes('未來')
   ) {
     return buildLookAheadFocus(context);
   }
 
-  // Default: unknown question
+  // Default: unknown question — explain what data is needed
   return {
     toolName: 'unknown',
     title: '無法辨識問題',
-    summary: '此問題需要外部 AI 分析。請使用 Export Prompt Pack 將資料匯出後，貼到外部 AI 工具中提問。',
+    summary: '此問題需要外部 AI 分析。本地模式僅支援以下分析：資料品質、產能風險、BP 差距、修復建議、情境影響、前瞻分析。請使用 Export Prompt Pack 將資料匯出後，貼到外部 AI 工具中提問。',
     facts: [],
     assumptions: [],
     inferences: [],
-    recommendations: ['使用 Export Prompt Pack 功能匯出資料', '將匯出的 JSON 貼到 Claude / GPT / Gemini 等 AI 工具'],
+    recommendations: [
+      '使用 Export Prompt Pack 功能匯出資料',
+      '將匯出的 JSON 貼到 Claude / GPT / Gemini 等 AI 工具',
+      '嘗試使用以下關鍵字：data quality、capacity risk、bp gap、fix、scenario、look ahead',
+    ],
     sourceReferences: [],
     confidence: 'blocked',
-    caveats: ['本地模式無法回答此問題，需要外部 AI'],
+    caveats: [
+      '本地模式無法回答此問題，需要外部 AI',
+      '可回答的問題類型：資料品質 / 產能風險 / BP 差距 / 修復建議 / 情境影響 / 前瞻分析',
+    ],
     data: {},
   };
 }
