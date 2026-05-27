@@ -1,5 +1,5 @@
 /**
- * AI Copilot Fix Drafts (v1.38.0)
+ * AI Copilot Fix Drafts (v1.39.0)
  *
  * Produces fix draft suggestions from DataQuality issues.
  *

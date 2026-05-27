@@ -1,5 +1,5 @@
 /**
- * AI Copilot Guardrails — v1.38.0
+ * AI Copilot Guardrails — v1.39.0
  *
  * These guardrails enforce the 10 veto-class red lines for the AI Data Copilot MVP.
  * They are used at runtime to validate AI copilot behavior, sanitize context,

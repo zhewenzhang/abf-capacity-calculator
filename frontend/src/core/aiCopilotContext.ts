@@ -1,5 +1,5 @@
 /**
- * AI Copilot Context Builder (v1.38.0)
+ * AI Copilot Context Builder (v1.39.0)
  *
  * Builds a compact, sanitized context object for the AI Data Copilot MVP.
  *

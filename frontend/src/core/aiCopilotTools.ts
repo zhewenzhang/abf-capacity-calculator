@@ -1,5 +1,5 @@
 /**
- * AI Copilot Tools (v1.38.0) — 6 Deterministic Diagnostic Tools
+ * AI Copilot Tools (v1.39.0) — 6 Deterministic Diagnostic Tools
  *
  * Key constraints:
  * - Pure functions, zero side effects (no Firestore, no services, no network)
@@ -316,6 +316,23 @@ export function explainBpGap(context: AiCopilotContext): CopilotToolResult {
 // ============================================================
 
 export function suggestDataFixes(context: AiCopilotContext): CopilotToolResult {
+  // Viewer role: block fix suggestions
+  if (context.role === 'viewer') {
+    return {
+      toolName: 'suggestDataFixes',
+      title: '數據修復建議',
+      summary: 'Viewer 角色無法檢視修復建議。',
+      facts: [],
+      assumptions: [],
+      inferences: [],
+      recommendations: [],
+      sourceReferences: [],
+      confidence: 'blocked',
+      caveats: ['Viewer 角色不具備檢視修復建議的權限'],
+      data: { blocked: true },
+    };
+  }
+
   const dq = context.dataQualitySummary;
   const highIssues = dq.topIssues.filter(i => i.decisionImpact === 'high');
 

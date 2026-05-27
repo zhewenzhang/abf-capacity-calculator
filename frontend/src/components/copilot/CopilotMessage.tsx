@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Tag, Typography, Space, Alert } from 'antd';
+import { Card, Tag, Typography, Space, Alert, Collapse } from 'antd';
 import { useI18n } from '../../i18n';
 import type { CopilotToolResult } from '../../core/aiCopilotTools';
 
@@ -12,9 +12,9 @@ interface Props {
 
 const CONFIDENCE_COLOR: Record<string, string> = {
   high: 'green',
-  medium: 'gold',
+  medium: 'orange',
   low: 'red',
-  blocked: 'default',
+  blocked: 'red',
 };
 
 const CopilotMessage: React.FC<Props> = ({ result, showFixes = true }) => {
@@ -31,11 +31,14 @@ const CopilotMessage: React.FC<Props> = ({ result, showFixes = true }) => {
       bordered
       style={{ marginBottom: 12 }}
       title={
-        <Space>
-          <Text strong>{result.title}</Text>
-          <Tag color={CONFIDENCE_COLOR[result.confidence] ?? 'default'}>
-            {t(`copilot.confidence.${result.confidence}`)}
-          </Tag>
+        <Space direction="vertical" size={4} style={{ width: '100%' }}>
+          <Space>
+            <Tag color="geekblue">{result.toolName}</Tag>
+            <Text strong>{result.title}</Text>
+            <Tag color={CONFIDENCE_COLOR[result.confidence] ?? 'default'}>
+              {t(`copilot.confidence.${result.confidence}`)}
+            </Tag>
+          </Space>
         </Space>
       }
     >
@@ -109,11 +112,29 @@ const CopilotMessage: React.FC<Props> = ({ result, showFixes = true }) => {
 
       {/* Source References */}
       {result.sourceReferences.length > 0 && (
-        <div style={{ marginTop: 8 }}>
-          <Text type="secondary" style={{ fontSize: 11 }}>
-            {t('copilot.source')}: {result.sourceReferences.join(', ')}
-          </Text>
-        </div>
+        <Collapse
+          size="small"
+          style={{ marginTop: 8 }}
+          items={[
+            {
+              key: 'sources',
+              label: (
+                <Text type="secondary" style={{ fontSize: 11 }}>
+                  {t('copilot.source')} ({result.sourceReferences.length})
+                </Text>
+              ),
+              children: (
+                <ul style={{ margin: 0, paddingLeft: 16 }}>
+                  {result.sourceReferences.map((ref, i) => (
+                    <li key={`src-${i}`}>
+                      <Text type="secondary" style={{ fontSize: 11 }}>{ref}</Text>
+                    </li>
+                  ))}
+                </ul>
+              ),
+            },
+          ]}
+        />
       )}
 
       {/* Caveats */}

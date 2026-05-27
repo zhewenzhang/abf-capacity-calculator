@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 /**
- * AI Copilot Guardrails Tests — v1.38.0
+ * AI Copilot Guardrails Tests — v1.39.0
  *
  * Tests cover:
  * 1. hasSensitiveKeys detection

@@ -1,5 +1,5 @@
 /**
- * AI Copilot Export Pack (v1.38.0)
+ * AI Copilot Export Pack (v1.39.0)
  *
  * Builds sanitized, deterministic JSON exports and combined packs
  * for the AI Data Copilot MVP.
@@ -9,6 +9,8 @@
  * - All exports are sanitized (no sensitive keys)
  * - UTF-8 BOM for downloads
  * - Stable key ordering (alphabetical sort at every level)
+ * - Export metadata (exportedAt, appVersion, schemaVersion) included
+ * - Eval pack available for minimal context-only export
  *
  * Consumes AiCopilotContext from aiCopilotContext.ts.
  */
@@ -37,6 +39,12 @@ const SENSITIVE_KEYS = [
   'ownerUid',
   'member',
 ];
+
+/** Current application version for export metadata. */
+const APP_VERSION = '1.39.0';
+
+/** Schema version for export format compatibility. */
+const SCHEMA_VERSION = '1.0.0';
 
 // ============================================================
 // Helpers
@@ -111,11 +119,46 @@ export function removeSensitiveData<T>(obj: T): T {
  * - Keys are sorted alphabetically at every level
  * - 2-space indentation
  * - No sensitive keys
+ * - Includes export metadata: exportedAt, appVersion, schemaVersion
  */
 export function buildAiCopilotExportJson(context: AiCopilotContext): string {
   const sanitized = removeSensitiveData(context);
-  const sorted = sortKeysDeep(sanitized);
-  return JSON.stringify(sorted, null, 2);
+  const sorted = sortKeysDeep(sanitized) as Record<string, unknown>;
+  const withMetadata: Record<string, unknown> = {
+    _meta: {
+      appVersion: APP_VERSION,
+      exportedAt: new Date().toISOString(),
+      schemaVersion: SCHEMA_VERSION,
+    },
+    ...sorted,
+  };
+  const finalSorted = sortKeysDeep(withMetadata);
+  return JSON.stringify(finalSorted, null, 2);
+}
+
+/**
+ * Build a minimal eval pack: sanitized context data only, no prompt text.
+ *
+ * Designed for automated evaluation pipelines that need just the raw data.
+ * - Keys are sorted alphabetically at every level
+ * - Includes export metadata
+ * - No sensitive keys
+ * - 2-space indentation
+ */
+export function buildAiCopilotEvalPack(context: AiCopilotContext): string {
+  const sanitized = removeSensitiveData(context);
+  const sorted = sortKeysDeep(sanitized) as Record<string, unknown>;
+  const withMetadata: Record<string, unknown> = {
+    _meta: {
+      appVersion: APP_VERSION,
+      exportedAt: new Date().toISOString(),
+      schemaVersion: SCHEMA_VERSION,
+      packType: 'eval',
+    },
+    ...sorted,
+  };
+  const finalSorted = sortKeysDeep(withMetadata);
+  return JSON.stringify(finalSorted, null, 2);
 }
 
 /**

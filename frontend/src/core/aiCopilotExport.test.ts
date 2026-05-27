@@ -1,5 +1,5 @@
 ﻿/**
- * AI Copilot Export tests (v1.38.0)
+ * AI Copilot Export tests (v1.39.0)
  *
  * Tests for:
  * 1. buildAiCopilotExportJson produces valid JSON
@@ -30,7 +30,7 @@ function createMockContext(): AiCopilotContext {
   return {
     schemaVersion: '1.0',
     generatedAt: '2026-05-27T00:00:00.000Z',
-    appVersion: 'v1.38.0',
+    appVersion: 'v1.39.0',
     projectSummary: {
       totalRevenueUsd: 5000000,
       totalForecastPcs: 100000,
@@ -292,7 +292,7 @@ describe('buildAiCopilotExportJson', () => {
     const json = buildAiCopilotExportJson(context);
     const parsed = JSON.parse(json);
     expect(parsed.schemaVersion).toBe('1.0');
-    expect(parsed.appVersion).toBe('v1.38.0');
+    expect(parsed._meta.appVersion).toBe('1.39.0');
     expect(parsed.projectSummary.totalRevenueUsd).toBe(5000000);
     expect(parsed.role).toBe('viewer');
   });
@@ -361,7 +361,7 @@ describe('buildAiCopilotPromptPack', () => {
   it('contains user info disclaimer', () => {
     const context = createMockContext();
     const prompt = buildAiCopilotPromptPack(context);
-    expect(prompt).toContain('此資料由 ABF Capacity Calculator v1.38.0 本地產生');
+    expect(prompt).toContain('此資料由 ABF Capacity Calculator v1.39.0 本地產生');
     expect(prompt).toContain('所有分析為確定性計算結果');
     expect(prompt).toContain('建議需人工確認後方可執行');
   });

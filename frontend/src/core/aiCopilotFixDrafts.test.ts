@@ -1,5 +1,5 @@
 /**
- * Tests for AI Copilot Fix Drafts (v1.38.0)
+ * Tests for AI Copilot Fix Drafts (v1.39.0)
  *
  * Verifies:
  * - generateFixDrafts returns correct number of drafts
@@ -33,7 +33,7 @@ function makeContext(
   return {
     schemaVersion: '1.0',
     generatedAt: new Date().toISOString(),
-    appVersion: 'v1.38.0',
+    appVersion: 'v1.39.0',
     projectSummary: {
       totalRevenueUsd: 1000000,
       totalForecastPcs: 50000,
