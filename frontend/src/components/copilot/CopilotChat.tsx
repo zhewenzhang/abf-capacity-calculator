@@ -6,7 +6,7 @@ import type { AiCopilotContext } from '../../core/aiCopilotContext';
 import type { CopilotToolResult } from '../../core/aiCopilotTools';
 import { routeQuestion, runTool } from '../../core/aiCopilotTools';
 import { copyAiCopilotPrompt } from '../../core/aiCopilotExport';
-import { getProviderById } from '../../core/aiProviderAdapter';
+import { validateProviderOutput as validateOutputText } from '../../core/aiCopilotOutputValidation';
 import CopilotMessage from './CopilotMessage';
 import CopilotQuickButtons from './CopilotQuickButtons';
 import AiProviderSettingsDrawer from './AiProviderSettingsDrawer';
@@ -33,18 +33,36 @@ const CopilotChat: React.FC<Props> = ({ context }) => {
 
   const isViewer = context.role === 'viewer';
 
-  const validateProviderOutput = useCallback(
+  const applyOutputValidation = useCallback(
     (result: CopilotToolResult): CopilotToolResult => {
-      if (providerMode === 'local') return result;
-      const provider = getProviderById(providerMode);
-      if (!provider) return result;
-      const validation = provider.validateConfig({ providerId: providerMode });
-      if (!validation.valid) {
-        return { ...result, validationIssues: validation.errors };
+      // Run real text-level output validation on the summary text
+      const validation = validateOutputText(result.summary, {
+        confidence: result.confidence,
+      });
+
+      if (validation.status === 'blocked') {
+        return {
+          ...result,
+          summary: validation.sanitizedAnswer,
+          confidence: 'blocked',
+          blockedReason: validation.blockedReason,
+          validationIssues: validation.issues.map((i) => i.message),
+        };
       }
+
+      if (validation.status === 'warning') {
+        return {
+          ...result,
+          validationIssues: [
+            ...(result.validationIssues ?? []),
+            ...validation.issues.map((i) => i.message),
+          ],
+        };
+      }
+
       return result;
     },
-    [providerMode]
+    []
   );
 
   const handleModeChange = useCallback((mode: ProviderMode) => {
@@ -57,13 +75,13 @@ const CopilotChat: React.FC<Props> = ({ context }) => {
       // Simulate async processing for UX feedback
       setTimeout(() => {
         const result = runTool(toolId, context);
-        // Always use deterministic tools as primary, but validate through provider
-        const validated = validateProviderOutput(result);
+        // Validate output text through safety layer (all provider modes)
+        const validated = applyOutputValidation(result);
         setHistory((prev) => [...prev, validated]);
         setProcessing(false);
       }, 300);
     },
-    [context, validateProviderOutput]
+    [context, applyOutputValidation]
   );
 
   const handleSubmit = useCallback(() => {
@@ -80,8 +98,9 @@ const CopilotChat: React.FC<Props> = ({ context }) => {
           ...result,
           caveats: [...result.caveats, t('copilot.provider.notEnabled')],
           blockedReason: t('copilot.provider.notEnabled'),
+          confidence: 'blocked',
         };
-        const validated = validateProviderOutput(blockedResult);
+        const validated = applyOutputValidation(blockedResult);
         setHistory((prev) => [...prev, validated]);
       } else if (providerMode === 'mock') {
         // Mock mode: deterministic tools are primary, note enhanced response availability
@@ -90,17 +109,18 @@ const CopilotChat: React.FC<Props> = ({ context }) => {
           caveats: [...result.caveats, 'Mock provider enhanced response available'],
           isMockProvider: true,
         };
-        const validated = validateProviderOutput(mockResult);
+        const validated = applyOutputValidation(mockResult);
         setHistory((prev) => [...prev, validated]);
       } else {
-        // Local mode: use result as-is
-        setHistory((prev) => [...prev, result]);
+        // Local mode: also validate through safety layer
+        const validated = applyOutputValidation(result);
+        setHistory((prev) => [...prev, validated]);
       }
 
       setInput('');
       setProcessing(false);
     }, 300);
-  }, [input, context, processing, providerMode, t, validateProviderOutput]);
+  }, [input, context, processing, providerMode, t, applyOutputValidation]);
 
   const handleExportPrompt = useCallback(async () => {
     await copyAiCopilotPrompt(context);
