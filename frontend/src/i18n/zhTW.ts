@@ -1047,6 +1047,30 @@ export const zhTW: Record<string, string> = {
   // Capacity Navigation Fix
   'remediation.capacity.focusHint': '焦點：{month}。請捲動至此月份的產能輸入欄位。',
 
+  // AI 助手
+  'menu.copilot': 'AI 助手',
+  'copilot.title': 'AI 資料助手',
+  'copilot.disclaimer': '本地確定性分析工具 — 未連接外部 AI',
+  'copilot.disclaimerDetail': '所有回答均為本地計算結果。建議需人工確認後方可執行。',
+  'copilot.input.placeholder': '詢問您的資料問題...',
+  'copilot.quick.dataProblems': '資料問題',
+  'copilot.quick.capacityRisk': '產能風險',
+  'copilot.quick.bpGap': 'BP 差距',
+  'copilot.quick.suggestFixes': '建議修復',
+  'copilot.quick.scenarioImpact': '情境影響',
+  'copilot.quick.lookAhead': '前瞻分析',
+  'copilot.confidence.high': '高信心度',
+  'copilot.confidence.medium': '中信心度',
+  'copilot.confidence.low': '低信心度',
+  'copilot.confidence.blocked': '已封鎖',
+  'copilot.label.fact': '事實',
+  'copilot.label.assumption': '假設',
+  'copilot.label.inference': '推論',
+  'copilot.label.recommendation': '建議',
+  'copilot.source': '來源',
+  'copilot.noMatch': '此問題需要外部 AI 分析，請使用 Export Prompt Pack 匯出資料。',
+  'copilot.viewer.noFixes': '檢視者模式無法執行修復建議',
+
   // 情境模擬
   'menu.scenario': '情境模擬',
   'scenario.title': '情境模擬',

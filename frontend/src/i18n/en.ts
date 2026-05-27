@@ -1038,6 +1038,30 @@ export const en: Record<string, string> = {
   // Capacity Navigation Fix
   'remediation.capacity.focusHint': 'Focus: {month}. Scroll to find the capacity input for this month.',
 
+  // AI Copilot
+  'menu.copilot': 'AI Copilot',
+  'copilot.title': 'AI Data Copilot',
+  'copilot.disclaimer': 'Deterministic local assistant — No external AI connected',
+  'copilot.disclaimerDetail': 'All answers are computed locally. Suggestions require human confirmation.',
+  'copilot.input.placeholder': 'Ask about your data...',
+  'copilot.quick.dataProblems': 'Data Problems',
+  'copilot.quick.capacityRisk': 'Capacity Risk',
+  'copilot.quick.bpGap': 'BP Gap',
+  'copilot.quick.suggestFixes': 'Suggest Fixes',
+  'copilot.quick.scenarioImpact': 'Scenario Impact',
+  'copilot.quick.lookAhead': 'Look Ahead',
+  'copilot.confidence.high': 'High Confidence',
+  'copilot.confidence.medium': 'Medium Confidence',
+  'copilot.confidence.low': 'Low Confidence',
+  'copilot.confidence.blocked': 'Blocked',
+  'copilot.label.fact': 'Fact',
+  'copilot.label.assumption': 'Assumption',
+  'copilot.label.inference': 'Inference',
+  'copilot.label.recommendation': 'Recommendation',
+  'copilot.source': 'Source',
+  'copilot.noMatch': 'This question requires external AI. Please use Export Prompt Pack.',
+  'copilot.viewer.noFixes': 'Fix suggestions are not available in viewer mode',
+
   // Scenario Planning
   'menu.scenario': 'Scenario Planning',
   'scenario.title': 'Scenario Planning',
