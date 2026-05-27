@@ -120,19 +120,18 @@ export interface ScenarioState {
    */
   baseline: BaselineSnapshot | null;
 
-  /** Current list of scenarios (MVP: max 3 concurrent) */
-  scenarios: ScenarioEntry[];
-
-  /** ID of the scenario currently being viewed/edited */
-  activeScenarioId: string | null;
+  /**
+   * The single in-memory scenario. MVP supports exactly ONE scenario at a time.
+   * No scenario list, no branching, no rename/delete/switch.
+   */
+  scenario: ScenarioEntry | null;
 }
 
 /**
- * A single scenario entry combining metadata, user multipliers,
- * and computed results.
+ * A single scenario entry combining user multipliers and computed results.
+ * There is only ever ONE of these in memory at a time.
  */
 export interface ScenarioEntry {
-  metadata: ScenarioMetadata;
   multipliers: ScenarioMultipliers;
   /** Computed results. Null until first calculation completes. */
   results: ScenarioResults | null;
@@ -163,13 +162,10 @@ App → WorkspaceProvider → ScenarioProvider → <Routes> → ScenarioWorkspac
 
 interface ScenarioContextValue {
   state: ScenarioState;
-  activateScenarioMode: () => void;          // Triggers baseline clone
-  deactivateScenarioMode: () => void;        // Discard ALL scenario data
-  createScenario: (name: string, description?: string) => string;
-  removeScenario: (scenarioId: string) => void;
-  updateMultipliers: (scenarioId: string, multipliers: ScenarioMultipliers) => void;
-  setActiveScenario: (scenarioId: string | null) => void;
-  renameScenario: (scenarioId: string, newName: string) => void;
+  activateScenarioMode: () => void;          // Triggers baseline clone, creates single scenario
+  deactivateScenarioMode: () => void;        // Discard scenario data, exit mode
+  updateMultipliers: (multipliers: ScenarioMultipliers) => void;  // Update the single scenario
+  resetMultipliers: () => void;              // Reset to DEFAULT_MULTIPLIERS
 }
 ```
 
@@ -659,16 +655,17 @@ MVP 不需要。如果未來 workspace 規模超過 5000 SKU，可將 `computeSc
 │                                                     │
 │ Scenario 頁面只有：                                  │
 │ - Multiplier sliders                                │
-│ - Scenario name input                               │
 │ - "Exit Scenario Mode" button (丟棄一切)             │
 │ - "Compare" toggle (顯示 baseline vs scenario)       │
 │                                                     │
 │ 沒有 "Save"、"Export to Workspace"、"Apply" 按鈕。   │
+│ 沒有 Scenario List、Rename、Delete、Switch。         │
+│ 只有 ONE scenario in memory。                        │
 ├─────────────────────────────────────────────────────┤
 │ Layer 3: Runtime Guard (可選)                        │
 │                                                     │
 │ 在 ScenarioProvider 的 deactivateScenarioMode() 中， │
-│ 明確將 baseline 和 scenarios 設為 null。             │
+│ 明確將 baseline 和 scenario 設為 null。              │
 │ React 的 state 更新會觸發 GC 回收 cloned 數據。      │
 └─────────────────────────────────────────────────────┘
 ```
@@ -686,7 +683,7 @@ Code review 檢查清單：以下檔案不得 import `../services/*`：
 ### 9.3 ScenarioContext 的實作保障
 
 `deactivateScenarioMode()` dispatch `DEACTIVATE_SCENARIO_MODE`，
-reducer 將 state 設為 `{ isActive: false, baseline: null, scenarios: [], activeScenarioId: null }`，
+reducer 將 state 設為 `{ isActive: false, baseline: null, scenario: null }`，
 cloned 數據失去所有引用，GC 可回收。
 
 ---
@@ -767,8 +764,7 @@ UI 應顯示 scenario 特有的 DQ 警告。
 │                    └─ buildScenarioChangeImpact(baseline, scenario)│
 │                         └─ computeChangeImpact() → Delta         │
 │                                                                  │
-│  UI: ScenarioWorkspace                                          │
-│    ├─ Scenario List (create/remove/switch)                      │
+│  UI: ScenarioPlanning (single-scenario page)                    │
 │    ├─ Multiplier Sliders (price / qty / capacity)               │
 │    ├─ Comparison Dashboard (baseline → scenario deltas)         │
 │    └─ DQ Caveat Banner (if baseline has DQ issues)              │
@@ -792,7 +788,7 @@ UI 應顯示 scenario 特有的 DQ 警告。
 
 ```
 使用者調整 price slider to -5%
-  → updateMultipliers(id, { priceMultiplier: 0.95 })
+  → updateMultipliers({ priceMultiplier: 0.95 })
     → dispatch(UPDATE_MULTIPLIERS)
     → useDebouncedScenario(multipliers, 150ms)
       → applyMultipliers(cloned, debounced)
@@ -805,11 +801,10 @@ UI 應顯示 scenario 特有的 DQ 警告。
 ### A.4 UI 渲染
 
 ```
-ScenarioWorkspace 頁面
-  ├─ 頂部: Scenario Mode Banner (orange border) + "Exit" button
-  ├─ 左側: Scenario List + "New Scenario" button
-  ├─ 中央: Price / Quantity / Capacity sliders
-  └─ 下方: Comparison Dashboard
+ScenarioPlanning 頁面 (single-scenario)
+  ├─ 頂部: Scenario Mode Banner (orange border) + "Exit Scenario" button
+  ├─ 中央: Price / Quantity / Capacity sliders + "Run Scenario" button
+  └─ 下方: Comparison Dashboard (baseline vs single scenario)
        ├─ Revenue / BP Attainment / Shortage Months deltas
        ├─ Top Changed Customers / SKUs / Months tables
        └─ DQ Caveat Banner (if applicable)
@@ -828,10 +823,10 @@ ScenarioWorkspace 頁面
 | 3 | `core/scenarioApply.ts` | Multiplier 套用 | 50 |
 | 4 | `core/scenarioCompute.ts` | 計算主流程 | 80 |
 | 5 | `core/scenarioChangeImpact.ts` | ChangeImpact adapter | 80 |
-| 6 | `context/ScenarioContext.tsx` | React Context + reducer | 180 |
+| 6 | `context/ScenarioContext.tsx` | React Context + reducer (single-scenario) | 120 |
 | 7 | `hooks/useDebouncedScenario.ts` | Debounce hook | 25 |
-| 8 | `pages/ScenarioWorkspace.tsx` | 主頁面 | 300 |
-| 9-13 | `components/scenario/*` | Banner / List / Sliders / Comparison / DQCaveat | 520 |
+| 8 | `pages/ScenarioPlanning.tsx` | 主頁面 (single-scenario) | 250 |
+| 9-12 | `components/scenario/*` | Banner / Sliders / Comparison / DQCaveat | 400 |
 
 ### B.2 修改檔案
 
@@ -875,8 +870,9 @@ Phase 4: Integration Test
 
 | Decision | Choice | Rationale |
 |---|---|---|
+| Scenario cardinality | **Single scenario only** | MVP simplicity; no list/rename/delete/switch; v1.38+ may add multi-scenario |
 | State location | React Context | Ephemeral what-if data; no persistence needed |
-| Clone strategy | Shallow clone (spread) | Flat objects; 1-3ms for 1000 SKUs |
+| Clone strategy | Safe shallow clone (spread + targeted object clone) | Flat objects; 1-3ms for 1000 SKUs; no structuredClone |
 | Parameters | Shared reference, never mutated | No rate what-if in MVP |
 | Multiplier granularity | Global only (3 multipliers) | 80% use case coverage; simplest UI |
 | Engine reuse | 100% reuse, zero modifications | All core functions are pure |

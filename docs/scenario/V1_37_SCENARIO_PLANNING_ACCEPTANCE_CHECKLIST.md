@@ -8,7 +8,8 @@
 
 * [ ] **红线 1**：未新增 Firestore collection / schema — `firestore.rules` diff 零变化，控制台无新 collection，现有 document 结构未扩展
 * [ ] **红线 2**：Scenario state 从未触及 `skuService.saveSku`、`forecastService.saveForecast`、`capacityService.saveCapacityPlan`、`bpTargetService.saveBpTarget`、`parameterService.saveParameters` 或任何 `batch.write()` / `transaction.set()`
-* [ ] **红线 3**：Baseline 原始数据未被 mutation — 乘数调整使用 deep clone 或 immutable update，关闭 scenario 后 baseline 与创建前完全一致
+* [ ] **红线 3**：Baseline 原始数据未被 mutation — 乘数调整使用 safe shallow clone（spread operator + targeted object clone），**禁止** 全量 structuredClone / JSON.parse deep clone。关闭 scenario 后 baseline 与创建前完全一致
+* [ ] **红线 3a**：MVP 只有 ONE in-memory scenario — 未实作 scenario list / rename / delete / switch / branch
 * [ ] **红线 4**：未修改 `calculationEngine.ts`（或仅新增纯函数）；`firestore.rules` 零变化
 * [ ] **红线 5**：未引入新的 npm dependency（`package.json` dependencies / devDependencies 无新增条目）
 
@@ -18,7 +19,7 @@
 
 ### 创建
 * [ ] Editor 角色在 Calculation Results / Dashboard 可见 "Scenario Planning" 按钮
-* [ ] 点击后 Scenario panel 展开，自动从 baseline deep clone 数据
+* [ ] 点击后 Scenario panel 展开，自动从 baseline safe shallow clone 数据（spread operator，非 structuredClone）
 * [ ] 1000 SKU workspace 创建 scenario < 2 秒
 
 ### Multiplier 调整

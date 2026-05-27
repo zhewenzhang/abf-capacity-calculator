@@ -5,8 +5,9 @@
 > **狀態**: Draft
 > **前序版本**: v1.36.0 (Data Quality Remediation Entry Points)
 > **核心理念**: 將現有的 `runCalculation()` 無狀態計算引擎與 `changeImpact.ts` 對比引擎，
-> 包裹進一個「零資料庫汙染」的前端內存沙盒，讓使用者在不影響正式工作區的前提下，
-> 自由建立、調整、比較 What-If 情境，並將結果以確定性的數理對比呈現。
+> 包裹進一個「零資料庫汙染」的前端內存**單情境沙盒 (Single-Scenario In-Memory Sandbox)**，
+> 讓使用者在不影響正式工作區的前提下，建立一個 What-If 情境、調整乘數、
+> 與 baseline 進行確定性的數理對比。
 
 ---
 
@@ -281,7 +282,9 @@ interface ScenarioBaseline {
 ```
 
 **重要約束**：
-- Baseline Snapshot 透過 `structuredClone()`（或等效的深拷貝）建立，與頁面 State 完全獨立
+- Baseline Snapshot 透過 **safe shallow clone + targeted object clone** 建立（spread operator clone 陣列，逐物件 clone 複雜欄位），與頁面 State 完全獨立
+- **禁止** 對全量 workspace 做 `structuredClone` 或 `JSON.parse(JSON.stringify())` deep clone（性能風險）
+- **禁止** mutation 任何 baseline 物件
 - Baseline Snapshot **不會**在使用者修改頁面上的正式資料時自動同步
 - 若使用者在 Scenario 模式中同時修改了正式資料（透過其他頁面的 Quick Fix 等），系統顯示提示：「偵測到正式資料已變更，請重置情境以同步最新資料」
 - 這條偵測透過比較 baseline snapshot 的 `skuCount` 與當前頁面 state 的 `skuCount` 實現（輕量級）
@@ -300,7 +303,13 @@ interface ScenarioBaseline {
 ```typescript
 // 偽代碼
 function applyMultipliers(baseline: ScenarioBaseline, multipliers: ScenarioMultipliers): ScenarioInputs {
-  const cloned = structuredClone(baseline);
+  // Safe shallow clone: spread operator for arrays, targeted clone for objects
+  const cloned = {
+    skus: baseline.skus.map(s => ({ ...s })),
+    forecasts: baseline.forecasts.map(f => ({ ...f })),
+    capacityPlans: baseline.capacityPlans.map(c => ({ ...c })),
+    params: baseline.params, // reference only, never mutated
+  };
 
   // Step 1: 套用 SKU 單價乘數
   if (multipliers.unitPricePct !== 0) {
@@ -801,21 +810,21 @@ const ScenarioDqBanner: React.FC<ScenarioDqBannerProps> = ({ dqSummary, onNaviga
 ### A.1 模組依賴關係
 
 ```
-ScenarioBuilder.tsx
+ScenarioPlanning.tsx (single-scenario page)
     ├── useScenarioContext() (from ScenarioContext.tsx)
     │       ├── scenarioEngine.ts
-    │       │       ├── structuredClone() (baseline snapshot)
+    │       │       ├── cloneBaselineInputs() (safe shallow clone)
     │       │       ├── applyMultipliers() (clone + multiply)
     │       │       ├── runCalculation() (from calculationEngine.ts)
     │       │       └── buildBpAnalysis() (from bpTargets.ts)
     │       └── computeChangeImpact() (from changeImpact.ts)
     │               └── MetricDelta, TopChangedItem, etc.
-    ├── ScenarioComparison.tsx
+    ├── ScenarioComparisonView.tsx
     │       ├── MetricCard (from components/common)
-    │       └── Line chart (@ant-design/charts)
+    │       └── Delta visualization
     ├── ScenarioDqBanner.tsx
     │       └── buildDataQualitySummary() (from dataQuality.ts)
-    └── MultiplierSlider.tsx
+    └── ScenarioMultiplierPanel.tsx
             └── Ant Design Slider + InputNumber
 ```
 

@@ -15,8 +15,10 @@
 | 1 | **不新增 Firestore collection / schema** | Scenario state is ephemeral; lives only in React state/context |
 | 2 | **不修改 calculationEngine.ts / analytics.ts / bpTargets.ts / currency.ts** | These are the calculation core; scenario engine calls them, never edits them |
 | 3 | **不新增 npm dependency** | All UI is Ant Design + React already in package.json |
-| 4 | **Scenario state 只存在 React state/context，不觸及 service 層** | No writes to any `services/*.ts` file |
-| 5 | **Baseline data 不可被 mutation (clone first)** | Follow the same `cloneForecasts`/`cloneSkus`/`cloneCapacityPlans` pattern from `impactAnalysis.ts` |
+| 4 | **Scenario state 只存在 React state/context，不觸及 service 層** | No writes to any `services/*.ts` file. scenarioModel.ts / ScenarioPlanning.tsx **禁止 import services/** |
+| 5 | **Baseline data 不可被 mutation (clone first)** | Use safe shallow clone (spread operator for arrays, targeted clone for objects). **禁止** 全量 structuredClone 或 JSON.parse/JSON.stringify deep clone |
+| 5a | **MVP 只有 ONE in-memory scenario** | **禁止** 實作 scenario list / rename / delete / switch / branch。只有一個 `scenario: ScenarioEntry | null` |
+| 5b | **Scenario model 檔案禁止 import services/** | `core/scenario*.ts` 和 `pages/ScenarioPlanning.tsx` 不得 import `../services/*`。用 ESLint import restriction 或 code review 強制 |
 | 6 | **不做 silent auto-save** | User explicitly creates/destroys scenarios; no background persistence |
 | 7 | **Viewer 無法建立/編輯 scenario** | Use `canEdit(scope.role)` from `services/projectScope.ts` |
 | 8 | **所有 i18n 必須 EN + zh-TW** | Both `en.ts` and `zhTW.ts` must have identical key sets (enforced by `i18nKeys.test.ts`) |
@@ -210,28 +212,30 @@ function computeScenarioDeltas(
 
 ```ts
 interface ScenarioContextValue {
-  /** Current multipliers being edited (not yet applied to a named scenario) */
-  draftMultipliers: ScenarioMultipliers;
-  setDraftMultipliers: (m: ScenarioMultipliers) => void;
-  /** Named saved scenarios (in-memory only, not persisted) */
-  scenarios: ScenarioSnapshot[];
-  /** Add a scenario snapshot to the list */
-  addScenario: (snapshot: ScenarioSnapshot) => void;
-  /** Remove a scenario by id */
-  removeScenario: (id: string) => void;
-  /** Currently selected scenario for comparison view */
-  activeScenarioId: string | null;
-  setActiveScenarioId: (id: string | null) => void;
-  /** Reset all scenario state */
-  resetAll: () => void;
+  /** Current multipliers for the single in-memory scenario */
+  multipliers: ScenarioMultipliers;
+  setMultipliers: (m: ScenarioMultipliers) => void;
+  /** Whether scenario mode is active */
+  isScenarioActive: boolean;
+  /** Enter scenario mode (clones baseline, creates single scenario) */
+  activateScenarioMode: () => void;
+  /** Exit scenario mode (discards all scenario data) */
+  deactivateScenarioMode: () => void;
+  /** Reset multipliers to defaults (1.0) */
+  resetMultipliers: () => void;
+  /** The single scenario results (null if not yet computed) */
+  scenarioResults: ScenarioResults | null;
+  /** Set scenario results after computation */
+  setScenarioResults: (r: ScenarioResults | null) => void;
 }
 ```
 
 **Implementation notes:**
 - Use `React.createContext` + `useReducer` or `useState` for state management
 - Provider wraps the scenario page only (not the entire app -- keep it scoped)
-- `draftMultipliers` defaults to `defaultMultipliers()` from Task 1
+- `multipliers` defaults to `defaultMultipliers()` from Task 1
 - No localStorage, no sessionStorage, no Firestore -- purely in-memory
+- **HARD RED LINE: Do NOT implement scenario list, scenario rename, scenario delete, scenario switch, or scenario branching. ONE scenario only.**
 - Export `ScenarioProvider` and `useScenario` hook
 
 ---
@@ -250,12 +254,12 @@ interface ScenarioPlanningProps {
 ```
 
 **Page layout (top to bottom):**
-1. **Page header** with title from i18n (`scenario.title`) and role-gated "New Scenario" button
+1. **Page header** with title from i18n (`scenario.title`) and role-gated "Enter Scenario Mode" button
 2. **Baseline summary row** -- 4x MetricCard showing baseline total revenue, total forecast PCS, max core util, shortage months
-3. **ScenarioMultiplierPanel** (Task 4) -- slider controls for multipliers
-4. **"Run Scenario" button** -- triggers `buildScenarioSnapshot`, stores result via context
-5. **ScenarioComparisonView** (Task 5) -- comparison dashboard (only visible when a scenario exists)
-6. **Saved scenarios list** -- simple table/cards listing saved scenarios, with delete and compare actions
+3. **ScenarioMultiplierPanel** (Task 4) -- slider controls for multipliers (only visible when scenario mode is active)
+4. **"Run Scenario" button** -- triggers computation, stores result via context
+5. **ScenarioComparisonView** (Task 5) -- comparison dashboard (only visible when scenario results exist)
+6. **NO saved scenarios list** -- MVP has ONE scenario only, no list/rename/delete/switch
 
 **Data loading pattern (follow BpTargets.tsx):**
 ```tsx
