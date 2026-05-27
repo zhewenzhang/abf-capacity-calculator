@@ -13,6 +13,7 @@ import {
   GlobalOutlined,
   DollarOutlined,
   RobotOutlined,
+  CalendarOutlined,
 } from '@ant-design/icons';
 import type { User } from 'firebase/auth';
 import { isConfigured } from './firebase/config';
@@ -41,17 +42,19 @@ const CalculationResultsPage = lazy(() => import('./pages/CalculationResults'));
 const BpTargetsPage = lazy(() => import('./pages/BpTargets'));
 const ScenarioPlanningPage = lazy(() => import('./pages/ScenarioPlanning'));
 const AiCopilotPage = lazy(() => import('./pages/AiCopilot'));
+const DailyOperationsWorkbench = lazy(() => import('./pages/DailyOperationsWorkbench'));
 
 const { Sider, Content } = Layout;
 const { Title } = Typography;
 
-const APP_VERSION = 'v1.40.0';
+const APP_VERSION = 'v1.42.0';
 
 // --- Sidebar with i18n ---
 const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }> = ({ current, onMenuClick }) => {
   const { t } = useI18n();
 
   const menuItems = [
+    { key: 'operations', icon: <CalendarOutlined />, label: t('menu.operations') },
     { key: 'dashboard', icon: <DashboardOutlined />, label: t('menu.dashboard') },
     { key: 'products', icon: <InboxOutlined />, label: t('menu.products') },
     { key: 'products-sheet-lab', icon: <ExperimentOutlined />, label: t('menu.productsSheet') },
@@ -168,11 +171,12 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
   // Derive current menu key from URL path
   const current = useMemo(() => {
     const path = location.pathname.replace(/^\//, '');
-    const validKeys = ['dashboard', 'products', 'products-sheet-lab', 'forecasts', 'forecasts-lab', 'capacity', 'capacity-lab', 'parameters', 'bp-targets', 'results', 'scenario', 'copilot'];
+    const validKeys = ['operations', 'dashboard', 'products', 'products-sheet-lab', 'forecasts', 'forecasts-lab', 'capacity', 'capacity-lab', 'parameters', 'bp-targets', 'results', 'scenario', 'copilot'];
     return validKeys.includes(path) ? path : 'dashboard';
   }, [location.pathname]);
 
   const pageTitles: Record<string, string> = useMemo(() => ({
+    operations: t('workbench.title'),
     dashboard: t('dashboard.title'),
     products: t('products.title'),
     'products-sheet-lab': t('productsSheet.title'),
@@ -210,6 +214,7 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
           />
           <Suspense fallback={<PageLoading />}>
             <Routes>
+              <Route path="/operations" element={<DailyOperationsWorkbench key={routeKey} scope={scope} />} />
               <Route path="/dashboard" element={<DashboardPage key={routeKey} scope={scope} />} />
               <Route path="/products" element={<ProductsPage key={routeKey} scope={scope} />} />
               <Route path="/products-sheet-lab" element={<ProductsSpreadsheetLab key={routeKey} scope={scope} />} />

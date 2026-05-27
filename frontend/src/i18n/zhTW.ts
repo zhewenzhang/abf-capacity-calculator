@@ -1059,6 +1059,7 @@ export const zhTW: Record<string, string> = {
   'copilot.quick.suggestFixes': '建議修復',
   'copilot.quick.scenarioImpact': '情境影響',
   'copilot.quick.lookAhead': '前瞻分析',
+  'copilot.quick.workbenchOverview': '工作台總覽',
   'copilot.confidence.high': '高信心度',
   'copilot.confidence.medium': '中信心度',
   'copilot.confidence.low': '低信心度',
@@ -1130,4 +1131,82 @@ export const zhTW: Record<string, string> = {
   'scenario.vs': 'vs',
   'scenario.baseline': '基線',
   'scenario.current': '情境',
+
+  // 每日營運工作台 (v1.42)
+  'menu.operations': '營運工作台',
+  'workbench.title': '每日營運工作台',
+  'workbench.subtitle': '產能就緒與生產管理總覽',
+
+  // 工作流程階段
+  'workbench.stage.products': '產品就緒',
+  'workbench.stage.forecasts': '預測就緒',
+  'workbench.stage.capacity': '產能匹配',
+  'workbench.stage.parameters': '參數就緒',
+  'workbench.stage.bpTargets': 'BP 目標就緒',
+  'workbench.stage.analysis': '營收預估就緒',
+  'workbench.stage.scenario': '情境檢視就緒',
+
+  // 階段 CTA 標籤
+  'workbench.stage.products.cta': '前往產品',
+  'workbench.stage.forecasts.cta': '前往預測',
+  'workbench.stage.capacity.cta': '前往產能',
+  'workbench.stage.parameters.cta': '前往參數',
+  'workbench.stage.bpTargets.cta': '前往 BP 目標',
+  'workbench.stage.analysis.cta': '前往結果',
+  'workbench.stage.scenario.cta': '前往情境',
+
+  // 狀態標籤
+  'workbench.status.ready': '就緒',
+  'workbench.status.warning': '警告',
+  'workbench.status.blocked': '阻斷',
+  'workbench.status.notStarted': '未開始',
+
+  // CTA 按鈕
+  'workbench.cta.fix': '立即修復',
+  'workbench.cta.view': '檢視',
+
+  // 異常摘要
+  'workbench.abnormality.title': '問題摘要',
+  'workbench.abnormality.data.fix': '至產品頁修復資料問題',
+  'workbench.abnormality.capacity.shortage': '檢視短缺月份的產能規劃',
+  'workbench.abnormality.capacity.overUtil': '考慮擴產或需求重新平衡',
+  'workbench.abnormality.sales.trend': '調查營收下降趨勢',
+  'workbench.abnormality.sales.concentration': '檢視客戶集中度風險',
+  'workbench.abnormality.bp.miss': '以產能或定價行動處理 BP 未達標',
+  'workbench.abnormality.bp.watch': '密切監控 BP 達成率',
+
+  // 前瞻焦點
+  'workbench.lookahead.title': '前瞻焦點',
+  'workbench.lookahead.month': '月份',
+  'workbench.lookahead.coreUtil': 'Core 稼動率',
+  'workbench.lookahead.buUtil': 'BU 稼動率',
+  'workbench.lookahead.bottleneck': '瓶頸',
+  'workbench.lookahead.shortage': '短缺',
+
+  // 營收 / BP 摘要
+  'workbench.revenue.title': '營收 vs BP 目標',
+  'workbench.revenue.current': '目前預測',
+  'workbench.revenue.target': 'BP 目標',
+  'workbench.revenue.attainment': '達成率',
+  'workbench.revenue.gap': '差距',
+
+  // 情境快捷
+  'workbench.scenario.title': '情境快捷',
+  'workbench.scenario.volumeUp10': '數量 +10%',
+  'workbench.scenario.volumeUp10.desc': '模擬預測數量增加 10%',
+  'workbench.scenario.volumeDown10': '數量 -10%',
+  'workbench.scenario.volumeDown10.desc': '模擬預測數量減少 10%',
+  'workbench.scenario.capacityUp20': '產能 +20%',
+  'workbench.scenario.capacityUp20.desc': '模擬產能增加 20%（Core + BU）',
+  'workbench.scenario.priceUp5': '單價 +5%',
+  'workbench.scenario.priceUp5.desc': '模擬單價上漲 5%',
+  'workbench.scenario.stressTest': '壓力測試',
+  'workbench.scenario.stressTest.desc': '數量 +20%、單價 -5% 壓力情境',
+
+  // Copilot 快捷操作
+  'workbench.copilot.title': 'AI Copilot 快捷操作',
+  'workbench.copilot.dq': '解釋資料問題',
+  'workbench.copilot.capacity': '解釋產能風險',
+  'workbench.copilot.bp': '解釋 BP 差距',
+  'workbench.copilot.lookahead': '解釋前瞻分析',
 };

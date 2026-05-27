@@ -1050,6 +1050,7 @@ export const en: Record<string, string> = {
   'copilot.quick.suggestFixes': 'Suggest Fixes',
   'copilot.quick.scenarioImpact': 'Scenario Impact',
   'copilot.quick.lookAhead': 'Look Ahead',
+  'copilot.quick.workbenchOverview': 'Workbench Overview',
   'copilot.confidence.high': 'High Confidence',
   'copilot.confidence.medium': 'Medium Confidence',
   'copilot.confidence.low': 'Low Confidence',
@@ -1121,4 +1122,82 @@ export const en: Record<string, string> = {
   'scenario.vs': 'vs',
   'scenario.baseline': 'Baseline',
   'scenario.current': 'Scenario',
+
+  // Daily Operations Workbench (v1.42)
+  'menu.operations': 'Operations',
+  'workbench.title': 'Daily Operations Workbench',
+  'workbench.subtitle': 'Capacity readiness and production management overview',
+
+  // Workflow stages
+  'workbench.stage.products': 'Products Ready',
+  'workbench.stage.forecasts': 'Forecast Ready',
+  'workbench.stage.capacity': 'Capacity Matched',
+  'workbench.stage.parameters': 'Parameters Ready',
+  'workbench.stage.bpTargets': 'BP Targets Ready',
+  'workbench.stage.analysis': 'Revenue Estimate Ready',
+  'workbench.stage.scenario': 'Scenario Review Ready',
+
+  // Stage CTA labels
+  'workbench.stage.products.cta': 'Go to Products',
+  'workbench.stage.forecasts.cta': 'Go to Forecasts',
+  'workbench.stage.capacity.cta': 'Go to Capacity',
+  'workbench.stage.parameters.cta': 'Go to Parameters',
+  'workbench.stage.bpTargets.cta': 'Go to BP Targets',
+  'workbench.stage.analysis.cta': 'Go to Results',
+  'workbench.stage.scenario.cta': 'Go to Scenario',
+
+  // Status labels
+  'workbench.status.ready': 'Ready',
+  'workbench.status.warning': 'Warning',
+  'workbench.status.blocked': 'Blocked',
+  'workbench.status.notStarted': 'Not Started',
+
+  // CTA buttons
+  'workbench.cta.fix': 'Fix Now',
+  'workbench.cta.view': 'View',
+
+  // Abnormality summary
+  'workbench.abnormality.title': 'Issues Summary',
+  'workbench.abnormality.data.fix': 'Fix data issues in Products',
+  'workbench.abnormality.capacity.shortage': 'Review capacity plans for shortage months',
+  'workbench.abnormality.capacity.overUtil': 'Consider capacity expansion or demand rebalancing',
+  'workbench.abnormality.sales.trend': 'Investigate declining revenue trend',
+  'workbench.abnormality.sales.concentration': 'Review customer concentration risk',
+  'workbench.abnormality.bp.miss': 'Address BP target miss with capacity or pricing actions',
+  'workbench.abnormality.bp.watch': 'Monitor BP attainment closely',
+
+  // Look-ahead focus
+  'workbench.lookahead.title': 'Look-Ahead Focus',
+  'workbench.lookahead.month': 'Month',
+  'workbench.lookahead.coreUtil': 'Core Util',
+  'workbench.lookahead.buUtil': 'BU Util',
+  'workbench.lookahead.bottleneck': 'Bottleneck',
+  'workbench.lookahead.shortage': 'Shortage',
+
+  // Revenue / BP summary
+  'workbench.revenue.title': 'Revenue vs BP Target',
+  'workbench.revenue.current': 'Current Forecast',
+  'workbench.revenue.target': 'BP Target',
+  'workbench.revenue.attainment': 'Attainment',
+  'workbench.revenue.gap': 'Gap',
+
+  // Scenario shortcuts
+  'workbench.scenario.title': 'Scenario Shortcuts',
+  'workbench.scenario.volumeUp10': 'Volume +10%',
+  'workbench.scenario.volumeUp10.desc': 'Simulate 10% forecast volume increase',
+  'workbench.scenario.volumeDown10': 'Volume -10%',
+  'workbench.scenario.volumeDown10.desc': 'Simulate 10% forecast volume decrease',
+  'workbench.scenario.capacityUp20': 'Capacity +20%',
+  'workbench.scenario.capacityUp20.desc': 'Simulate 20% capacity increase (Core + BU)',
+  'workbench.scenario.priceUp5': 'Price +5%',
+  'workbench.scenario.priceUp5.desc': 'Simulate 5% unit price increase',
+  'workbench.scenario.stressTest': 'Stress Test',
+  'workbench.scenario.stressTest.desc': 'Volume +20%, Price -5% stress scenario',
+
+  // Copilot quick actions
+  'workbench.copilot.title': 'AI Copilot Quick Actions',
+  'workbench.copilot.dq': 'Explain Data Issues',
+  'workbench.copilot.capacity': 'Explain Capacity Risk',
+  'workbench.copilot.bp': 'Explain BP Gap',
+  'workbench.copilot.lookahead': 'Explain Look-Ahead',
 };

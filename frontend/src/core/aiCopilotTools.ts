@@ -661,6 +661,224 @@ export function buildLookAheadFocus(context: AiCopilotContext): CopilotToolResul
 }
 
 // ============================================================
+// Tool 7: explainWorkbenchOverview
+// ============================================================
+
+export function explainWorkbenchOverview(context: AiCopilotContext): CopilotToolResult {
+  const dq = context.dataQualitySummary;
+  const cap = context.capacitySummary;
+  const bp = context.bpSummary;
+  const risk = context.riskBriefSummary;
+  const sc = context.scenarioSummary;
+
+  // --- Derive workflow stage statuses from existing context ---
+
+  // Products stage
+  const productsReady = context.projectSummary.skuCount > 0;
+  const hasHighDqIssues = dq.topIssues.some(i => i.decisionImpact === 'high');
+
+  // Forecasts stage
+  const forecastsReady = context.projectSummary.forecastMonthCount > 0;
+
+  // Capacity stage
+  const capacityReady = cap.monthlySummaries.length > 0;
+
+  // BP Targets stage
+  const bpReady = bp.yearly.length > 0;
+
+  // Analysis stage
+  const analysisReady = context.projectSummary.totalForecastPcs > 0;
+
+  const stageStatuses = [
+    { name: 'Products', ready: productsReady, blocked: !productsReady },
+    { name: 'Forecasts', ready: forecastsReady, blocked: !forecastsReady },
+    { name: 'Capacity', ready: capacityReady, blocked: !capacityReady },
+    { name: 'BP Targets', ready: bpReady, blocked: !bpReady },
+    { name: 'Analysis', ready: analysisReady, blocked: !analysisReady },
+  ];
+
+  const readyCount = stageStatuses.filter(s => s.ready).length;
+  const blockedStages = stageStatuses.filter(s => s.blocked);
+
+  // --- Compute top abnormalities ---
+
+  // Shortage months
+  const shortageMonths = cap.monthlySummaries.filter(
+    m => m.coreShortage > 0 || m.buShortage > 0
+  );
+
+  // High utilization months (>90%)
+  const highUtilMonths = cap.monthlySummaries.filter(
+    m => (m.coreUtilization !== null && m.coreUtilization > 0.9) ||
+         (m.buUtilization !== null && m.buUtilization > 0.9)
+  );
+
+  // BP miss years
+  const bpMissYears = bp.yearly.filter(r => r.status === 'miss');
+  const bpWatchYears = bp.yearly.filter(r => r.status === 'watch');
+
+  // --- Compute look-ahead highlights ---
+  const today = new Date();
+  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const futureConcernMonths = cap.monthlySummaries.filter(
+    m => m.month >= currentMonth &&
+         ((m.coreUtilization !== null && m.coreUtilization > 0.85) ||
+          (m.buUtilization !== null && m.buUtilization > 0.85) ||
+          m.coreShortage > 0 ||
+          m.buShortage > 0)
+  ).slice(0, 6);
+
+  // --- Build facts ---
+  const facts: string[] = [
+    `Workflow stages: ${readyCount}/${stageStatuses.length} ready`,
+    `SKU count: ${context.projectSummary.skuCount}`,
+    `Forecast months: ${context.projectSummary.forecastMonthCount}`,
+    `Total revenue: ${context.projectSummary.totalRevenueUsd.toFixed(2)} USD`,
+    `Shortage months: ${shortageMonths.length}`,
+    `High utilization months (>90%): ${highUtilMonths.length}`,
+    `BP miss years: ${bpMissYears.length}`,
+    `BP watch years: ${bpWatchYears.length}`,
+    `DQ confidence: ${dq.confidence} (score: ${dq.confidenceScore})`,
+    `Top risk drivers: ${risk.topDrivers.length}`,
+  ];
+
+  if (cap.worstMonth) {
+    facts.push(`Worst capacity month: ${cap.worstMonth}`);
+  }
+  if (bp.worstPeriod) {
+    facts.push(`Worst BP period: ${bp.worstPeriod}`);
+  }
+  if (sc !== null && sc.isActive) {
+    facts.push(`Scenario active: forecastVolume ${sc.multipliers.forecastVolume}x`);
+  }
+
+  // Blocked stages
+  for (const stage of blockedStages) {
+    facts.push(`Stage blocked: ${stage.name}`);
+  }
+
+  // Top abnormalities
+  const criticalAbnormalities: string[] = [];
+  if (hasHighDqIssues) {
+    const highCount = dq.topIssues.filter(i => i.decisionImpact === 'high').length;
+    criticalAbnormalities.push(`${highCount} high-impact data quality issues`);
+  }
+  if (shortageMonths.length > 0) {
+    criticalAbnormalities.push(`${shortageMonths.length} month(s) with capacity shortage`);
+  }
+  if (bpMissYears.length > 0) {
+    criticalAbnormalities.push(`BP target missed in ${bpMissYears.map(y => y.period).join(', ')}`);
+  }
+
+  for (const ab of criticalAbnormalities) {
+    facts.push(`Abnormality: ${ab}`);
+  }
+
+  // Look-ahead highlights
+  for (const m of futureConcernMonths.slice(0, 4)) {
+    const corePct = m.coreUtilization !== null ? `${(m.coreUtilization * 100).toFixed(1)}%` : 'N/A';
+    const buPct = m.buUtilization !== null ? `${(m.buUtilization * 100).toFixed(1)}%` : 'N/A';
+    const hasShortage = m.coreShortage > 0 || m.buShortage > 0;
+    facts.push(`Look-ahead ${m.month}: Core ${corePct}, BU ${buPct}${hasShortage ? ', SHORTAGE' : ''}`);
+  }
+
+  // --- Build inferences ---
+  const inferences: string[] = [];
+
+  if (blockedStages.length > 0) {
+    inferences.push(`${blockedStages.length} workflow stage(s) are blocked: ${blockedStages.map(s => s.name).join(', ')}. Complete these stages to unlock full analysis.`);
+  }
+
+  if (readyCount === stageStatuses.length) {
+    inferences.push('All workflow stages are ready. The workbench has complete data for full operational analysis.');
+  }
+
+  if (shortageMonths.length > 0) {
+    inferences.push(`Capacity shortage is detected in ${shortageMonths.length} month(s), indicating a supply-demand imbalance.`);
+  }
+
+  if (bpMissYears.length > 0) {
+    inferences.push(`${bpMissYears.length} year(s) have BP targets missed. Revenue forecast falls below business plan targets.`);
+  }
+
+  if (futureConcernMonths.length > 0) {
+    inferences.push(`${futureConcernMonths.length} upcoming month(s) require attention due to high utilization or shortage.`);
+  }
+
+  if (dq.confidence === 'low' || dq.confidence === 'blocked') {
+    inferences.push('Data quality confidence is low. Analysis results may not be reliable for decision-making.');
+  }
+
+  if (criticalAbnormalities.length === 0 && blockedStages.length === 0) {
+    inferences.push('No critical abnormalities detected. Operations appear normal across all domains.');
+  }
+
+  // --- Build recommendations (viewer-safe: no actionable fix steps) ---
+  const recommendations: string[] = [];
+
+  if (blockedStages.length > 0) {
+    recommendations.push('Address blocked workflow stages to enable full analysis capabilities.');
+  }
+  if (shortageMonths.length > 0) {
+    recommendations.push('Review capacity plans for shortage months to understand supply constraints.');
+  }
+  if (bpMissYears.length > 0) {
+    recommendations.push('Examine BP gap analysis for details on revenue shortfall.');
+  }
+  if (dq.confidence !== 'high') {
+    recommendations.push('Improve data quality to increase analysis confidence.');
+  }
+  if (criticalAbnormalities.length === 0 && blockedStages.length === 0) {
+    recommendations.push('Continue monitoring key metrics through the Dashboard and Results pages.');
+  }
+
+  // --- Confidence ---
+  let confidence: 'high' | 'medium' | 'low' | 'blocked' = dq.confidence;
+  if (blockedStages.length >= 3) {
+    confidence = 'blocked';
+  } else if (blockedStages.length > 0 && dq.confidence !== 'high') {
+    confidence = 'low';
+  }
+
+  return {
+    toolName: 'explainWorkbenchOverview',
+    title: 'Workbench Overview',
+    summary: `${readyCount}/${stageStatuses.length} stages ready. ${criticalAbnormalities.length} critical abnormalit(y/ies). ${shortageMonths.length} shortage month(s). ${futureConcernMonths.length} look-ahead concern(s).`,
+    facts,
+    assumptions: [
+      'Workflow stage status is derived from data presence and data quality',
+      'Abnormalities are classified by severity: critical > warning > info',
+      'Look-ahead covers next 6 months with utilization > 85% or shortage',
+    ],
+    inferences,
+    recommendations,
+    sourceReferences: [
+      'dataQuality module',
+      'calculationEngine + analytics',
+      'bpTargets module',
+      'riskAttribution module',
+    ],
+    confidence,
+    caveats: [
+      'This is a summary view; use specific tools (data quality, capacity risk, BP gap) for deeper analysis',
+      ...(dq.confidence === 'low' ? ['Data confidence is low; summary may be incomplete'] : []),
+      ...(dq.confidence === 'blocked' ? ['Data confidence is blocked; most stages may be unreliable'] : []),
+    ],
+    data: {
+      stageCount: stageStatuses.length,
+      readyCount,
+      blockedStageNames: blockedStages.map(s => s.name),
+      abnormalityCount: criticalAbnormalities.length,
+      shortageMonthCount: shortageMonths.length,
+      highUtilMonthCount: highUtilMonths.length,
+      bpMissYearCount: bpMissYears.length,
+      lookAheadConcernCount: futureConcernMonths.length,
+      scenarioActive: sc !== null && sc.isActive,
+    },
+  };
+}
+
+// ============================================================
 // Keyword Router
 // ============================================================
 
@@ -746,24 +964,38 @@ export function routeQuestion(question: string, context: AiCopilotContext): Copi
     return buildLookAheadFocus(context);
   }
 
+  // Workbench overview — English + Traditional Chinese
+  if (
+    lower.includes('workbench') ||
+    lower.includes('overview') ||
+    lower.includes('operations summary') ||
+    lower.includes('daily status') ||
+    lower.includes('工作台') ||
+    lower.includes('總覽') ||
+    lower.includes('營運摘要') ||
+    lower.includes('每日狀態')
+  ) {
+    return explainWorkbenchOverview(context);
+  }
+
   // Default: unknown question — explain what data is needed
   return {
     toolName: 'unknown',
     title: '無法辨識問題',
-    summary: '此問題需要外部 AI 分析。本地模式僅支援以下分析：資料品質、產能風險、BP 差距、修復建議、情境影響、前瞻分析。請使用 Export Prompt Pack 將資料匯出後，貼到外部 AI 工具中提問。',
+    summary: '此問題需要外部 AI 分析。本地模式僅支援以下分析：資料品質、產能風險、BP 差距、修復建議、情境影響、前瞻分析、工作台總覽。請使用 Export Prompt Pack 將資料匯出後，貼到外部 AI 工具中提問。',
     facts: [],
     assumptions: [],
     inferences: [],
     recommendations: [
       '使用 Export Prompt Pack 功能匯出資料',
       '將匯出的 JSON 貼到 Claude / GPT / Gemini 等 AI 工具',
-      '嘗試使用以下關鍵字：data quality、capacity risk、bp gap、fix、scenario、look ahead',
+      '嘗試使用以下關鍵字：data quality、capacity risk、bp gap、fix、scenario、look ahead、workbench overview',
     ],
     sourceReferences: [],
     confidence: 'blocked',
     caveats: [
       '本地模式無法回答此問題，需要外部 AI',
-      '可回答的問題類型：資料品質 / 產能風險 / BP 差距 / 修復建議 / 情境影響 / 前瞻分析',
+      '可回答的問題類型：資料品質 / 產能風險 / BP 差距 / 修復建議 / 情境影響 / 前瞻分析 / 工作台總覽',
     ],
     data: {},
   };
@@ -784,6 +1016,7 @@ export function runTool(
     suggestFixes: suggestDataFixes,
     scenarioImpact: explainScenarioImpact,
     lookAhead: buildLookAheadFocus,
+    workbenchOverview: explainWorkbenchOverview,
   };
   const tool = toolMap[toolId];
   if (tool) return tool(context);

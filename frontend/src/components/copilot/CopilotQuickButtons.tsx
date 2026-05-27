@@ -7,6 +7,7 @@ import {
   ToolOutlined,
   ExperimentOutlined,
   EyeOutlined,
+  DashboardOutlined,
 } from '@ant-design/icons';
 import { useI18n } from '../../i18n';
 
@@ -21,6 +22,7 @@ const QUICK_QUESTIONS: Array<{ toolId: string; labelKey: string; icon: React.Rea
   { toolId: 'suggestFixes', labelKey: 'copilot.quick.suggestFixes', icon: <ToolOutlined /> },
   { toolId: 'scenarioImpact', labelKey: 'copilot.quick.scenarioImpact', icon: <ExperimentOutlined /> },
   { toolId: 'lookAhead', labelKey: 'copilot.quick.lookAhead', icon: <EyeOutlined /> },
+  { toolId: 'workbenchOverview', labelKey: 'copilot.quick.workbenchOverview', icon: <DashboardOutlined /> },
 ];
 
 const CopilotQuickButtons: React.FC<Props> = ({ onSelect }) => {
