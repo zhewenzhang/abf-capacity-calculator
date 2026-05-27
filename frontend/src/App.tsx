@@ -38,11 +38,12 @@ const CapacitySpreadsheetPage = lazy(() => import('./pages/CapacitySpreadsheet')
 const ParametersPage = lazy(() => import('./pages/Parameters'));
 const CalculationResultsPage = lazy(() => import('./pages/CalculationResults'));
 const BpTargetsPage = lazy(() => import('./pages/BpTargets'));
+const ScenarioPlanningPage = lazy(() => import('./pages/ScenarioPlanning'));
 
 const { Sider, Content } = Layout;
 const { Title } = Typography;
 
-const APP_VERSION = 'v1.36.0';
+const APP_VERSION = 'v1.37.0';
 
 // --- Sidebar with i18n ---
 const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }> = ({ current, onMenuClick }) => {
@@ -59,6 +60,7 @@ const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }
     { key: 'parameters', icon: <SettingOutlined />, label: t('menu.parameters') },
     { key: 'bp-targets', icon: <DollarOutlined />, label: t('menu.bpTargets') },
     { key: 'results', icon: <CalculatorOutlined />, label: t('menu.results') },
+    { key: 'scenario', icon: <ExperimentOutlined />, label: t('menu.scenario') },
   ];
 
   return (
@@ -163,7 +165,7 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
   // Derive current menu key from URL path
   const current = useMemo(() => {
     const path = location.pathname.replace(/^\//, '');
-    const validKeys = ['dashboard', 'products', 'products-sheet-lab', 'forecasts', 'forecasts-lab', 'capacity', 'capacity-lab', 'parameters', 'bp-targets', 'results'];
+    const validKeys = ['dashboard', 'products', 'products-sheet-lab', 'forecasts', 'forecasts-lab', 'capacity', 'capacity-lab', 'parameters', 'bp-targets', 'results', 'scenario'];
     return validKeys.includes(path) ? path : 'dashboard';
   }, [location.pathname]);
 
@@ -178,6 +180,7 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
     parameters: t('parameters.title'),
     'bp-targets': t('bpTargets.title'),
     results: t('results.title'),
+    scenario: t('scenario.title'),
   }), [t]);
 
   const handleMenuClick = useCallback((key: string) => {
@@ -213,6 +216,7 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
               <Route path="/parameters" element={<ParametersPage key={routeKey} scope={scope} />} />
               <Route path="/bp-targets" element={<BpTargetsPage key={routeKey} scope={scope} />} />
               <Route path="/results" element={<CalculationResultsPage key={routeKey} scope={scope} />} />
+              <Route path="/scenario" element={<ScenarioPlanningPage key={routeKey} scope={scope} />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </Suspense>
