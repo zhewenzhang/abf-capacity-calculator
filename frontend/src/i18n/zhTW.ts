@@ -1071,6 +1071,24 @@ export const zhTW: Record<string, string> = {
   'copilot.noMatch': '此問題需要外部 AI 分析，請使用 Export Prompt Pack 匯出資料。',
   'copilot.viewer.noFixes': '檢視者模式無法執行修復建議',
 
+  // AI 供應商設定
+  'copilot.provider.settings': '供應商設定',
+  'copilot.provider.mode': '供應商模式',
+  'copilot.provider.local': '本地確定性分析',
+  'copilot.provider.localDesc': '使用內建關鍵字路由與診斷工具，無外部呼叫。',
+  'copilot.provider.mock': '模擬供應商（測試用）',
+  'copilot.provider.mockDesc': '回傳確定性測試回應，非真實 AI 呼叫。',
+  'copilot.provider.external': '外部 BYOK（未啟用）',
+  'copilot.provider.externalDesc': '自備 API 金鑰。此版本未啟用。',
+  'copilot.provider.keyLabel': 'API 金鑰',
+  'copilot.provider.keyPlaceholder': '輸入 API 金鑰（僅限本次連線）',
+  'copilot.provider.sessionOnly': '僅限連線期間',
+  'copilot.provider.keyWarning': '金鑰僅儲存在記憶體中，關閉面板即清除。除非經核准，請勿輸入正式環境金鑰。',
+  'copilot.provider.clearKey': '清除金鑰',
+  'copilot.provider.viewerReadonly': '檢視者角色：供應商設定僅供檢視。',
+  'copilot.provider.mockInfo': '模擬供應商回傳確定性測試回應，非真實 AI 呼叫。',
+  'copilot.provider.notEnabled': '外部供應商在此版本中未啟用。',
+
   // 情境模擬
   'menu.scenario': '情境模擬',
   'scenario.title': '情境模擬',

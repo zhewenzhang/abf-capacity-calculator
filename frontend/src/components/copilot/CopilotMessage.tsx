@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, Tag, Typography, Space, Alert, Collapse } from 'antd';
+import { WarningOutlined } from '@ant-design/icons';
 import { useI18n } from '../../i18n';
 import type { CopilotToolResult } from '../../core/aiCopilotTools';
 
@@ -38,6 +39,9 @@ const CopilotMessage: React.FC<Props> = ({ result, showFixes = true }) => {
             <Tag color={CONFIDENCE_COLOR[result.confidence] ?? 'default'}>
               {t(`copilot.confidence.${result.confidence}`)}
             </Tag>
+            {result.isMockProvider && (
+              <Tag color="blue">Mock Response</Tag>
+            )}
           </Space>
         </Space>
       }
@@ -151,6 +155,32 @@ const CopilotMessage: React.FC<Props> = ({ result, showFixes = true }) => {
             />
           ))}
         </div>
+      )}
+
+      {/* Validation Issues */}
+      {result.validationIssues && result.validationIssues.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          {result.validationIssues.map((issue, i) => (
+            <Alert
+              key={`val-${i}`}
+              type="warning"
+              showIcon
+              icon={<WarningOutlined />}
+              message={issue}
+              style={{ marginBottom: 4 }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Blocked Reason */}
+      {result.confidence === 'blocked' && result.blockedReason && (
+        <Alert
+          type="error"
+          showIcon
+          message={result.blockedReason}
+          style={{ marginTop: 8 }}
+        />
       )}
     </Card>
   );

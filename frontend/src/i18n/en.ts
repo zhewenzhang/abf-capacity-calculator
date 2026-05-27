@@ -1062,6 +1062,24 @@ export const en: Record<string, string> = {
   'copilot.noMatch': 'This question requires external AI. Please use Export Prompt Pack.',
   'copilot.viewer.noFixes': 'Fix suggestions are not available in viewer mode',
 
+  // AI Provider Settings
+  'copilot.provider.settings': 'Provider Settings',
+  'copilot.provider.mode': 'Provider Mode',
+  'copilot.provider.local': 'Local Deterministic',
+  'copilot.provider.localDesc': 'Uses built-in keyword routing and diagnostic tools. No external calls.',
+  'copilot.provider.mock': 'Mock Provider (Testing)',
+  'copilot.provider.mockDesc': 'Returns deterministic test responses. No real AI calls.',
+  'copilot.provider.external': 'External BYOK (Not Enabled)',
+  'copilot.provider.externalDesc': 'Bring your own API key. Not available in this build.',
+  'copilot.provider.keyLabel': 'API Key',
+  'copilot.provider.keyPlaceholder': 'Enter API key (session only)',
+  'copilot.provider.sessionOnly': 'Session Only',
+  'copilot.provider.keyWarning': 'Key is stored in memory only. Closing the drawer clears it. Do not enter production keys unless approved.',
+  'copilot.provider.clearKey': 'Clear Key',
+  'copilot.provider.viewerReadonly': 'Viewer role: provider settings are read-only.',
+  'copilot.provider.mockInfo': 'Mock provider returns deterministic test responses. No real AI calls are made.',
+  'copilot.provider.notEnabled': 'External provider is not enabled in this build.',
+
   // Scenario Planning
   'menu.scenario': 'Scenario Planning',
   'scenario.title': 'Scenario Planning',

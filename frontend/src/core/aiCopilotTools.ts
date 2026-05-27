@@ -27,6 +27,10 @@ export interface CopilotToolResult {
   confidence: 'high' | 'medium' | 'low' | 'blocked';
   caveats: string[];
   data: Record<string, unknown>;
+  // Provider adapter metadata (optional, populated when provider mode is active)
+  validationIssues?: string[];
+  isMockProvider?: boolean;
+  blockedReason?: string;
 }
 
 // ============================================================
