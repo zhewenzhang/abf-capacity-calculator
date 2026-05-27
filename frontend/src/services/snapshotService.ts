@@ -33,7 +33,7 @@ if (!db) {
   throw new Error('Firestore not initialized. Check your .env configuration.');
 }
 
-const APP_VERSION = 'v1.42.0';
+const APP_VERSION = 'v1.45.0';
 
 /**
  * Get the Firestore collection path for snapshots.

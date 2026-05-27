@@ -1200,4 +1200,43 @@ export const en: Record<string, string> = {
   'workbench.copilot.capacity': 'Explain Capacity Risk',
   'workbench.copilot.bp': 'Explain BP Gap',
   'workbench.copilot.lookahead': 'Explain Look-Ahead',
+
+  // Abnormality Intelligence Panel (v1.43)
+  'workbench.abnormalityIntelligence.title': 'Abnormality Intelligence',
+  'workbench.abnormalityIntelligence.mustActToday': 'Must Act Today',
+  'workbench.abnormalityIntelligence.score': 'Score',
+  'workbench.abnormalityIntelligence.category': 'Category',
+  'workbench.abnormalityIntelligence.whyItMatters': 'Why It Matters',
+  'workbench.abnormalityIntelligence.investigate': 'Investigate',
+  'workbench.abnormalityIntelligence.noAbnormalities': 'No abnormalities detected',
+  'workbench.abnormalityIntelligence.blocking': 'Blocking',
+  'workbench.abnormalityIntelligence.distorting': 'Distorting',
+  'workbench.abnormalityIntelligence.degrading': 'Degrading',
+  'workbench.abnormalityIntelligence.informational': 'Informational',
+
+  // Scenario v2 shortcuts (v1.44)
+  'workbench.scenario.v2.title': 'Operational Scenarios',
+  'workbench.scenario.v2.buCapacityDelay': 'BU Capacity Delay',
+  'workbench.scenario.v2.buCapacityDelay.desc': 'Simulate 3-month BU capacity shift delay',
+  'workbench.scenario.v2.topCustomerDown': 'Top Customer Down',
+  'workbench.scenario.v2.topCustomerDown.desc': 'Simulate top customer order disappearance',
+  'workbench.scenario.v2.forecastSurge': 'Forecast Surge',
+  'workbench.scenario.v2.forecastSurge.desc': 'Simulate 20% forecast volume surge',
+
+  // Management Report (v1.45)
+  'workbench.report.title': 'Management Report',
+  'workbench.report.generateDaily': 'Generate Daily Report',
+  'workbench.report.generateWeekly': 'Generate Weekly Report',
+  'workbench.report.exportMarkdown': 'Export Markdown',
+  'workbench.report.exportJson': 'Export JSON',
+  'workbench.report.preview': 'Report Preview',
+  'workbench.report.generated': 'Report generated successfully',
+  'workbench.report.noReport': 'Click generate to create a management report',
+  'workbench.report.executiveSummary': 'Executive Summary',
+  'workbench.report.confidence': 'Data Confidence',
+
+  // Copilot quick buttons (v1.43-v1.45)
+  'copilot.quick.abnormalityDetail': 'Abnormality Detail',
+  'copilot.quick.scenarioV2': 'Scenario V2 Impact',
+  'copilot.quick.reportNarrative': 'Report Narrative',
 };

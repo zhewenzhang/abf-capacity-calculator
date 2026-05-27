@@ -1209,4 +1209,43 @@ export const zhTW: Record<string, string> = {
   'workbench.copilot.capacity': '解釋產能風險',
   'workbench.copilot.bp': '解釋 BP 差距',
   'workbench.copilot.lookahead': '解釋前瞻分析',
+
+  // 異常智能面板 (v1.43)
+  'workbench.abnormalityIntelligence.title': '異常智能分析',
+  'workbench.abnormalityIntelligence.mustActToday': '今日必處理事項',
+  'workbench.abnormalityIntelligence.score': '分數',
+  'workbench.abnormalityIntelligence.category': '分類',
+  'workbench.abnormalityIntelligence.whyItMatters': '為何重要',
+  'workbench.abnormalityIntelligence.investigate': '調查',
+  'workbench.abnormalityIntelligence.noAbnormalities': '未偵測到異常',
+  'workbench.abnormalityIntelligence.blocking': '阻斷',
+  'workbench.abnormalityIntelligence.distorting': '扭曲',
+  'workbench.abnormalityIntelligence.degrading': '劣化',
+  'workbench.abnormalityIntelligence.informational': '資訊',
+
+  // 情境 v2 快捷 (v1.44)
+  'workbench.scenario.v2.title': '營運情境模擬',
+  'workbench.scenario.v2.buCapacityDelay': 'BU 產能延遲',
+  'workbench.scenario.v2.buCapacityDelay.desc': '模擬 BU 產能延遲 3 個月',
+  'workbench.scenario.v2.topCustomerDown': '主要客戶流失',
+  'workbench.scenario.v2.topCustomerDown.desc': '模擬主要客戶訂單消失',
+  'workbench.scenario.v2.forecastSurge': '預測激增',
+  'workbench.scenario.v2.forecastSurge.desc': '模擬預測量激增 20%',
+
+  // 管理報告 (v1.45)
+  'workbench.report.title': '管理報告',
+  'workbench.report.generateDaily': '產生每日報告',
+  'workbench.report.generateWeekly': '產生每週報告',
+  'workbench.report.exportMarkdown': '匯出 Markdown',
+  'workbench.report.exportJson': '匯出 JSON',
+  'workbench.report.preview': '報告預覽',
+  'workbench.report.generated': '報告已成功產生',
+  'workbench.report.noReport': '點擊產生以建立管理報告',
+  'workbench.report.executiveSummary': '執行摘要',
+  'workbench.report.confidence': '資料可信度',
+
+  // Copilot 快捷按鈕 (v1.43-v1.45)
+  'copilot.quick.abnormalityDetail': '異常詳情',
+  'copilot.quick.scenarioV2': '情境 V2 影響',
+  'copilot.quick.reportNarrative': '報告敘述',
 };
