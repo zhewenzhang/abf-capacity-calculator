@@ -21,6 +21,7 @@ import {
   Popconfirm,
   Statistic,
   Progress,
+  Drawer,
 } from 'antd';
 import {
   WarningOutlined,
@@ -96,6 +97,8 @@ import {
   getPeriodLabel,
   SNAPSHOT_FILTER_OPTIONS,
 } from '../core/snapshotMetadata';
+import { buildAiCopilotContext } from '../core/aiCopilotContext';
+import CopilotChat from '../components/copilot/CopilotChat';
 
 const { Text } = Typography;
 
@@ -137,6 +140,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
   const [newSnapshotPeriodLabel, setNewSnapshotPeriodLabel] = useState('');
   const [newSnapshotReviewStatus, setNewSnapshotReviewStatus] = useState<SnapshotReviewStatus | undefined>(undefined);
   const [newSnapshotNote, setNewSnapshotNote] = useState('');
+  const [copilotDrawerOpen, setCopilotDrawerOpen] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -396,6 +400,12 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
   const filteredSnapshots = useMemo(() => {
     return filterSnapshotsByKind(snapshots, snapshotFilter);
   }, [snapshots, snapshotFilter]);
+
+  // AI Copilot context
+  const copilotContext = useMemo(() => {
+    if (!model || !params) return null;
+    return buildAiCopilotContext(skus, forecasts, capacityPlans, params, model, bpAnalysisModel, scope.role);
+  }, [model, params, skus, forecasts, capacityPlans, bpAnalysisModel, scope.role]);
 
   // Phase 6.2: Recommended compare pair
   const recommendedPair = useMemo(() => {
@@ -808,20 +818,45 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
             </Col>
           </Row>
 
-          {/* View selector */}
-          <Segmented
-            value={view}
-            onChange={(v) => setView(v as ResultsView)}
-            options={[
-              { label: t('results.riskBrief') || 'Risk Brief', value: 'risk' },
-              { label: t('results.salesView'), value: 'sales' },
-              { label: t('results.productView'), value: 'product' },
-              { label: t('results.capacityView'), value: 'capacity' },
-              { label: t('bp.analysis'), value: 'bp' },
-              { label: t('results.rawDetail'), value: 'raw' },
-            ]}
-            style={{ marginBottom: 16 }}
-          />
+          {/* View selector + AI Copilot button */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <Segmented
+              value={view}
+              onChange={(v) => setView(v as ResultsView)}
+              options={[
+                { label: t('results.riskBrief') || 'Risk Brief', value: 'risk' },
+                { label: t('results.salesView'), value: 'sales' },
+                { label: t('results.productView'), value: 'product' },
+                { label: t('results.capacityView'), value: 'capacity' },
+                { label: t('bp.analysis'), value: 'bp' },
+                { label: t('results.rawDetail'), value: 'raw' },
+              ]}
+            />
+            {copilotContext && (
+              <Button
+                icon={<RobotOutlined />}
+                onClick={() => setCopilotDrawerOpen(true)}
+              >
+                {t('copilot.title')}
+              </Button>
+            )}
+          </div>
+
+          {/* AI Copilot Drawer */}
+          <Drawer
+            title={
+              <Space>
+                <RobotOutlined />
+                <span>{t('copilot.title')}</span>
+              </Space>
+            }
+            open={copilotDrawerOpen}
+            onClose={() => setCopilotDrawerOpen(false)}
+            width={480}
+            destroyOnClose
+          >
+            {copilotContext && <CopilotChat context={copilotContext} />}
+          </Drawer>
 
           {/* Risk Brief View */}
           {view === 'risk' && riskBrief && analysisPayload && (
