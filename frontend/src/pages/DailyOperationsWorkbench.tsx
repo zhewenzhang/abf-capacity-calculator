@@ -339,7 +339,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
             capacityPlans: rawData.capacityPlans,
             params: rawData.params,
             capacityShiftMonths: 3,
-            capacityShiftTarget: 'bu',
+            capacityShiftTarget: 'both',
           });
         } else if (scenarioType === 'orderDisappearance') {
           // Find top customer by SKU count
