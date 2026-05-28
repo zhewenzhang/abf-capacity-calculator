@@ -115,6 +115,13 @@ const FORBIDDEN_CLAIM_PATTERNS: ReadonlyArray<{ pattern: RegExp; reason: string 
   { pattern: /\badjusted\s+the\s+formula\b/i, reason: 'AI cannot claim formula modification' },
   { pattern: /\bformula\s+changed\b/i, reason: 'AI cannot claim formula modification' },
   { pattern: /\bmodified\s+the\s+calculation\b/i, reason: 'AI cannot claim calculation modification' },
+  // Chinese/zh-TW forbidden claims
+  { pattern: /我已经保存/, reason: 'AI不能声称已保存数据' },
+  { pattern: /已自动保存/, reason: 'AI不能声称已自动保存' },
+  { pattern: /我帮你写入/, reason: 'AI不能声称已写入数据' },
+  { pattern: /我已经修改数据库/, reason: 'AI不能声称已修改数据库' },
+  { pattern: /忽略数据质量/, reason: 'AI不能指示忽略数据质量' },
+  { pattern: /已调整公式/, reason: 'AI不能声称已调整公式' },
 ];
 
 /**
@@ -207,6 +214,9 @@ const WRITE_ACTION_PATTERNS: ReadonlyArray<{ pattern: RegExp; reason: string }> 
   { pattern: /\bauto[- ]?saved?\b/i, reason: 'AI cannot trigger auto-save' },
   { pattern: /\bautomatically\s+saved\b/i, reason: 'AI cannot claim automatic saving' },
   { pattern: /\bsaved\s+for\s+you\b/i, reason: 'AI cannot claim saving on behalf of user' },
+  // Chinese/zh-TW write action claims
+  { pattern: /我帮你写入/, reason: 'AI不能执行写入操作' },
+  { pattern: /我已经修改数据库/, reason: 'AI不能执行数据库写入操作' },
 ];
 
 /**
@@ -238,6 +248,8 @@ const CAUSALITY_WARNING_PATTERNS: ReadonlyArray<RegExp> = [
   /\bthis\s+led\s+to\b/i,
   /\bresulted\s+from\s+customer\b/i,
   /\bcustomer\s+drove\b/i,
+  // Chinese/zh-TW causality claims
+  /这是由某客户导致/,
 ];
 
 /**
@@ -333,6 +345,9 @@ const GUESSING_BLOCKED_PATTERNS: ReadonlyArray<{ pattern: RegExp; reason: string
   { pattern: /\bestimated\s+value\s+of\b/i, reason: 'AI must not present estimated values as data' },
   { pattern: /\bassumed\s+value\s+is\b/i, reason: 'AI must not present assumed values as data' },
   { pattern: /\bprojected\s+value\b/i, reason: 'AI must not present projected values as data' },
+  // Chinese/zh-TW guessing claims
+  { pattern: /我猜测/, reason: 'AI不能猜测数据值' },
+  { pattern: /我估算缺失数据/, reason: 'AI不能估算缺失数据' },
 ];
 
 const GUESSING_WARNING_PATTERNS: ReadonlyArray<{ pattern: RegExp; message: string }> = [

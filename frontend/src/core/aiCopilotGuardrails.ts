@@ -12,6 +12,8 @@
  * - Used by aiCopilotContext.ts sanitizeDeep() as a cross-reference
  */
 
+import { SENSITIVE_KEYS, isSensitiveKey } from './sensitiveDataUtils';
+
 // ============================================================
 // 10 Red Lines (Veto-class)
 // ============================================================
@@ -32,22 +34,10 @@ export const AI_COPILOT_RED_LINES = [
 export type AiCopilotRedLine = (typeof AI_COPILOT_RED_LINES)[number];
 
 // ============================================================
-// Sensitive Keys — must never appear in AI context
+// Sensitive Keys — re-exported from shared utility
 // ============================================================
 
-export const AI_CONTEXT_SENSITIVE_KEYS = [
-  'uid',
-  'email',
-  'token',
-  'auth',
-  'apiKey',
-  'secret',
-  'password',
-  'workspaceId',
-  'userId',
-  'ownerUid',
-  'member',
-] as const;
+export const AI_CONTEXT_SENSITIVE_KEYS: ReadonlyArray<string> = SENSITIVE_KEYS;
 
 // ============================================================
 // Forbidden External AI Service Patterns
@@ -99,7 +89,6 @@ const RED_LINE_DESCRIPTIONS: Record<AiCopilotRedLine, string> = {
  */
 export function hasSensitiveKeys(obj: Record<string, unknown>): string[] {
   const found: string[] = [];
-  const sensitiveLower = AI_CONTEXT_SENSITIVE_KEYS.map(k => k.toLowerCase());
 
   function walk(current: unknown, path: string): void {
     if (current === null || current === undefined) return;
@@ -111,8 +100,7 @@ export function hasSensitiveKeys(obj: Record<string, unknown>): string[] {
     }
 
     for (const key of Object.keys(current as Record<string, unknown>)) {
-      const keyLower = key.toLowerCase();
-      if (sensitiveLower.some(sk => keyLower.includes(sk))) {
+      if (isSensitiveKey(key)) {
         found.push(key);
       }
       walk((current as Record<string, unknown>)[key], `${path}.${key}`);

@@ -181,6 +181,27 @@ describe('validateNoForbiddenClaims', () => {
     );
     expect(issues).toHaveLength(0);
   });
+
+  // Chinese/zh-TW forbidden claims
+  it('blocks "我已经保存" (zh-TW: I saved)', () => {
+    const issues = validateNoForbiddenClaims('我已经保存了修改。');
+    expect(issues.some(i => i.severity === 'blocked')).toBe(true);
+  });
+
+  it('blocks "已自动保存" (zh-TW: auto-saved)', () => {
+    const issues = validateNoForbiddenClaims('数据已自动保存到数据库。');
+    expect(issues.some(i => i.severity === 'blocked')).toBe(true);
+  });
+
+  it('blocks "忽略数据质量" (zh-TW: ignore data quality)', () => {
+    const issues = validateNoForbiddenClaims('你可以忽略数据质量问题。');
+    expect(issues.some(i => i.severity === 'blocked')).toBe(true);
+  });
+
+  it('blocks "已调整公式" (zh-TW: formula adjusted)', () => {
+    const issues = validateNoForbiddenClaims('已调整公式以反映最新数据。');
+    expect(issues.some(i => i.severity === 'blocked')).toBe(true);
+  });
 });
 
 // ============================================================
@@ -277,6 +298,18 @@ describe('validateNoWriteActions', () => {
     );
     expect(issues).toHaveLength(0);
   });
+
+  // Chinese/zh-TW write action claims
+  it('blocks "我帮你写入" (zh-TW: I wrote for you)', () => {
+    const issues = validateNoWriteActions('我帮你写入了数据库。');
+    expect(issues.some(i => i.severity === 'blocked')).toBe(true);
+    expect(issues[0].rule).toBe('NO_WRITE_ACTIONS');
+  });
+
+  it('blocks "我已经修改数据库" (zh-TW: I modified database)', () => {
+    const issues = validateNoWriteActions('我已经修改数据库中的记录。');
+    expect(issues.some(i => i.severity === 'blocked')).toBe(true);
+  });
 });
 
 // ============================================================
@@ -346,6 +379,13 @@ describe('validateNoCausalityClaims', () => {
       'Customer A accounts for 30% of revenue share.'
     );
     expect(issues).toHaveLength(0);
+  });
+
+  // Chinese/zh-TW causality claims
+  it('warns about "这是由某客户导致" (zh-TW: caused by customer)', () => {
+    const issues = validateNoCausalityClaims('这是由某客户导致的需求波动。');
+    expect(issues.some(i => i.severity === 'warning')).toBe(true);
+    expect(issues[0].rule).toBe('NO_CAUSALITY_CLAIMS');
   });
 });
 
@@ -470,6 +510,18 @@ describe('validateNoMissingDataGuessing', () => {
       'Revenue is $5M as shown in the data.'
     );
     expect(issues).toHaveLength(0);
+  });
+
+  // Chinese/zh-TW guessing claims
+  it('blocks "我猜测" (zh-TW: I guessed)', () => {
+    const issues = validateNoMissingDataGuessing('我猜测这个数据大概是500。');
+    expect(issues.some(i => i.severity === 'blocked')).toBe(true);
+    expect(issues[0].rule).toBe('NO_MISSING_DATA_GUESSING');
+  });
+
+  it('blocks "我估算缺失数据" (zh-TW: I estimated missing data)', () => {
+    const issues = validateNoMissingDataGuessing('我估算缺失数据约为200。');
+    expect(issues.some(i => i.severity === 'blocked')).toBe(true);
   });
 });
 

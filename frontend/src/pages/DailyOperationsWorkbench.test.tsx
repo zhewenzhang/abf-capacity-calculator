@@ -139,7 +139,7 @@ vi.mock('../services/parameterService', () => ({
 }));
 
 vi.mock('../services/projectScope', () => ({
-  canEdit: vi.fn().mockReturnValue(true),
+  canEdit: vi.fn().mockImplementation((role: string) => role === 'owner' || role === 'editor'),
 }));
 
 vi.mock('../core/dataQuality', () => ({
@@ -413,6 +413,26 @@ describe('DailyOperationsWorkbench -- Render Tests', () => {
         expect(preset.params).toHaveProperty('coreCapacity');
         expect(preset.params).toHaveProperty('buCapacity');
       }
+    });
+  });
+
+  // ---------------------------------------------------------------
+  // Test 7: Viewer handler guards
+  // ---------------------------------------------------------------
+  describe('viewer handler guards', () => {
+    it('canEdit returns false for viewer role', async () => {
+      const { canEdit } = await import('../services/projectScope');
+      expect(canEdit('viewer')).toBe(false);
+    });
+
+    it('canEdit returns true for editor role', async () => {
+      const { canEdit } = await import('../services/projectScope');
+      expect(canEdit('editor')).toBe(true);
+    });
+
+    it('canEdit returns true for owner role', async () => {
+      const { canEdit } = await import('../services/projectScope');
+      expect(canEdit('owner')).toBe(true);
     });
   });
 });

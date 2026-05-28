@@ -314,6 +314,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ scope }) => {
   };
 
   const handleAddFactory = () => {
+    if (!writable) return;
     const id = `fab-${Date.now()}`;
     const name = `Fab ${String.fromCharCode(65 + factories.length)}`;
     setFactories([...factories, { id, name }]);
@@ -450,6 +451,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ scope }) => {
   };
 
   const handleAddMonth = () => {
+    if (!writable) return;
     const lastMonth = months[months.length - 1];
     const [y, m] = lastMonth.split('-').map(Number);
     const newMonth = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
@@ -537,7 +539,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ scope }) => {
     const label = formatMonthLabel(month);
     gridColumns.push({
       title: (
-        <div style={{ textAlign: 'center' }}>
+        <div style={{ textAlign: 'center' }} data-month={month}>
           <div style={{ fontWeight: 600, fontSize: 12 }}>{label}</div>
           <Space size={0} style={{ marginTop: 2 }}>
             {viewMode === 'month' && (
@@ -565,7 +567,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ scope }) => {
         const cell = getCell(month, record.factoryId);
         if (record.isTotal) {
           return (
-            <div style={{ textAlign: 'center', background: '#f0f5ff', padding: '4px 0' }}>
+            <div style={{ textAlign: 'center', background: '#f0f5ff', padding: '4px 0' }} data-month-cell={month}>
               <div style={{ fontWeight: 700, color: '#1890ff' }}>C: {total.core.toLocaleString()}</div>
               <div style={{ fontWeight: 700, color: '#52c41a' }}>B: {total.bu.toLocaleString()}</div>
               <div style={{ fontSize: 9, color: '#999' }}>
@@ -744,8 +746,8 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ scope }) => {
           <Col flex="auto" />
           <Col>
             <Space>
-              <Button icon={<PlusOutlined />} onClick={handleAddFactory}>{t('capacity.addFactory')}</Button>
-              <Button icon={<PlusOutlined />} onClick={handleAddMonth} disabled={viewMode !== 'month'}>
+              <Button icon={<PlusOutlined />} onClick={handleAddFactory} disabled={!writable}>{t('capacity.addFactory')}</Button>
+              <Button icon={<PlusOutlined />} onClick={handleAddMonth} disabled={viewMode !== 'month' || !writable}>
                 {t('capacity.addMonth')}
               </Button>
               <Popconfirm title={t('capacity.saveChanges')} onConfirm={handleSaveAll} disabled={!writable}>

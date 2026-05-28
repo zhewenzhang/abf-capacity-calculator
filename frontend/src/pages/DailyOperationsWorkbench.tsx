@@ -291,6 +291,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
 
   // ---- Generate management report ----
   const handleGenerateReport = useCallback((reportType: 'daily' | 'weekly') => {
+    if (!writable) return;
     if (!vm || !dqSummary || !analyticsModel) return;
 
     const report = buildManagementReport({
@@ -302,23 +303,26 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
     });
     setManagementReport(report);
     setReportPreview(exportReportToMarkdown(report));
-  }, [vm, dqSummary, analyticsModel, bpModel]);
+  }, [writable, vm, dqSummary, analyticsModel, bpModel]);
 
   // ---- Export report ----
   const handleExportMarkdown = useCallback(() => {
+    if (!writable) return;
     if (!managementReport) return;
     const md = exportReportToMarkdown(managementReport);
     downloadFile(md, `management-report-${managementReport.period}.md`, 'text/markdown');
-  }, [managementReport, downloadFile]);
+  }, [writable, managementReport, downloadFile]);
 
   const handleExportJson = useCallback(() => {
+    if (!writable) return;
     if (!managementReport) return;
     const json = exportReportToJson(managementReport);
     downloadFile(json, `management-report-${managementReport.period}.json`, 'application/json');
-  }, [managementReport, downloadFile]);
+  }, [writable, managementReport, downloadFile]);
 
   // ---- Run scenario v2 ----
   const handleRunScenarioV2 = useCallback((scenarioType: 'capacityDelay' | 'orderDisappearance' | 'forecastAdjustment') => {
+    if (!writable) return;
     if (!rawData) return;
     setScenarioV2Loading(scenarioType);
     setScenarioV2Result(null);
@@ -371,7 +375,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
         setScenarioV2Loading(null);
       }
     }, 0);
-  }, [rawData]);
+  }, [writable, rawData]);
 
   const abnormalitiesByDomain = useMemo(() => {
     if (!vm) return {};

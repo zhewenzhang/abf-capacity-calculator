@@ -25,44 +25,15 @@ import { buildDataQualitySummary } from './dataQuality';
 import { buildRiskAttributionModel } from './riskAttribution';
 import type { BpAnalysisModel } from './bpTargets';
 import { normalizeCurrencySettings } from './currency';
+import { sanitizeDeep } from './sensitiveDataUtils';
 
 // ============================================================
 // Constants
 // ============================================================
 
-const SENSITIVE_KEYS = [
-  'uid',
-  'email',
-  'token',
-  'auth',
-  'apiKey',
-  'secret',
-  'password',
-  'workspaceId',
-  'userId',
-  'ownerUid',
-  'member',
-];
-
 const MAX_TOP_ISSUES = 8;
 const MAX_TOP_DRIVERS = 5;
 const MAX_SHORTAGE_MONTHS = 12;
-
-// ============================================================
-// sanitizeDeep
-// ============================================================
-
-function sanitizeDeep<T>(obj: T): T {
-  if (obj === null || obj === undefined) return obj;
-  if (typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) return obj.map(item => sanitizeDeep(item)) as unknown as T;
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
-    if (SENSITIVE_KEYS.some(sk => key.toLowerCase().includes(sk.toLowerCase()))) continue;
-    result[key] = sanitizeDeep(value);
-  }
-  return result as T;
-}
 
 // ============================================================
 // Helpers

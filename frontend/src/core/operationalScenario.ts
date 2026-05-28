@@ -319,10 +319,15 @@ function runCapacityShiftScenario(
 function shiftCapacityPlans(
   capacityPlans: CapacityPlan[],
   shiftMonths: number,
-  _target: 'core' | 'bu' | 'both',
+  target: 'core' | 'bu' | 'both',
   factoryIds: string[] | undefined,
   forecasts: Forecast[],
 ): CapacityPlan[] {
+  if (target !== 'both') {
+    throw new Error(
+      `shiftCapacityPlans: target="${target}" is not supported. Only "both" is currently supported.`
+    );
+  }
   const forecastMonths = forecasts.map((f) => f.month);
   const minMonth = forecastMonths.length > 0 ? forecastMonths.reduce((a, b) => (a < b ? a : b)) : '';
   const maxMonth = forecastMonths.length > 0 ? forecastMonths.reduce((a, b) => (a > b ? a : b)) : '';

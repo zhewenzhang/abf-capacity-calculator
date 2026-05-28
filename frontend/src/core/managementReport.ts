@@ -20,6 +20,7 @@ import type { DataQualitySummary, DataQualityIssue } from './dataQuality';
 import type { AnalyticsModel } from './analytics';
 import type { BpAnalysisModel } from './bpTargets';
 import type { ScenarioComparison, DeltaMetric } from './scenarioEngine';
+import { sanitizeDeep, isSensitiveKey } from './sensitiveDataUtils';
 
 // ============================================================
 // Public Types
@@ -79,39 +80,10 @@ export interface ManagementReportInput {
 }
 
 // ============================================================
-// Sensitive Key Stripping
+// Sensitive Key Stripping (delegated to shared utility)
 // ============================================================
 
-const SENSITIVE_KEYS = new Set([
-  'apikey',
-  'api_key',
-  'token',
-  'secret',
-  'password',
-  'credential',
-  'bearer',
-  'authorization',
-  'auth',
-  'key',
-]);
-
-/**
- * Recursively strip any keys that might leak secrets.
- * Applied to all exported data structures.
- */
-function sanitizeObject<T>(obj: T): T {
-  if (obj === null || obj === undefined) return obj;
-  if (typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) {
-    return obj.map(item => sanitizeObject(item)) as unknown as T;
-  }
-  const result: Record<string, unknown> = {};
-  for (const key of Object.keys(obj as Record<string, unknown>)) {
-    if (SENSITIVE_KEYS.has(key.toLowerCase())) continue;
-    result[key] = sanitizeObject((obj as Record<string, unknown>)[key]);
-  }
-  return result as T;
-}
+const sanitizeObject = sanitizeDeep;
 
 // ============================================================
 // Sorting Helpers
@@ -687,7 +659,7 @@ function formatPct(value: number): string {
 function formatEvidence(evidence: Record<string, string | number | boolean | null>): string {
   const parts: string[] = [];
   for (const [key, value] of Object.entries(evidence)) {
-    if (SENSITIVE_KEYS.has(key.toLowerCase())) continue;
+    if (isSensitiveKey(key)) continue;
     if (value === null || value === undefined) continue;
     parts.push(`${key}: ${String(value)}`);
   }

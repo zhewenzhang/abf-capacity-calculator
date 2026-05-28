@@ -14,6 +14,7 @@
  */
 
 import type { AnalysisContractPayload } from './analysisContract';
+import { sanitizeDeep } from './sensitiveDataUtils';
 
 /**
  * Localized message descriptor for i18n support.
@@ -103,54 +104,8 @@ export interface SanitizedAnalysisContract {
   };
 }
 
-/**
- * Keys that should be removed or sanitized from the payload.
- */
-const SENSITIVE_KEYS = [
-  'uid',
-  'email',
-  'token',
-  'auth',
-  'member',
-  'user',
-  'workspaceId',
-  'ownerUid',
-];
-
-/**
- * Check if a key looks sensitive based on common patterns.
- */
-function isSensitiveKey(key: string): boolean {
-  const lowerKey = key.toLowerCase();
-  return SENSITIVE_KEYS.some(sk => lowerKey.includes(sk));
-}
-
-/**
- * Recursively remove sensitive keys from an object.
- * This is a safety net even if current payload doesn't have these keys.
- */
-function removeSensitiveData<T>(obj: T): T {
-  if (obj === null || obj === undefined) {
-    return obj;
-  }
-
-  if (typeof obj !== 'object') {
-    return obj;
-  }
-
-  if (Array.isArray(obj)) {
-    return obj.map(item => removeSensitiveData(item)) as unknown as T;
-  }
-
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (isSensitiveKey(key)) {
-      continue; // Skip sensitive keys
-    }
-    result[key] = removeSensitiveData(value);
-  }
-  return result as T;
-}
+// Sensitive key utilities are now imported from sensitiveDataUtils.ts
+const removeSensitiveData = sanitizeDeep;
 
 /**
  * Extract LocalizedMessageDescriptor from a message field.
