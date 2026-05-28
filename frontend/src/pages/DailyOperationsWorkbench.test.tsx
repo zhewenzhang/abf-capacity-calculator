@@ -138,6 +138,45 @@ vi.mock('../services/parameterService', () => ({
   }),
 }));
 
+vi.mock('../services/projectScope', () => ({
+  canEdit: vi.fn().mockReturnValue(true),
+}));
+
+vi.mock('../core/dataQuality', () => ({
+  buildDataQualitySummary: vi.fn().mockReturnValue({
+    status: 'ok',
+    confidence: 'high',
+    confidenceScore: 90,
+    issues: [],
+  }),
+}));
+
+vi.mock('../core/analytics', () => ({
+  buildAnalyticsModel: vi.fn().mockReturnValue({
+    totalForecastPcs: 0,
+    totalRevenueUsd: 0,
+    totalCapacityPcs: 0,
+    utilization: 0,
+    shortageMonths: 0,
+  }),
+}));
+
+vi.mock('../core/bpTargets', () => ({
+  buildBpAnalysis: vi.fn().mockReturnValue({
+    totalBpTarget: 0,
+    attainment: 0,
+    gap: 0,
+  }),
+}));
+
+vi.mock('../core/currency', () => ({
+  normalizeCurrencySettings: vi.fn().mockReturnValue({
+    displayCurrency: 'USD',
+    usdTwdRate: 32,
+    usdCnyRate: 7.2,
+  }),
+}));
+
 vi.mock('../core/workbench', async () => {
   const actual = await vi.importActual<typeof import('../core/workbench')>('../core/workbench');
   return {

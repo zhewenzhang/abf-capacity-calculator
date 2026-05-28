@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Card, Row, Col, Table, Typography, Tag, Button, Badge, Space, Collapse, theme } from 'antd';
+import { Card, Row, Col, Table, Typography, Tag, Button, Badge, Space, Collapse, Alert, theme } from 'antd';
 import {
   CheckCircleOutlined,
   WarningOutlined,
@@ -52,6 +52,7 @@ import {
 } from '../core/managementReport';
 import { MetricCard, SectionCard, PageLoading } from '../components/common';
 import EmptyState from '../components/common/EmptyState';
+import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
 import type { ProjectScope, SKU, Forecast, CapacityPlan, ProjectParameters } from '../types';
 
@@ -174,6 +175,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   const { t } = useI18n();
   const navigate = useNavigate();
   const { token } = theme.useToken();
+  const writable = canEdit(scope.role);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [vm, setVm] = useState<WorkbenchViewModel | null>(null);
@@ -487,6 +489,16 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
         <Title level={3} style={{ margin: 0 }}>{t('workbench.title')}</Title>
         <Text type="secondary">{t('workbench.subtitle')}</Text>
       </div>
+
+      {/* Viewer read-only warning */}
+      {!writable && (
+        <Alert
+          type="info"
+          showIcon
+          message={t('common.viewerReadOnly')}
+          style={{ marginBottom: 16 }}
+        />
+      )}
 
       {/* SECTION 1: Workflow Stage Stepper */}
       <SectionCard title={<><CalendarOutlined /> Pipeline Readiness</>} style={{ marginBottom: 16 }}>
@@ -822,7 +834,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
           <Button
             icon={<ExperimentOutlined />}
             loading={scenarioV2Loading === 'capacityDelay'}
-            disabled={!rawData}
+            disabled={!rawData || !writable}
             onClick={() => handleRunScenarioV2('capacityDelay')}
           >
             {t('workbench.scenario.v2.buCapacityDelay')}
@@ -830,7 +842,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
           <Button
             icon={<ExperimentOutlined />}
             loading={scenarioV2Loading === 'orderDisappearance'}
-            disabled={!rawData}
+            disabled={!rawData || !writable}
             onClick={() => handleRunScenarioV2('orderDisappearance')}
           >
             {t('workbench.scenario.v2.topCustomerDown')}
@@ -838,7 +850,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
           <Button
             icon={<ExperimentOutlined />}
             loading={scenarioV2Loading === 'forecastAdjustment'}
-            disabled={!rawData}
+            disabled={!rawData || !writable}
             onClick={() => handleRunScenarioV2('forecastAdjustment')}
           >
             {t('workbench.scenario.v2.forecastSurge')}
@@ -886,14 +898,14 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
         <Space wrap style={{ marginBottom: 12 }}>
           <Button
             icon={<FileTextOutlined />}
-            disabled={!vm || !dqSummary || !analyticsModel}
+            disabled={!vm || !dqSummary || !analyticsModel || !writable}
             onClick={() => handleGenerateReport('daily')}
           >
             {t('workbench.report.generateDaily')}
           </Button>
           <Button
             icon={<FileTextOutlined />}
-            disabled={!vm || !dqSummary || !analyticsModel}
+            disabled={!vm || !dqSummary || !analyticsModel || !writable}
             onClick={() => handleGenerateReport('weekly')}
           >
             {t('workbench.report.generateWeekly')}
@@ -902,12 +914,14 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
             <>
               <Button
                 icon={<DownloadOutlined />}
+                disabled={!writable}
                 onClick={handleExportMarkdown}
               >
                 {t('workbench.report.exportMarkdown')}
               </Button>
               <Button
                 icon={<DownloadOutlined />}
+                disabled={!writable}
                 onClick={handleExportJson}
               >
                 {t('workbench.report.exportJson')}
