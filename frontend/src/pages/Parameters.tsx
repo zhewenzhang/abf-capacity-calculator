@@ -27,7 +27,7 @@ import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_WORKING_DAYS } from
 import { useI18n } from '../i18n';
 import { useAppPrefs } from '../context/AppPreferencesContext';
 import { DEFAULT_CURRENCY_SETTINGS, type CurrencySettings, normalizeCurrencySettings } from '../core/currency';
-import { ActionBar } from '../components/common';
+import { ActionBar, PageHeader } from '../components/common';
 import { buildDataQualitySummary } from '../core/dataQuality';
 import { filterIssuesByDomain } from '../core/dataQualityVisibility';
 
@@ -348,6 +348,7 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
 
   return (
     <div className="abf-page">
+      <PageHeader title={t('parameters.title')} description={t('parameters.desc')} />
       {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       <WorkspaceSettingsPanel />
       {!writable && (

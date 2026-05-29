@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, Typography, Space, Spin } from 'antd';
-import { RobotOutlined } from '@ant-design/icons';
+import { Alert, Spin } from 'antd';
 import { useI18n } from '../i18n';
 import type { ProjectScope } from '../types';
+import { PageHeader } from '../components/common';
 import { getParameters } from '../services/parameterService';
 import { getSKUs } from '../services/skuService';
 import { getForecasts } from '../services/forecastService';
@@ -12,8 +12,6 @@ import { buildBpAnalysis } from '../core/bpTargets';
 import { buildAiCopilotContext, type AiCopilotContext } from '../core/aiCopilotContext';
 import CopilotChat from '../components/copilot/CopilotChat';
 import { DEFAULT_CURRENCY_SETTINGS } from '../core/currency';
-
-const { Title } = Typography;
 
 interface AiCopilotPageProps {
   scope: ProjectScope;
@@ -90,10 +88,7 @@ const AiCopilotPage: React.FC<AiCopilotPageProps> = ({ scope }) => {
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
-      <Space style={{ marginBottom: 16 }}>
-        <RobotOutlined style={{ fontSize: 24 }} />
-        <Title level={4} style={{ margin: 0 }}>{t('copilot.title')}</Title>
-      </Space>
+      <PageHeader title={t('copilot.title')} description={t('copilot.desc')} />
       <CopilotChat context={context} />
     </div>
   );

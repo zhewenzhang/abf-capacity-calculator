@@ -44,7 +44,7 @@ import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_WORKING_DAYS } from
 import { useI18n } from '../i18n';
 import { buildDataQualitySummary, type DataQualityIssue } from '../core/dataQuality';
 import { filterIssuesByDomain, findAllIssuesAffectingSku } from '../core/dataQualityVisibility';
-import { DataQualityBadge, DataQualityAlert } from '../components/common';
+import { DataQualityBadge, DataQualityAlert, PageHeader } from '../components/common';
 import { SkuQuickFixDrawer } from '../components/common/DataQualityQuickFixDrawer';
 
 const { Text } = Typography;
@@ -628,6 +628,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
 
   return (
     <div className="abf-page">
+      <PageHeader title={t('products.title')} description={t('products.desc')} />
       {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       {!writable && (
         <Alert

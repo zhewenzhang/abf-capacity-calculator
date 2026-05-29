@@ -54,7 +54,7 @@ import {
 } from '../core/analytics';
 import TimeMatrixTable, { type TimeMatrixRow } from '../components/analytics/TimeMatrixTable';
 import { YearlyHealthMatrix } from '../components/analytics/YearlyHealthMatrix';
-import { MetricCard, PageLoading } from '../components/common';
+import { MetricCard, PageLoading, PageHeader } from '../components/common';
 import { buildBpAnalysis } from '../core/bpTargets';
 import BpAnalysisPanel from '../components/analytics/BpAnalysisPanel';
 import type { SkuCalculationResult, MonthlyCapacitySummary, SKU, Forecast, CapacityPlan, ProjectParameters } from '../types';
@@ -791,6 +791,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
 
   return (
     <div className="abf-page">
+      <PageHeader title={t('results.title')} description={t('results.desc')} />
       {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       {!error && model && (
         <>

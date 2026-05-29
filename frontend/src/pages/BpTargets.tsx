@@ -9,7 +9,7 @@ import { getSKUs } from '../services/skuService';
 import type { ProjectScope, Forecast, SKU, ProjectParameters } from '../types';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
-import { PageLoading, ActionBar, UnitText, DataQualityAlert } from '../components/common';
+import { PageLoading, ActionBar, UnitText, DataQualityAlert, PageHeader } from '../components/common';
 import { buildDataQualitySummary } from '../core/dataQuality';
 import { filterIssuesByDomain, findIssueByYear } from '../core/dataQualityVisibility';
 import {
@@ -333,6 +333,7 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
 
   return (
     <div className="abf-page">
+      <PageHeader title={t('bpTargets.title')} description={t('bpTargets.desc')} />
       {/* Viewer read-only warning */}
       {!writable && (
         <Alert

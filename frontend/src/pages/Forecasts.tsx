@@ -40,7 +40,7 @@ import { useI18n } from '../i18n';
 import { buildYearlyGrowthForecasts } from '../core/forecastGrowth';
 import { buildDataQualitySummary, type DataQualityIssue } from '../core/dataQuality';
 import { filterIssuesByDomain, findAllIssuesAffectingSku } from '../core/dataQualityVisibility';
-import { DataQualityAlert, DataQualityBadge, OrphanForecastGuidedFixModal } from '../components/common';
+import { DataQualityAlert, DataQualityBadge, OrphanForecastGuidedFixModal, PageHeader } from '../components/common';
 import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_WORKING_DAYS } from '../core/defaults';
 import { DEFAULT_CURRENCY_SETTINGS } from '../core/currency';
 import { Segmented } from 'antd';
@@ -865,6 +865,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
 
   return (
     <div className="abf-page">
+      <PageHeader title={t('forecasts.title')} description={t('forecasts.desc')} />
       {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       {!writable && (
         <Alert message={t('common.readOnlyMode')} description={t('common.readOnlyDesc')} type="info" showIcon className="abf-alert-page" />

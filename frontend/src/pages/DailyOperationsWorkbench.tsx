@@ -50,13 +50,13 @@ import {
   exportReportToJson,
   type ManagementReport,
 } from '../core/managementReport';
-import { MetricCard, SectionCard, PageLoading } from '../components/common';
+import { MetricCard, SectionCard, PageLoading, PageHeader } from '../components/common';
 import EmptyState from '../components/common/EmptyState';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
 import type { ProjectScope, SKU, Forecast, CapacityPlan, ProjectParameters } from '../types';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 // ============================================================
 // Props
@@ -488,11 +488,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   // ---- Render ----
   return (
     <div className="abf-page">
-      {/* Title */}
-      <div style={{ marginBottom: 24 }}>
-        <Title level={3} style={{ margin: 0 }}>{t('workbench.title')}</Title>
-        <Text type="secondary">{t('workbench.subtitle')}</Text>
-      </div>
+      <PageHeader title={t('workbench.title')} description={t('workbench.subtitle')} />
 
       {/* Viewer read-only warning */}
       {!writable && (

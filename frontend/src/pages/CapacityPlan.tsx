@@ -56,7 +56,7 @@ import {
 import type { CapacityPlan, FactoryDef, ProjectParameters, ProjectScope, SKU, Forecast } from '../types';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
-import { DataQualityAlert } from '../components/common';
+import { DataQualityAlert, PageHeader } from '../components/common';
 
 const { Text } = Typography;
 
@@ -699,6 +699,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ scope }) => {
 
   return (
     <div className="abf-page">
+      <PageHeader title={t('capacity.title')} description={t('capacity.desc')} />
       {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       {!writable && (
         <Alert message={t('common.readOnlyMode')} description={t('common.readOnlyDesc')} type="info" showIcon className="abf-alert-page" />
