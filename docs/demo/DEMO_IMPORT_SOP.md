@@ -44,6 +44,35 @@ ls docs/demo/DEMO_SEED_*.json
 # DEMO_SEED_BP_TARGETS.json
 ```
 
+### 2.2.1 PowerShell UTF-8 编码注意事项
+
+**重要**: Windows PowerShell 5.1 默认使用系统编码（非 UTF-8），读取 JSON 文件时可能导致中文乱码或 `ConvertFrom-Json` 解析错误。
+
+```powershell
+# ✅ 正确方式：显式指定 UTF-8 编码
+$json = Get-Content -Path "docs/demo/DEMO_SEED_PRODUCTS.json" -Encoding UTF8 -Raw | ConvertFrom-Json
+
+# ❌ 错误方式：不指定编码（可能乱码）
+$json = Get-Content -Path "docs/demo/DEMO_SEED_PRODUCTS.json" -Raw | ConvertFrom-Json
+
+# 批量读取所有 seed 文件
+$files = @(
+  "DEMO_SEED_PRODUCTS.json",
+  "DEMO_SEED_FORECASTS.json",
+  "DEMO_SEED_CAPACITY.json",
+  "DEMO_SEED_PARAMETERS.json",
+  "DEMO_SEED_BP_TARGETS.json"
+)
+
+foreach ($file in $files) {
+  $path = "docs/demo/$file"
+  $data = Get-Content -Path $path -Encoding UTF8 -Raw | ConvertFrom-Json
+  Write-Host "✅ $file loaded successfully"
+}
+```
+
+**替代方案**: 使用 PowerShell 7+ (pwsh)，默认支持 UTF-8。
+
 ### 2.3 备份现有数据（如有）
 
 ```powershell
