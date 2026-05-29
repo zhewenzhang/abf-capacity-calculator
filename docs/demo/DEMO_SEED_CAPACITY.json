@@ -1,0 +1,68 @@
+{
+  "_comment": "ABF Capacity Calculator Demo Seed - Capacity 产能配置数据 (v1.48.1 修复版)",
+  "_version": "v1.48.1",
+  "_date": "2026-05-29",
+  "_note": "F2 在 2026-09 故意缺失，用于测试 missing capacity DQ 检测",
+  "factories": [
+    {"id": "factory-f1", "name": "Factory 1 (F1) - 主力厂"},
+    {"id": "factory-f2", "name": "Factory 2 (F2) - 扩张中"},
+    {"id": "factory-f3", "name": "Factory 3 (F3) - 新厂"}
+  ],
+  "capacityPlans": [
+    {"id": "cap-f1-2026-01", "month": "2026-01", "factoryId": "factory-f1", "corePanelPerDay": 2050, "buPanelPerDay": 4100},
+    {"id": "cap-f1-2026-02", "month": "2026-02", "factoryId": "factory-f1", "corePanelPerDay": 2050, "buPanelPerDay": 4100},
+    {"id": "cap-f1-2026-03", "month": "2026-03", "factoryId": "factory-f1", "corePanelPerDay": 2050, "buPanelPerDay": 4100},
+    {"id": "cap-f1-2026-04", "month": "2026-04", "factoryId": "factory-f1", "corePanelPerDay": 2050, "buPanelPerDay": 4100},
+    {"id": "cap-f1-2026-05", "month": "2026-05", "factoryId": "factory-f1", "corePanelPerDay": 2050, "buPanelPerDay": 4100},
+    {"id": "cap-f1-2026-06", "month": "2026-06", "factoryId": "factory-f1", "corePanelPerDay": 2050, "buPanelPerDay": 4100},
+    {"id": "cap-f1-2026-07", "month": "2026-07", "factoryId": "factory-f1", "corePanelPerDay": 2050, "buPanelPerDay": 4100},
+    {"id": "cap-f1-2026-08", "month": "2026-08", "factoryId": "factory-f1", "corePanelPerDay": 2050, "buPanelPerDay": 4100},
+    {"id": "cap-f1-2026-09", "month": "2026-09", "factoryId": "factory-f1", "corePanelPerDay": 2050, "buPanelPerDay": 4100},
+    {"id": "cap-f1-2026-10", "month": "2026-10", "factoryId": "factory-f1", "corePanelPerDay": 2050, "buPanelPerDay": 4100},
+    {"id": "cap-f1-2026-11", "month": "2026-11", "factoryId": "factory-f1", "corePanelPerDay": 2050, "buPanelPerDay": 4100},
+    {"id": "cap-f1-2026-12", "month": "2026-12", "factoryId": "factory-f1", "corePanelPerDay": 2050, "buPanelPerDay": 4100},
+
+    {"id": "cap-f2-2026-01", "month": "2026-01", "factoryId": "factory-f2", "corePanelPerDay": 800, "buPanelPerDay": 1600},
+    {"id": "cap-f2-2026-02", "month": "2026-02", "factoryId": "factory-f2", "corePanelPerDay": 800, "buPanelPerDay": 1600},
+    {"id": "cap-f2-2026-03", "month": "2026-03", "factoryId": "factory-f2", "corePanelPerDay": 800, "buPanelPerDay": 1600},
+    {"id": "cap-f2-2026-04", "month": "2026-04", "factoryId": "factory-f2", "corePanelPerDay": 800, "buPanelPerDay": 1600},
+    {"id": "cap-f2-2026-05", "month": "2026-05", "factoryId": "factory-f2", "corePanelPerDay": 800, "buPanelPerDay": 1600},
+    {"id": "cap-f2-2026-06", "month": "2026-06", "factoryId": "factory-f2", "corePanelPerDay": 800, "buPanelPerDay": 1600},
+    {"id": "cap-f2-2026-07", "month": "2026-07", "factoryId": "factory-f2", "corePanelPerDay": 800, "buPanelPerDay": 1600, "_dq_note": "产能延迟 - 应为 1000 但延迟到 10 月"},
+    {"id": "cap-f2-2026-08", "month": "2026-08", "factoryId": "factory-f2", "corePanelPerDay": 800, "buPanelPerDay": 1600, "_dq_note": "产能延迟 - 应为 1000 但延迟到 10 月"},
+    {"id": "cap-f2-2026-10", "month": "2026-10", "factoryId": "factory-f2", "corePanelPerDay": 1000, "buPanelPerDay": 2000},
+    {"id": "cap-f2-2026-11", "month": "2026-11", "factoryId": "factory-f2", "corePanelPerDay": 1000, "buPanelPerDay": 2000},
+    {"id": "cap-f2-2026-12", "month": "2026-12", "factoryId": "factory-f2", "corePanelPerDay": 1000, "buPanelPerDay": 2000},
+
+    {"id": "cap-f3-2026-01", "month": "2026-01", "factoryId": "factory-f3", "corePanelPerDay": 0, "buPanelPerDay": 0},
+    {"id": "cap-f3-2026-02", "month": "2026-02", "factoryId": "factory-f3", "corePanelPerDay": 0, "buPanelPerDay": 0},
+    {"id": "cap-f3-2026-03", "month": "2026-03", "factoryId": "factory-f3", "corePanelPerDay": 0, "buPanelPerDay": 0},
+    {"id": "cap-f3-2026-04", "month": "2026-04", "factoryId": "factory-f3", "corePanelPerDay": 0, "buPanelPerDay": 0},
+    {"id": "cap-f3-2026-05", "month": "2026-05", "factoryId": "factory-f3", "corePanelPerDay": 0, "buPanelPerDay": 0},
+    {"id": "cap-f3-2026-06", "month": "2026-06", "factoryId": "factory-f3", "corePanelPerDay": 0, "buPanelPerDay": 0},
+    {"id": "cap-f3-2026-07", "month": "2026-07", "factoryId": "factory-f3", "corePanelPerDay": 0, "buPanelPerDay": 0},
+    {"id": "cap-f3-2026-08", "month": "2026-08", "factoryId": "factory-f3", "corePanelPerDay": 0, "buPanelPerDay": 0},
+    {"id": "cap-f3-2026-09", "month": "2026-09", "factoryId": "factory-f3", "corePanelPerDay": 0, "buPanelPerDay": 0},
+    {"id": "cap-f3-2026-10", "month": "2026-10", "factoryId": "factory-f3", "corePanelPerDay": 0, "buPanelPerDay": 0},
+    {"id": "cap-f3-2026-11", "month": "2026-11", "factoryId": "factory-f3", "corePanelPerDay": 0, "buPanelPerDay": 0},
+    {"id": "cap-f3-2026-12", "month": "2026-12", "factoryId": "factory-f3", "corePanelPerDay": 0, "buPanelPerDay": 0}
+  ],
+  "_dq_issues": [
+    {
+      "type": "capacity:missing-months",
+      "description": "F2 2026-09 缺失产能配置",
+      "factoryId": "factory-f2",
+      "month": "2026-09",
+      "severity": "High"
+    },
+    {
+      "type": "capacity:high-utilization",
+      "description": "F2 2026-07-08 产能延迟扩张",
+      "factoryId": "factory-f2",
+      "months": ["2026-07", "2026-08"],
+      "expectedCore": 1000,
+      "actualCore": 800,
+      "severity": "Critical"
+    }
+  ]
+}

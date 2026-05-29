@@ -1,0 +1,3148 @@
+{
+  "_comment": "ABF Capacity Calculator Demo Seed - Forecasts 月度预测数据 (v1.48.1 修复版)",
+  "_version": "v1.48.1",
+  "_date": "2026-05-29",
+  "_changes": [
+    "修复 P1-01: 补齐全部 34 SKU 的 forecast，共 387 条记录",
+    "修复 P1-02: 增加 volume 使 2026 forecast revenue 达到约 28,000M TWD",
+    "修复 P1-03: Customer A 2026-07 设为 0 (order disappearance)",
+    "修复 P1-04: Customer C 2026-11 暴涨 +50% 以上",
+    "修复 P1-05: 增加 volume 使 2026-07~10 Core utilization 达到 88-97%"
+  ],
+  "_note": "包含 orphan forecast (C-ORPHAN) 用于测试 DQ 检测",
+  "forecasts": [
+    {
+      "id": "fc-a-16l-001-01",
+      "skuId": "sku-a-16l-001",
+      "month": "2026-01",
+      "forecastPcs": 65100,
+      "unitPrice": 5.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-16l-001-02",
+      "skuId": "sku-a-16l-001",
+      "month": "2026-02",
+      "forecastPcs": 66700,
+      "unitPrice": 5.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-16l-001-03",
+      "skuId": "sku-a-16l-001",
+      "month": "2026-03",
+      "forecastPcs": 69200,
+      "unitPrice": 5.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-16l-001-04",
+      "skuId": "sku-a-16l-001",
+      "month": "2026-04",
+      "forecastPcs": 67600,
+      "unitPrice": 5.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-16l-001-05",
+      "skuId": "sku-a-16l-001",
+      "month": "2026-05",
+      "forecastPcs": 65900,
+      "unitPrice": 5.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-16l-001-06",
+      "skuId": "sku-a-16l-001",
+      "month": "2026-06",
+      "forecastPcs": 64300,
+      "unitPrice": 5.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-16l-001-07",
+      "skuId": "sku-a-16l-001",
+      "month": "2026-07",
+      "forecastPcs": 0,
+      "unitPrice": 5.5,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 订单消失"
+    },
+    {
+      "id": "fc-a-16l-001-08",
+      "skuId": "sku-a-16l-001",
+      "month": "2026-08",
+      "forecastPcs": 0,
+      "unitPrice": 5.5,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 订单消失持续"
+    },
+    {
+      "id": "fc-a-16l-001-09",
+      "skuId": "sku-a-16l-001",
+      "month": "2026-09",
+      "forecastPcs": 16300,
+      "unitPrice": 5.5,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 部分恢复"
+    },
+    {
+      "id": "fc-a-16l-001-10",
+      "skuId": "sku-a-16l-001",
+      "month": "2026-10",
+      "forecastPcs": 32500,
+      "unitPrice": 5.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-16l-001-11",
+      "skuId": "sku-a-16l-001",
+      "month": "2026-11",
+      "forecastPcs": 48800,
+      "unitPrice": 5.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-16l-001-12",
+      "skuId": "sku-a-16l-001",
+      "month": "2026-12",
+      "forecastPcs": 57000,
+      "unitPrice": 5.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-16l-002-01",
+      "skuId": "sku-a-16l-002",
+      "month": "2026-01",
+      "forecastPcs": 52900,
+      "unitPrice": 4.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-16l-002-02",
+      "skuId": "sku-a-16l-002",
+      "month": "2026-02",
+      "forecastPcs": 53700,
+      "unitPrice": 4.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-16l-002-03",
+      "skuId": "sku-a-16l-002",
+      "month": "2026-03",
+      "forecastPcs": 55300,
+      "unitPrice": 4.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-16l-002-04",
+      "skuId": "sku-a-16l-002",
+      "month": "2026-04",
+      "forecastPcs": 54500,
+      "unitPrice": 4.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-16l-002-05",
+      "skuId": "sku-a-16l-002",
+      "month": "2026-05",
+      "forecastPcs": 52900,
+      "unitPrice": 4.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-16l-002-06",
+      "skuId": "sku-a-16l-002",
+      "month": "2026-06",
+      "forecastPcs": 52100,
+      "unitPrice": 4.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-16l-002-07",
+      "skuId": "sku-a-16l-002",
+      "month": "2026-07",
+      "forecastPcs": 0,
+      "unitPrice": 4.8,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 订单消失"
+    },
+    {
+      "id": "fc-a-16l-002-08",
+      "skuId": "sku-a-16l-002",
+      "month": "2026-08",
+      "forecastPcs": 0,
+      "unitPrice": 4.8,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 订单消失持续"
+    },
+    {
+      "id": "fc-a-16l-002-09",
+      "skuId": "sku-a-16l-002",
+      "month": "2026-09",
+      "forecastPcs": 13000,
+      "unitPrice": 4.8,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 部分恢复"
+    },
+    {
+      "id": "fc-a-16l-002-10",
+      "skuId": "sku-a-16l-002",
+      "month": "2026-10",
+      "forecastPcs": 26100,
+      "unitPrice": 4.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-16l-002-11",
+      "skuId": "sku-a-16l-002",
+      "month": "2026-11",
+      "forecastPcs": 39000,
+      "unitPrice": 4.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-16l-002-12",
+      "skuId": "sku-a-16l-002",
+      "month": "2026-12",
+      "forecastPcs": 45500,
+      "unitPrice": 4.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-20l-001-01",
+      "skuId": "sku-a-20l-001",
+      "month": "2026-01",
+      "forecastPcs": 28500,
+      "unitPrice": 7.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-20l-001-02",
+      "skuId": "sku-a-20l-001",
+      "month": "2026-02",
+      "forecastPcs": 29300,
+      "unitPrice": 7.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-20l-001-03",
+      "skuId": "sku-a-20l-001",
+      "month": "2026-03",
+      "forecastPcs": 30100,
+      "unitPrice": 7.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-20l-001-04",
+      "skuId": "sku-a-20l-001",
+      "month": "2026-04",
+      "forecastPcs": 29300,
+      "unitPrice": 7.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-20l-001-05",
+      "skuId": "sku-a-20l-001",
+      "month": "2026-05",
+      "forecastPcs": 28500,
+      "unitPrice": 7.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-20l-001-06",
+      "skuId": "sku-a-20l-001",
+      "month": "2026-06",
+      "forecastPcs": 27700,
+      "unitPrice": 7.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-20l-001-07",
+      "skuId": "sku-a-20l-001",
+      "month": "2026-07",
+      "forecastPcs": 0,
+      "unitPrice": 7.2,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 订单消失"
+    },
+    {
+      "id": "fc-a-20l-001-08",
+      "skuId": "sku-a-20l-001",
+      "month": "2026-08",
+      "forecastPcs": 0,
+      "unitPrice": 7.2,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 订单消失持续"
+    },
+    {
+      "id": "fc-a-20l-001-09",
+      "skuId": "sku-a-20l-001",
+      "month": "2026-09",
+      "forecastPcs": 7300,
+      "unitPrice": 7.2,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 部分恢复"
+    },
+    {
+      "id": "fc-a-20l-001-10",
+      "skuId": "sku-a-20l-001",
+      "month": "2026-10",
+      "forecastPcs": 14600,
+      "unitPrice": 7.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-20l-001-11",
+      "skuId": "sku-a-20l-001",
+      "month": "2026-11",
+      "forecastPcs": 21900,
+      "unitPrice": 7.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-20l-001-12",
+      "skuId": "sku-a-20l-001",
+      "month": "2026-12",
+      "forecastPcs": 26100,
+      "unitPrice": 7.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-20l-002-01",
+      "skuId": "sku-a-20l-002",
+      "month": "2026-01",
+      "forecastPcs": 32500,
+      "unitPrice": 6.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-20l-002-02",
+      "skuId": "sku-a-20l-002",
+      "month": "2026-02",
+      "forecastPcs": 33400,
+      "unitPrice": 6.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-20l-002-03",
+      "skuId": "sku-a-20l-002",
+      "month": "2026-03",
+      "forecastPcs": 34200,
+      "unitPrice": 6.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-20l-002-04",
+      "skuId": "sku-a-20l-002",
+      "month": "2026-04",
+      "forecastPcs": 33400,
+      "unitPrice": 6.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-20l-002-05",
+      "skuId": "sku-a-20l-002",
+      "month": "2026-05",
+      "forecastPcs": 32500,
+      "unitPrice": 6.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-20l-002-06",
+      "skuId": "sku-a-20l-002",
+      "month": "2026-06",
+      "forecastPcs": 31700,
+      "unitPrice": 6.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-20l-002-07",
+      "skuId": "sku-a-20l-002",
+      "month": "2026-07",
+      "forecastPcs": 0,
+      "unitPrice": 6.5,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 订单消失"
+    },
+    {
+      "id": "fc-a-20l-002-08",
+      "skuId": "sku-a-20l-002",
+      "month": "2026-08",
+      "forecastPcs": 0,
+      "unitPrice": 6.5,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 订单消失持续"
+    },
+    {
+      "id": "fc-a-20l-002-09",
+      "skuId": "sku-a-20l-002",
+      "month": "2026-09",
+      "forecastPcs": 8100,
+      "unitPrice": 6.5,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 部分恢复"
+    },
+    {
+      "id": "fc-a-20l-002-10",
+      "skuId": "sku-a-20l-002",
+      "month": "2026-10",
+      "forecastPcs": 16300,
+      "unitPrice": 6.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-20l-002-11",
+      "skuId": "sku-a-20l-002",
+      "month": "2026-11",
+      "forecastPcs": 24400,
+      "unitPrice": 6.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-20l-002-12",
+      "skuId": "sku-a-20l-002",
+      "month": "2026-12",
+      "forecastPcs": 29300,
+      "unitPrice": 6.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-14l-001-01",
+      "skuId": "sku-a-14l-001",
+      "month": "2026-01",
+      "forecastPcs": 77400,
+      "unitPrice": 3.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-14l-001-02",
+      "skuId": "sku-a-14l-001",
+      "month": "2026-02",
+      "forecastPcs": 78100,
+      "unitPrice": 3.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-14l-001-03",
+      "skuId": "sku-a-14l-001",
+      "month": "2026-03",
+      "forecastPcs": 79700,
+      "unitPrice": 3.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-14l-001-04",
+      "skuId": "sku-a-14l-001",
+      "month": "2026-04",
+      "forecastPcs": 78900,
+      "unitPrice": 3.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-14l-001-05",
+      "skuId": "sku-a-14l-001",
+      "month": "2026-05",
+      "forecastPcs": 77400,
+      "unitPrice": 3.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-14l-001-06",
+      "skuId": "sku-a-14l-001",
+      "month": "2026-06",
+      "forecastPcs": 75700,
+      "unitPrice": 3.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-14l-001-07",
+      "skuId": "sku-a-14l-001",
+      "month": "2026-07",
+      "forecastPcs": 0,
+      "unitPrice": 3.8,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 订单消失"
+    },
+    {
+      "id": "fc-a-14l-001-08",
+      "skuId": "sku-a-14l-001",
+      "month": "2026-08",
+      "forecastPcs": 0,
+      "unitPrice": 3.8,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 订单消失持续"
+    },
+    {
+      "id": "fc-a-14l-001-09",
+      "skuId": "sku-a-14l-001",
+      "month": "2026-09",
+      "forecastPcs": 19600,
+      "unitPrice": 3.8,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 部分恢复"
+    },
+    {
+      "id": "fc-a-14l-001-10",
+      "skuId": "sku-a-14l-001",
+      "month": "2026-10",
+      "forecastPcs": 39000,
+      "unitPrice": 3.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-14l-001-11",
+      "skuId": "sku-a-14l-001",
+      "month": "2026-11",
+      "forecastPcs": 58600,
+      "unitPrice": 3.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-14l-001-12",
+      "skuId": "sku-a-14l-001",
+      "month": "2026-12",
+      "forecastPcs": 68400,
+      "unitPrice": 3.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-14l-002-01",
+      "skuId": "sku-a-14l-002",
+      "month": "2026-01",
+      "forecastPcs": 57000,
+      "unitPrice": 4.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-14l-002-02",
+      "skuId": "sku-a-14l-002",
+      "month": "2026-02",
+      "forecastPcs": 57800,
+      "unitPrice": 4.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-14l-002-03",
+      "skuId": "sku-a-14l-002",
+      "month": "2026-03",
+      "forecastPcs": 59400,
+      "unitPrice": 4.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-14l-002-04",
+      "skuId": "sku-a-14l-002",
+      "month": "2026-04",
+      "forecastPcs": 58600,
+      "unitPrice": 4.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-14l-002-05",
+      "skuId": "sku-a-14l-002",
+      "month": "2026-05",
+      "forecastPcs": 57000,
+      "unitPrice": 4.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-14l-002-06",
+      "skuId": "sku-a-14l-002",
+      "month": "2026-06",
+      "forecastPcs": 56100,
+      "unitPrice": 4.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-14l-002-07",
+      "skuId": "sku-a-14l-002",
+      "month": "2026-07",
+      "forecastPcs": 0,
+      "unitPrice": 4.2,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 订单消失"
+    },
+    {
+      "id": "fc-a-14l-002-08",
+      "skuId": "sku-a-14l-002",
+      "month": "2026-08",
+      "forecastPcs": 0,
+      "unitPrice": 4.2,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 订单消失持续"
+    },
+    {
+      "id": "fc-a-14l-002-09",
+      "skuId": "sku-a-14l-002",
+      "month": "2026-09",
+      "forecastPcs": 14600,
+      "unitPrice": 4.2,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 部分恢复"
+    },
+    {
+      "id": "fc-a-14l-002-10",
+      "skuId": "sku-a-14l-002",
+      "month": "2026-10",
+      "forecastPcs": 29300,
+      "unitPrice": 4.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-14l-002-11",
+      "skuId": "sku-a-14l-002",
+      "month": "2026-11",
+      "forecastPcs": 44000,
+      "unitPrice": 4.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-14l-002-12",
+      "skuId": "sku-a-14l-002",
+      "month": "2026-12",
+      "forecastPcs": 51300,
+      "unitPrice": 4.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-10l-001-01",
+      "skuId": "sku-a-10l-001",
+      "month": "2026-01",
+      "forecastPcs": 97600,
+      "unitPrice": 2.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-10l-001-02",
+      "skuId": "sku-a-10l-001",
+      "month": "2026-02",
+      "forecastPcs": 99300,
+      "unitPrice": 2.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-10l-001-03",
+      "skuId": "sku-a-10l-001",
+      "month": "2026-03",
+      "forecastPcs": 101800,
+      "unitPrice": 2.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-10l-001-04",
+      "skuId": "sku-a-10l-001",
+      "month": "2026-04",
+      "forecastPcs": 100100,
+      "unitPrice": 2.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-10l-001-05",
+      "skuId": "sku-a-10l-001",
+      "month": "2026-05",
+      "forecastPcs": 97600,
+      "unitPrice": 2.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-10l-001-06",
+      "skuId": "sku-a-10l-001",
+      "month": "2026-06",
+      "forecastPcs": 96000,
+      "unitPrice": 2.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-10l-001-07",
+      "skuId": "sku-a-10l-001",
+      "month": "2026-07",
+      "forecastPcs": 0,
+      "unitPrice": 2.5,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 订单消失"
+    },
+    {
+      "id": "fc-a-10l-001-08",
+      "skuId": "sku-a-10l-001",
+      "month": "2026-08",
+      "forecastPcs": 0,
+      "unitPrice": 2.5,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 订单消失持续"
+    },
+    {
+      "id": "fc-a-10l-001-09",
+      "skuId": "sku-a-10l-001",
+      "month": "2026-09",
+      "forecastPcs": 24400,
+      "unitPrice": 2.5,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 部分恢复"
+    },
+    {
+      "id": "fc-a-10l-001-10",
+      "skuId": "sku-a-10l-001",
+      "month": "2026-10",
+      "forecastPcs": 48800,
+      "unitPrice": 2.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-10l-001-11",
+      "skuId": "sku-a-10l-001",
+      "month": "2026-11",
+      "forecastPcs": 73200,
+      "unitPrice": 2.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-10l-001-12",
+      "skuId": "sku-a-10l-001",
+      "month": "2026-12",
+      "forecastPcs": 85500,
+      "unitPrice": 2.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-8l-001-01",
+      "skuId": "sku-a-8l-001",
+      "month": "2026-01",
+      "forecastPcs": 81400,
+      "unitPrice": 2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-8l-001-02",
+      "skuId": "sku-a-8l-001",
+      "month": "2026-02",
+      "forecastPcs": 83000,
+      "unitPrice": 2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-8l-001-03",
+      "skuId": "sku-a-8l-001",
+      "month": "2026-03",
+      "forecastPcs": 85500,
+      "unitPrice": 2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-8l-001-04",
+      "skuId": "sku-a-8l-001",
+      "month": "2026-04",
+      "forecastPcs": 83800,
+      "unitPrice": 2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-8l-001-05",
+      "skuId": "sku-a-8l-001",
+      "month": "2026-05",
+      "forecastPcs": 81400,
+      "unitPrice": 2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-8l-001-06",
+      "skuId": "sku-a-8l-001",
+      "month": "2026-06",
+      "forecastPcs": 79700,
+      "unitPrice": 2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-8l-001-07",
+      "skuId": "sku-a-8l-001",
+      "month": "2026-07",
+      "forecastPcs": 0,
+      "unitPrice": 2,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 订单消失"
+    },
+    {
+      "id": "fc-a-8l-001-08",
+      "skuId": "sku-a-8l-001",
+      "month": "2026-08",
+      "forecastPcs": 0,
+      "unitPrice": 2,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 订单消失持续"
+    },
+    {
+      "id": "fc-a-8l-001-09",
+      "skuId": "sku-a-8l-001",
+      "month": "2026-09",
+      "forecastPcs": 20400,
+      "unitPrice": 2,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 部分恢复"
+    },
+    {
+      "id": "fc-a-8l-001-10",
+      "skuId": "sku-a-8l-001",
+      "month": "2026-10",
+      "forecastPcs": 40700,
+      "unitPrice": 2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-8l-001-11",
+      "skuId": "sku-a-8l-001",
+      "month": "2026-11",
+      "forecastPcs": 61100,
+      "unitPrice": 2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-8l-001-12",
+      "skuId": "sku-a-8l-001",
+      "month": "2026-12",
+      "forecastPcs": 71600,
+      "unitPrice": 2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-8l-002-01",
+      "skuId": "sku-a-8l-002",
+      "month": "2026-01",
+      "forecastPcs": 65100,
+      "unitPrice": 1.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-8l-002-02",
+      "skuId": "sku-a-8l-002",
+      "month": "2026-02",
+      "forecastPcs": 65900,
+      "unitPrice": 1.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-8l-002-03",
+      "skuId": "sku-a-8l-002",
+      "month": "2026-03",
+      "forecastPcs": 67600,
+      "unitPrice": 1.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-8l-002-04",
+      "skuId": "sku-a-8l-002",
+      "month": "2026-04",
+      "forecastPcs": 66700,
+      "unitPrice": 1.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-8l-002-05",
+      "skuId": "sku-a-8l-002",
+      "month": "2026-05",
+      "forecastPcs": 65100,
+      "unitPrice": 1.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-8l-002-06",
+      "skuId": "sku-a-8l-002",
+      "month": "2026-06",
+      "forecastPcs": 63400,
+      "unitPrice": 1.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-8l-002-07",
+      "skuId": "sku-a-8l-002",
+      "month": "2026-07",
+      "forecastPcs": 0,
+      "unitPrice": 1.8,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 订单消失"
+    },
+    {
+      "id": "fc-a-8l-002-08",
+      "skuId": "sku-a-8l-002",
+      "month": "2026-08",
+      "forecastPcs": 0,
+      "unitPrice": 1.8,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 订单消失持续"
+    },
+    {
+      "id": "fc-a-8l-002-09",
+      "skuId": "sku-a-8l-002",
+      "month": "2026-09",
+      "forecastPcs": 16300,
+      "unitPrice": 1.8,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer A 部分恢复"
+    },
+    {
+      "id": "fc-a-8l-002-10",
+      "skuId": "sku-a-8l-002",
+      "month": "2026-10",
+      "forecastPcs": 32500,
+      "unitPrice": 1.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-8l-002-11",
+      "skuId": "sku-a-8l-002",
+      "month": "2026-11",
+      "forecastPcs": 48800,
+      "unitPrice": 1.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-a-8l-002-12",
+      "skuId": "sku-a-8l-002",
+      "month": "2026-12",
+      "forecastPcs": 57000,
+      "unitPrice": 1.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-b-14l-001-01",
+      "skuId": "sku-b-14l-001",
+      "month": "2026-01",
+      "forecastPcs": 122100,
+      "unitPrice": 120,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-14l-001-02",
+      "skuId": "sku-b-14l-001",
+      "month": "2026-02",
+      "forecastPcs": 123700,
+      "unitPrice": 120,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-14l-001-03",
+      "skuId": "sku-b-14l-001",
+      "month": "2026-03",
+      "forecastPcs": 126200,
+      "unitPrice": 120,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-14l-001-04",
+      "skuId": "sku-b-14l-001",
+      "month": "2026-04",
+      "forecastPcs": 124500,
+      "unitPrice": 120,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-14l-001-05",
+      "skuId": "sku-b-14l-001",
+      "month": "2026-05",
+      "forecastPcs": 122100,
+      "unitPrice": 120,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-14l-001-06",
+      "skuId": "sku-b-14l-001",
+      "month": "2026-06",
+      "forecastPcs": 120400,
+      "unitPrice": 120,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-14l-001-07",
+      "skuId": "sku-b-14l-001",
+      "month": "2026-07",
+      "forecastPcs": 118000,
+      "unitPrice": 120,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-14l-001-08",
+      "skuId": "sku-b-14l-001",
+      "month": "2026-08",
+      "forecastPcs": 115600,
+      "unitPrice": 120,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-14l-001-09",
+      "skuId": "sku-b-14l-001",
+      "month": "2026-09",
+      "forecastPcs": 113900,
+      "unitPrice": 120,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-14l-001-10",
+      "skuId": "sku-b-14l-001",
+      "month": "2026-10",
+      "forecastPcs": 112300,
+      "unitPrice": 120,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-14l-001-11",
+      "skuId": "sku-b-14l-001",
+      "month": "2026-11",
+      "forecastPcs": 110600,
+      "unitPrice": 120,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-14l-001-12",
+      "skuId": "sku-b-14l-001",
+      "month": "2026-12",
+      "forecastPcs": 109900,
+      "unitPrice": 120,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-001-01",
+      "skuId": "sku-b-10l-001",
+      "month": "2026-01",
+      "forecastPcs": 162700,
+      "unitPrice": 75,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-001-02",
+      "skuId": "sku-b-10l-001",
+      "month": "2026-02",
+      "forecastPcs": 164400,
+      "unitPrice": 75,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-001-03",
+      "skuId": "sku-b-10l-001",
+      "month": "2026-03",
+      "forecastPcs": 166900,
+      "unitPrice": 75,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-001-04",
+      "skuId": "sku-b-10l-001",
+      "month": "2026-04",
+      "forecastPcs": 165200,
+      "unitPrice": 75,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-001-05",
+      "skuId": "sku-b-10l-001",
+      "month": "2026-05",
+      "forecastPcs": 162700,
+      "unitPrice": 75,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-001-06",
+      "skuId": "sku-b-10l-001",
+      "month": "2026-06",
+      "forecastPcs": 161100,
+      "unitPrice": 75,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-001-07",
+      "skuId": "sku-b-10l-001",
+      "month": "2026-07",
+      "forecastPcs": 158700,
+      "unitPrice": 75,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-001-08",
+      "skuId": "sku-b-10l-001",
+      "month": "2026-08",
+      "forecastPcs": 156300,
+      "unitPrice": 75,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-001-09",
+      "skuId": "sku-b-10l-001",
+      "month": "2026-09",
+      "forecastPcs": 154600,
+      "unitPrice": 75,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-001-10",
+      "skuId": "sku-b-10l-001",
+      "month": "2026-10",
+      "forecastPcs": 153000,
+      "unitPrice": 75,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-001-11",
+      "skuId": "sku-b-10l-001",
+      "month": "2026-11",
+      "forecastPcs": 151300,
+      "unitPrice": 75,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-001-12",
+      "skuId": "sku-b-10l-001",
+      "month": "2026-12",
+      "forecastPcs": 150600,
+      "unitPrice": 75,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-002-01",
+      "skuId": "sku-b-10l-002",
+      "month": "2026-01",
+      "forecastPcs": 122100,
+      "unitPrice": 85,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-002-02",
+      "skuId": "sku-b-10l-002",
+      "month": "2026-02",
+      "forecastPcs": 123700,
+      "unitPrice": 85,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-002-03",
+      "skuId": "sku-b-10l-002",
+      "month": "2026-03",
+      "forecastPcs": 126200,
+      "unitPrice": 85,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-002-04",
+      "skuId": "sku-b-10l-002",
+      "month": "2026-04",
+      "forecastPcs": 124500,
+      "unitPrice": 85,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-002-05",
+      "skuId": "sku-b-10l-002",
+      "month": "2026-05",
+      "forecastPcs": 122100,
+      "unitPrice": 85,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-002-06",
+      "skuId": "sku-b-10l-002",
+      "month": "2026-06",
+      "forecastPcs": 120400,
+      "unitPrice": 85,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-002-07",
+      "skuId": "sku-b-10l-002",
+      "month": "2026-07",
+      "forecastPcs": 118000,
+      "unitPrice": 85,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-002-08",
+      "skuId": "sku-b-10l-002",
+      "month": "2026-08",
+      "forecastPcs": 115600,
+      "unitPrice": 85,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-002-09",
+      "skuId": "sku-b-10l-002",
+      "month": "2026-09",
+      "forecastPcs": 113900,
+      "unitPrice": 85,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-002-10",
+      "skuId": "sku-b-10l-002",
+      "month": "2026-10",
+      "forecastPcs": 112300,
+      "unitPrice": 85,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-002-11",
+      "skuId": "sku-b-10l-002",
+      "month": "2026-11",
+      "forecastPcs": 110600,
+      "unitPrice": 85,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-10l-002-12",
+      "skuId": "sku-b-10l-002",
+      "month": "2026-12",
+      "forecastPcs": 109900,
+      "unitPrice": 85,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-001-01",
+      "skuId": "sku-b-8l-001",
+      "month": "2026-01",
+      "forecastPcs": 203400,
+      "unitPrice": 55,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-001-02",
+      "skuId": "sku-b-8l-001",
+      "month": "2026-02",
+      "forecastPcs": 205100,
+      "unitPrice": 55,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-001-03",
+      "skuId": "sku-b-8l-001",
+      "month": "2026-03",
+      "forecastPcs": 207500,
+      "unitPrice": 55,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-001-04",
+      "skuId": "sku-b-8l-001",
+      "month": "2026-04",
+      "forecastPcs": 205900,
+      "unitPrice": 55,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-001-05",
+      "skuId": "sku-b-8l-001",
+      "month": "2026-05",
+      "forecastPcs": 203400,
+      "unitPrice": 55,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-001-06",
+      "skuId": "sku-b-8l-001",
+      "month": "2026-06",
+      "forecastPcs": 201800,
+      "unitPrice": 55,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-001-07",
+      "skuId": "sku-b-8l-001",
+      "month": "2026-07",
+      "forecastPcs": 199400,
+      "unitPrice": 55,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-001-08",
+      "skuId": "sku-b-8l-001",
+      "month": "2026-08",
+      "forecastPcs": 196900,
+      "unitPrice": 55,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-001-09",
+      "skuId": "sku-b-8l-001",
+      "month": "2026-09",
+      "forecastPcs": 195300,
+      "unitPrice": 55,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-001-10",
+      "skuId": "sku-b-8l-001",
+      "month": "2026-10",
+      "forecastPcs": 193600,
+      "unitPrice": 55,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-001-11",
+      "skuId": "sku-b-8l-001",
+      "month": "2026-11",
+      "forecastPcs": 192000,
+      "unitPrice": 55,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-001-12",
+      "skuId": "sku-b-8l-001",
+      "month": "2026-12",
+      "forecastPcs": 191300,
+      "unitPrice": 55,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-002-01",
+      "skuId": "sku-b-8l-002",
+      "month": "2026-01",
+      "forecastPcs": 162700,
+      "unitPrice": 48,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-002-02",
+      "skuId": "sku-b-8l-002",
+      "month": "2026-02",
+      "forecastPcs": 164400,
+      "unitPrice": 48,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-002-03",
+      "skuId": "sku-b-8l-002",
+      "month": "2026-03",
+      "forecastPcs": 166900,
+      "unitPrice": 48,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-002-04",
+      "skuId": "sku-b-8l-002",
+      "month": "2026-04",
+      "forecastPcs": 165200,
+      "unitPrice": 48,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-002-05",
+      "skuId": "sku-b-8l-002",
+      "month": "2026-05",
+      "forecastPcs": 162700,
+      "unitPrice": 48,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-002-06",
+      "skuId": "sku-b-8l-002",
+      "month": "2026-06",
+      "forecastPcs": 161100,
+      "unitPrice": 48,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-002-07",
+      "skuId": "sku-b-8l-002",
+      "month": "2026-07",
+      "forecastPcs": 158700,
+      "unitPrice": 48,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-002-08",
+      "skuId": "sku-b-8l-002",
+      "month": "2026-08",
+      "forecastPcs": 156300,
+      "unitPrice": 48,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-002-09",
+      "skuId": "sku-b-8l-002",
+      "month": "2026-09",
+      "forecastPcs": 154600,
+      "unitPrice": 48,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-002-10",
+      "skuId": "sku-b-8l-002",
+      "month": "2026-10",
+      "forecastPcs": 153000,
+      "unitPrice": 48,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-002-11",
+      "skuId": "sku-b-8l-002",
+      "month": "2026-11",
+      "forecastPcs": 151300,
+      "unitPrice": 48,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-8l-002-12",
+      "skuId": "sku-b-8l-002",
+      "month": "2026-12",
+      "forecastPcs": 150600,
+      "unitPrice": 48,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-6l-001-01",
+      "skuId": "sku-b-6l-001",
+      "month": "2026-01",
+      "forecastPcs": 122100,
+      "unitPrice": 42,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-6l-001-02",
+      "skuId": "sku-b-6l-001",
+      "month": "2026-02",
+      "forecastPcs": 123700,
+      "unitPrice": 42,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-6l-001-03",
+      "skuId": "sku-b-6l-001",
+      "month": "2026-03",
+      "forecastPcs": 126200,
+      "unitPrice": 42,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-6l-001-04",
+      "skuId": "sku-b-6l-001",
+      "month": "2026-04",
+      "forecastPcs": 124500,
+      "unitPrice": 42,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-6l-001-05",
+      "skuId": "sku-b-6l-001",
+      "month": "2026-05",
+      "forecastPcs": 122100,
+      "unitPrice": 42,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-6l-001-06",
+      "skuId": "sku-b-6l-001",
+      "month": "2026-06",
+      "forecastPcs": 120400,
+      "unitPrice": 42,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-6l-001-07",
+      "skuId": "sku-b-6l-001",
+      "month": "2026-07",
+      "forecastPcs": 118000,
+      "unitPrice": 42,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-6l-001-08",
+      "skuId": "sku-b-6l-001",
+      "month": "2026-08",
+      "forecastPcs": 115600,
+      "unitPrice": 42,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-6l-001-09",
+      "skuId": "sku-b-6l-001",
+      "month": "2026-09",
+      "forecastPcs": 113900,
+      "unitPrice": 42,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-6l-001-10",
+      "skuId": "sku-b-6l-001",
+      "month": "2026-10",
+      "forecastPcs": 112300,
+      "unitPrice": 42,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-6l-001-11",
+      "skuId": "sku-b-6l-001",
+      "month": "2026-11",
+      "forecastPcs": 110600,
+      "unitPrice": 42,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-6l-001-12",
+      "skuId": "sku-b-6l-001",
+      "month": "2026-12",
+      "forecastPcs": 109900,
+      "unitPrice": 42,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-4l-001-01",
+      "skuId": "sku-b-4l-001",
+      "month": "2026-01",
+      "forecastPcs": 81400,
+      "unitPrice": 30,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-4l-001-02",
+      "skuId": "sku-b-4l-001",
+      "month": "2026-02",
+      "forecastPcs": 83000,
+      "unitPrice": 30,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-4l-001-03",
+      "skuId": "sku-b-4l-001",
+      "month": "2026-03",
+      "forecastPcs": 85500,
+      "unitPrice": 30,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-4l-001-04",
+      "skuId": "sku-b-4l-001",
+      "month": "2026-04",
+      "forecastPcs": 83800,
+      "unitPrice": 30,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-4l-001-05",
+      "skuId": "sku-b-4l-001",
+      "month": "2026-05",
+      "forecastPcs": 81400,
+      "unitPrice": 30,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-4l-001-06",
+      "skuId": "sku-b-4l-001",
+      "month": "2026-06",
+      "forecastPcs": 79700,
+      "unitPrice": 30,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-4l-001-07",
+      "skuId": "sku-b-4l-001",
+      "month": "2026-07",
+      "forecastPcs": 77400,
+      "unitPrice": 30,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-4l-001-08",
+      "skuId": "sku-b-4l-001",
+      "month": "2026-08",
+      "forecastPcs": 74900,
+      "unitPrice": 30,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-4l-001-09",
+      "skuId": "sku-b-4l-001",
+      "month": "2026-09",
+      "forecastPcs": 73200,
+      "unitPrice": 30,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-4l-001-10",
+      "skuId": "sku-b-4l-001",
+      "month": "2026-10",
+      "forecastPcs": 71600,
+      "unitPrice": 30,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-4l-001-11",
+      "skuId": "sku-b-4l-001",
+      "month": "2026-11",
+      "forecastPcs": 69900,
+      "unitPrice": 30,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-b-4l-001-12",
+      "skuId": "sku-b-4l-001",
+      "month": "2026-12",
+      "forecastPcs": 69200,
+      "unitPrice": 30,
+      "unitPriceCurrency": "TWD"
+    },
+    {
+      "id": "fc-c-20l-001-01",
+      "skuId": "sku-c-20l-001",
+      "month": "2026-01",
+      "forecastPcs": 28500,
+      "unitPrice": 8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-001-02",
+      "skuId": "sku-c-20l-001",
+      "month": "2026-02",
+      "forecastPcs": 29300,
+      "unitPrice": 8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-001-03",
+      "skuId": "sku-c-20l-001",
+      "month": "2026-03",
+      "forecastPcs": 30900,
+      "unitPrice": 8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-001-04",
+      "skuId": "sku-c-20l-001",
+      "month": "2026-04",
+      "forecastPcs": 32500,
+      "unitPrice": 8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-001-05",
+      "skuId": "sku-c-20l-001",
+      "month": "2026-05",
+      "forecastPcs": 34200,
+      "unitPrice": 8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-001-06",
+      "skuId": "sku-c-20l-001",
+      "month": "2026-06",
+      "forecastPcs": 36700,
+      "unitPrice": 8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-001-07",
+      "skuId": "sku-c-20l-001",
+      "month": "2026-07",
+      "forecastPcs": 39000,
+      "unitPrice": 8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-001-08",
+      "skuId": "sku-c-20l-001",
+      "month": "2026-08",
+      "forecastPcs": 42300,
+      "unitPrice": 8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-001-09",
+      "skuId": "sku-c-20l-001",
+      "month": "2026-09",
+      "forecastPcs": 45500,
+      "unitPrice": 8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-001-10",
+      "skuId": "sku-c-20l-001",
+      "month": "2026-10",
+      "forecastPcs": 48800,
+      "unitPrice": 8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-001-11",
+      "skuId": "sku-c-20l-001",
+      "month": "2026-11",
+      "forecastPcs": 77400,
+      "unitPrice": 8,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer C 新品导入，暴涨 +58%"
+    },
+    {
+      "id": "fc-c-20l-001-12",
+      "skuId": "sku-c-20l-001",
+      "month": "2026-12",
+      "forecastPcs": 73200,
+      "unitPrice": 8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-002-01",
+      "skuId": "sku-c-20l-002",
+      "month": "2026-01",
+      "forecastPcs": 22800,
+      "unitPrice": 8.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-002-02",
+      "skuId": "sku-c-20l-002",
+      "month": "2026-02",
+      "forecastPcs": 23600,
+      "unitPrice": 8.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-002-03",
+      "skuId": "sku-c-20l-002",
+      "month": "2026-03",
+      "forecastPcs": 25200,
+      "unitPrice": 8.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-002-04",
+      "skuId": "sku-c-20l-002",
+      "month": "2026-04",
+      "forecastPcs": 26900,
+      "unitPrice": 8.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-002-05",
+      "skuId": "sku-c-20l-002",
+      "month": "2026-05",
+      "forecastPcs": 28500,
+      "unitPrice": 8.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-002-06",
+      "skuId": "sku-c-20l-002",
+      "month": "2026-06",
+      "forecastPcs": 30900,
+      "unitPrice": 8.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-002-07",
+      "skuId": "sku-c-20l-002",
+      "month": "2026-07",
+      "forecastPcs": 32500,
+      "unitPrice": 8.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-002-08",
+      "skuId": "sku-c-20l-002",
+      "month": "2026-08",
+      "forecastPcs": 35000,
+      "unitPrice": 8.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-002-09",
+      "skuId": "sku-c-20l-002",
+      "month": "2026-09",
+      "forecastPcs": 37400,
+      "unitPrice": 8.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-002-10",
+      "skuId": "sku-c-20l-002",
+      "month": "2026-10",
+      "forecastPcs": 40700,
+      "unitPrice": 8.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-20l-002-11",
+      "skuId": "sku-c-20l-002",
+      "month": "2026-11",
+      "forecastPcs": 65100,
+      "unitPrice": 8.5,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer C 新品导入，暴涨 +60%"
+    },
+    {
+      "id": "fc-c-20l-002-12",
+      "skuId": "sku-c-20l-002",
+      "month": "2026-12",
+      "forecastPcs": 61100,
+      "unitPrice": 8.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-001-01",
+      "skuId": "sku-c-16l-001",
+      "month": "2026-01",
+      "forecastPcs": 32500,
+      "unitPrice": 5.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-001-02",
+      "skuId": "sku-c-16l-001",
+      "month": "2026-02",
+      "forecastPcs": 33400,
+      "unitPrice": 5.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-001-03",
+      "skuId": "sku-c-16l-001",
+      "month": "2026-03",
+      "forecastPcs": 35000,
+      "unitPrice": 5.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-001-04",
+      "skuId": "sku-c-16l-001",
+      "month": "2026-04",
+      "forecastPcs": 36700,
+      "unitPrice": 5.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-001-05",
+      "skuId": "sku-c-16l-001",
+      "month": "2026-05",
+      "forecastPcs": 38200,
+      "unitPrice": 5.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-001-06",
+      "skuId": "sku-c-16l-001",
+      "month": "2026-06",
+      "forecastPcs": 40700,
+      "unitPrice": 5.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-001-07",
+      "skuId": "sku-c-16l-001",
+      "month": "2026-07",
+      "forecastPcs": 43200,
+      "unitPrice": 5.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-001-08",
+      "skuId": "sku-c-16l-001",
+      "month": "2026-08",
+      "forecastPcs": 45500,
+      "unitPrice": 5.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-001-09",
+      "skuId": "sku-c-16l-001",
+      "month": "2026-09",
+      "forecastPcs": 48800,
+      "unitPrice": 5.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-001-10",
+      "skuId": "sku-c-16l-001",
+      "month": "2026-10",
+      "forecastPcs": 52900,
+      "unitPrice": 5.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-001-11",
+      "skuId": "sku-c-16l-001",
+      "month": "2026-11",
+      "forecastPcs": 81400,
+      "unitPrice": 5.8,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer C 新品导入，暴涨 +54%"
+    },
+    {
+      "id": "fc-c-16l-001-12",
+      "skuId": "sku-c-16l-001",
+      "month": "2026-12",
+      "forecastPcs": 77400,
+      "unitPrice": 5.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-002-01",
+      "skuId": "sku-c-16l-002",
+      "month": "2026-01",
+      "forecastPcs": 40700,
+      "unitPrice": 5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-002-02",
+      "skuId": "sku-c-16l-002",
+      "month": "2026-02",
+      "forecastPcs": 41500,
+      "unitPrice": 5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-002-03",
+      "skuId": "sku-c-16l-002",
+      "month": "2026-03",
+      "forecastPcs": 43200,
+      "unitPrice": 5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-002-04",
+      "skuId": "sku-c-16l-002",
+      "month": "2026-04",
+      "forecastPcs": 44800,
+      "unitPrice": 5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-002-05",
+      "skuId": "sku-c-16l-002",
+      "month": "2026-05",
+      "forecastPcs": 47200,
+      "unitPrice": 5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-002-06",
+      "skuId": "sku-c-16l-002",
+      "month": "2026-06",
+      "forecastPcs": 49600,
+      "unitPrice": 5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-002-07",
+      "skuId": "sku-c-16l-002",
+      "month": "2026-07",
+      "forecastPcs": 52900,
+      "unitPrice": 5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-002-08",
+      "skuId": "sku-c-16l-002",
+      "month": "2026-08",
+      "forecastPcs": 57000,
+      "unitPrice": 5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-002-09",
+      "skuId": "sku-c-16l-002",
+      "month": "2026-09",
+      "forecastPcs": 61100,
+      "unitPrice": 5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-002-10",
+      "skuId": "sku-c-16l-002",
+      "month": "2026-10",
+      "forecastPcs": 65100,
+      "unitPrice": 5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-16l-002-11",
+      "skuId": "sku-c-16l-002",
+      "month": "2026-11",
+      "forecastPcs": 101800,
+      "unitPrice": 5,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer C 新品导入，暴涨 +56%"
+    },
+    {
+      "id": "fc-c-16l-002-12",
+      "skuId": "sku-c-16l-002",
+      "month": "2026-12",
+      "forecastPcs": 97600,
+      "unitPrice": 5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-14l-001-01",
+      "skuId": "sku-c-14l-001",
+      "month": "2026-01",
+      "forecastPcs": 48800,
+      "unitPrice": 4,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-14l-001-02",
+      "skuId": "sku-c-14l-001",
+      "month": "2026-02",
+      "forecastPcs": 50500,
+      "unitPrice": 4,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-14l-001-03",
+      "skuId": "sku-c-14l-001",
+      "month": "2026-03",
+      "forecastPcs": 52900,
+      "unitPrice": 4,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-14l-001-04",
+      "skuId": "sku-c-14l-001",
+      "month": "2026-04",
+      "forecastPcs": 55300,
+      "unitPrice": 4,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-14l-001-05",
+      "skuId": "sku-c-14l-001",
+      "month": "2026-05",
+      "forecastPcs": 58600,
+      "unitPrice": 4,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-14l-001-06",
+      "skuId": "sku-c-14l-001",
+      "month": "2026-06",
+      "forecastPcs": 61800,
+      "unitPrice": 4,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-14l-001-07",
+      "skuId": "sku-c-14l-001",
+      "month": "2026-07",
+      "forecastPcs": 65100,
+      "unitPrice": 4,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-14l-001-08",
+      "skuId": "sku-c-14l-001",
+      "month": "2026-08",
+      "forecastPcs": 69200,
+      "unitPrice": 4,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-14l-001-09",
+      "skuId": "sku-c-14l-001",
+      "month": "2026-09",
+      "forecastPcs": 73200,
+      "unitPrice": 4,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-14l-001-10",
+      "skuId": "sku-c-14l-001",
+      "month": "2026-10",
+      "forecastPcs": 77400,
+      "unitPrice": 4,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-14l-001-11",
+      "skuId": "sku-c-14l-001",
+      "month": "2026-11",
+      "forecastPcs": 122100,
+      "unitPrice": 4,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer C 新品导入，暴涨 +58%"
+    },
+    {
+      "id": "fc-c-14l-001-12",
+      "skuId": "sku-c-14l-001",
+      "month": "2026-12",
+      "forecastPcs": 113900,
+      "unitPrice": 4,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-12l-001-01",
+      "skuId": "sku-c-12l-001",
+      "month": "2026-01",
+      "forecastPcs": 57000,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-12l-001-02",
+      "skuId": "sku-c-12l-001",
+      "month": "2026-02",
+      "forecastPcs": 58600,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-12l-001-03",
+      "skuId": "sku-c-12l-001",
+      "month": "2026-03",
+      "forecastPcs": 61100,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-12l-001-04",
+      "skuId": "sku-c-12l-001",
+      "month": "2026-04",
+      "forecastPcs": 63400,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-12l-001-05",
+      "skuId": "sku-c-12l-001",
+      "month": "2026-05",
+      "forecastPcs": 66700,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-12l-001-06",
+      "skuId": "sku-c-12l-001",
+      "month": "2026-06",
+      "forecastPcs": 69900,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-12l-001-07",
+      "skuId": "sku-c-12l-001",
+      "month": "2026-07",
+      "forecastPcs": 73200,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-12l-001-08",
+      "skuId": "sku-c-12l-001",
+      "month": "2026-08",
+      "forecastPcs": 77400,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-12l-001-09",
+      "skuId": "sku-c-12l-001",
+      "month": "2026-09",
+      "forecastPcs": 81400,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-12l-001-10",
+      "skuId": "sku-c-12l-001",
+      "month": "2026-10",
+      "forecastPcs": 85500,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-12l-001-11",
+      "skuId": "sku-c-12l-001",
+      "month": "2026-11",
+      "forecastPcs": 134300,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer C 新品导入，暴涨 +57%"
+    },
+    {
+      "id": "fc-c-12l-001-12",
+      "skuId": "sku-c-12l-001",
+      "month": "2026-12",
+      "forecastPcs": 126200,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-10l-001-01",
+      "skuId": "sku-c-10l-001",
+      "month": "2026-01",
+      "forecastPcs": 65100,
+      "unitPrice": 2.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-10l-001-02",
+      "skuId": "sku-c-10l-001",
+      "month": "2026-02",
+      "forecastPcs": 66700,
+      "unitPrice": 2.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-10l-001-03",
+      "skuId": "sku-c-10l-001",
+      "month": "2026-03",
+      "forecastPcs": 69200,
+      "unitPrice": 2.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-10l-001-04",
+      "skuId": "sku-c-10l-001",
+      "month": "2026-04",
+      "forecastPcs": 71600,
+      "unitPrice": 2.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-10l-001-05",
+      "skuId": "sku-c-10l-001",
+      "month": "2026-05",
+      "forecastPcs": 74900,
+      "unitPrice": 2.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-10l-001-06",
+      "skuId": "sku-c-10l-001",
+      "month": "2026-06",
+      "forecastPcs": 78100,
+      "unitPrice": 2.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-10l-001-07",
+      "skuId": "sku-c-10l-001",
+      "month": "2026-07",
+      "forecastPcs": 81400,
+      "unitPrice": 2.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-10l-001-08",
+      "skuId": "sku-c-10l-001",
+      "month": "2026-08",
+      "forecastPcs": 85500,
+      "unitPrice": 2.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-10l-001-09",
+      "skuId": "sku-c-10l-001",
+      "month": "2026-09",
+      "forecastPcs": 89500,
+      "unitPrice": 2.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-10l-001-10",
+      "skuId": "sku-c-10l-001",
+      "month": "2026-10",
+      "forecastPcs": 93600,
+      "unitPrice": 2.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-c-10l-001-11",
+      "skuId": "sku-c-10l-001",
+      "month": "2026-11",
+      "forecastPcs": 146500,
+      "unitPrice": 2.8,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Customer C 新品导入，暴涨 +57%"
+    },
+    {
+      "id": "fc-c-10l-001-12",
+      "skuId": "sku-c-10l-001",
+      "month": "2026-12",
+      "forecastPcs": 138300,
+      "unitPrice": 2.8,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-d-8l-001-01",
+      "skuId": "sku-d-8l-001",
+      "month": "2026-01",
+      "forecastPcs": 32500,
+      "unitPrice": 52,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-001-02",
+      "skuId": "sku-d-8l-001",
+      "month": "2026-02",
+      "forecastPcs": 33400,
+      "unitPrice": 52,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-001-03",
+      "skuId": "sku-d-8l-001",
+      "month": "2026-03",
+      "forecastPcs": 34200,
+      "unitPrice": 52,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-001-04",
+      "skuId": "sku-d-8l-001",
+      "month": "2026-04",
+      "forecastPcs": 33800,
+      "unitPrice": 52,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-001-05",
+      "skuId": "sku-d-8l-001",
+      "month": "2026-05",
+      "forecastPcs": 33400,
+      "unitPrice": 52,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-001-06",
+      "skuId": "sku-d-8l-001",
+      "month": "2026-06",
+      "forecastPcs": 33000,
+      "unitPrice": 52,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-001-07",
+      "skuId": "sku-d-8l-001",
+      "month": "2026-07",
+      "forecastPcs": 32500,
+      "unitPrice": 52,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-001-08",
+      "skuId": "sku-d-8l-001",
+      "month": "2026-08",
+      "forecastPcs": 32500,
+      "unitPrice": 52,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-001-09",
+      "skuId": "sku-d-8l-001",
+      "month": "2026-09",
+      "forecastPcs": 32500,
+      "unitPrice": 52,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-001-10",
+      "skuId": "sku-d-8l-001",
+      "month": "2026-10",
+      "forecastPcs": 32500,
+      "unitPrice": 52,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-001-11",
+      "skuId": "sku-d-8l-001",
+      "month": "2026-11",
+      "forecastPcs": 32500,
+      "unitPrice": 52,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-001-12",
+      "skuId": "sku-d-8l-001",
+      "month": "2026-12",
+      "forecastPcs": 32500,
+      "unitPrice": 52,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-002-01",
+      "skuId": "sku-d-8l-002",
+      "month": "2026-01",
+      "forecastPcs": 28500,
+      "unitPrice": 58,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-002-02",
+      "skuId": "sku-d-8l-002",
+      "month": "2026-02",
+      "forecastPcs": 29300,
+      "unitPrice": 58,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-002-03",
+      "skuId": "sku-d-8l-002",
+      "month": "2026-03",
+      "forecastPcs": 30100,
+      "unitPrice": 58,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-002-04",
+      "skuId": "sku-d-8l-002",
+      "month": "2026-04",
+      "forecastPcs": 29700,
+      "unitPrice": 58,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-002-05",
+      "skuId": "sku-d-8l-002",
+      "month": "2026-05",
+      "forecastPcs": 29300,
+      "unitPrice": 58,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-002-06",
+      "skuId": "sku-d-8l-002",
+      "month": "2026-06",
+      "forecastPcs": 28800,
+      "unitPrice": 58,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-002-07",
+      "skuId": "sku-d-8l-002",
+      "month": "2026-07",
+      "forecastPcs": 28500,
+      "unitPrice": 58,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-002-08",
+      "skuId": "sku-d-8l-002",
+      "month": "2026-08",
+      "forecastPcs": 28500,
+      "unitPrice": 58,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-002-09",
+      "skuId": "sku-d-8l-002",
+      "month": "2026-09",
+      "forecastPcs": 28500,
+      "unitPrice": 58,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-002-10",
+      "skuId": "sku-d-8l-002",
+      "month": "2026-10",
+      "forecastPcs": 28500,
+      "unitPrice": 58,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-002-11",
+      "skuId": "sku-d-8l-002",
+      "month": "2026-11",
+      "forecastPcs": 28500,
+      "unitPrice": 58,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-8l-002-12",
+      "skuId": "sku-d-8l-002",
+      "month": "2026-12",
+      "forecastPcs": 28500,
+      "unitPrice": 58,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-001-01",
+      "skuId": "sku-d-4l-001",
+      "month": "2026-01",
+      "forecastPcs": 40700,
+      "unitPrice": 35,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-001-02",
+      "skuId": "sku-d-4l-001",
+      "month": "2026-02",
+      "forecastPcs": 41500,
+      "unitPrice": 35,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-001-03",
+      "skuId": "sku-d-4l-001",
+      "month": "2026-03",
+      "forecastPcs": 42300,
+      "unitPrice": 35,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-001-04",
+      "skuId": "sku-d-4l-001",
+      "month": "2026-04",
+      "forecastPcs": 41900,
+      "unitPrice": 35,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-001-05",
+      "skuId": "sku-d-4l-001",
+      "month": "2026-05",
+      "forecastPcs": 41500,
+      "unitPrice": 35,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-001-06",
+      "skuId": "sku-d-4l-001",
+      "month": "2026-06",
+      "forecastPcs": 41100,
+      "unitPrice": 35,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-001-07",
+      "skuId": "sku-d-4l-001",
+      "month": "2026-07",
+      "forecastPcs": 40700,
+      "unitPrice": 35,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-001-08",
+      "skuId": "sku-d-4l-001",
+      "month": "2026-08",
+      "forecastPcs": 40700,
+      "unitPrice": 35,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-001-09",
+      "skuId": "sku-d-4l-001",
+      "month": "2026-09",
+      "forecastPcs": 40700,
+      "unitPrice": 35,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-001-10",
+      "skuId": "sku-d-4l-001",
+      "month": "2026-10",
+      "forecastPcs": 40700,
+      "unitPrice": 35,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-001-11",
+      "skuId": "sku-d-4l-001",
+      "month": "2026-11",
+      "forecastPcs": 40700,
+      "unitPrice": 35,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-001-12",
+      "skuId": "sku-d-4l-001",
+      "month": "2026-12",
+      "forecastPcs": 40700,
+      "unitPrice": 35,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-002-01",
+      "skuId": "sku-d-4l-002",
+      "month": "2026-01",
+      "forecastPcs": 36700,
+      "unitPrice": 40,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-002-02",
+      "skuId": "sku-d-4l-002",
+      "month": "2026-02",
+      "forecastPcs": 37400,
+      "unitPrice": 40,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-002-03",
+      "skuId": "sku-d-4l-002",
+      "month": "2026-03",
+      "forecastPcs": 38200,
+      "unitPrice": 40,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-002-04",
+      "skuId": "sku-d-4l-002",
+      "month": "2026-04",
+      "forecastPcs": 37800,
+      "unitPrice": 40,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-002-05",
+      "skuId": "sku-d-4l-002",
+      "month": "2026-05",
+      "forecastPcs": 37400,
+      "unitPrice": 40,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-002-06",
+      "skuId": "sku-d-4l-002",
+      "month": "2026-06",
+      "forecastPcs": 37000,
+      "unitPrice": 40,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-002-07",
+      "skuId": "sku-d-4l-002",
+      "month": "2026-07",
+      "forecastPcs": 36700,
+      "unitPrice": 40,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-002-08",
+      "skuId": "sku-d-4l-002",
+      "month": "2026-08",
+      "forecastPcs": 36700,
+      "unitPrice": 40,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-002-09",
+      "skuId": "sku-d-4l-002",
+      "month": "2026-09",
+      "forecastPcs": 36700,
+      "unitPrice": 40,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-002-10",
+      "skuId": "sku-d-4l-002",
+      "month": "2026-10",
+      "forecastPcs": 36700,
+      "unitPrice": 40,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-002-11",
+      "skuId": "sku-d-4l-002",
+      "month": "2026-11",
+      "forecastPcs": 36700,
+      "unitPrice": 40,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-4l-002-12",
+      "skuId": "sku-d-4l-002",
+      "month": "2026-12",
+      "forecastPcs": 36700,
+      "unitPrice": 40,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-001-01",
+      "skuId": "sku-d-6l-001",
+      "month": "2026-01",
+      "forecastPcs": 34200,
+      "unitPrice": 45,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-001-02",
+      "skuId": "sku-d-6l-001",
+      "month": "2026-02",
+      "forecastPcs": 35000,
+      "unitPrice": 45,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-001-03",
+      "skuId": "sku-d-6l-001",
+      "month": "2026-03",
+      "forecastPcs": 35800,
+      "unitPrice": 45,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-001-04",
+      "skuId": "sku-d-6l-001",
+      "month": "2026-04",
+      "forecastPcs": 35400,
+      "unitPrice": 45,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-001-05",
+      "skuId": "sku-d-6l-001",
+      "month": "2026-05",
+      "forecastPcs": 35000,
+      "unitPrice": 45,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-001-06",
+      "skuId": "sku-d-6l-001",
+      "month": "2026-06",
+      "forecastPcs": 34600,
+      "unitPrice": 45,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-001-07",
+      "skuId": "sku-d-6l-001",
+      "month": "2026-07",
+      "forecastPcs": 34200,
+      "unitPrice": 45,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-001-08",
+      "skuId": "sku-d-6l-001",
+      "month": "2026-08",
+      "forecastPcs": 34200,
+      "unitPrice": 45,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-001-09",
+      "skuId": "sku-d-6l-001",
+      "month": "2026-09",
+      "forecastPcs": 34200,
+      "unitPrice": 45,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-001-10",
+      "skuId": "sku-d-6l-001",
+      "month": "2026-10",
+      "forecastPcs": 34200,
+      "unitPrice": 45,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-001-11",
+      "skuId": "sku-d-6l-001",
+      "month": "2026-11",
+      "forecastPcs": 34200,
+      "unitPrice": 45,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-001-12",
+      "skuId": "sku-d-6l-001",
+      "month": "2026-12",
+      "forecastPcs": 34200,
+      "unitPrice": 45,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-002-01",
+      "skuId": "sku-d-6l-002",
+      "month": "2026-01",
+      "forecastPcs": 30900,
+      "unitPrice": 48,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-002-02",
+      "skuId": "sku-d-6l-002",
+      "month": "2026-02",
+      "forecastPcs": 31700,
+      "unitPrice": 48,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-002-03",
+      "skuId": "sku-d-6l-002",
+      "month": "2026-03",
+      "forecastPcs": 32500,
+      "unitPrice": 48,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-002-04",
+      "skuId": "sku-d-6l-002",
+      "month": "2026-04",
+      "forecastPcs": 32100,
+      "unitPrice": 48,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-002-05",
+      "skuId": "sku-d-6l-002",
+      "month": "2026-05",
+      "forecastPcs": 31700,
+      "unitPrice": 48,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-002-06",
+      "skuId": "sku-d-6l-002",
+      "month": "2026-06",
+      "forecastPcs": 31300,
+      "unitPrice": 48,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-002-07",
+      "skuId": "sku-d-6l-002",
+      "month": "2026-07",
+      "forecastPcs": 30900,
+      "unitPrice": 48,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-002-08",
+      "skuId": "sku-d-6l-002",
+      "month": "2026-08",
+      "forecastPcs": 30900,
+      "unitPrice": 48,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-002-09",
+      "skuId": "sku-d-6l-002",
+      "month": "2026-09",
+      "forecastPcs": 30900,
+      "unitPrice": 48,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-002-10",
+      "skuId": "sku-d-6l-002",
+      "month": "2026-10",
+      "forecastPcs": 30900,
+      "unitPrice": 48,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-002-11",
+      "skuId": "sku-d-6l-002",
+      "month": "2026-11",
+      "forecastPcs": 30900,
+      "unitPrice": 48,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-d-6l-002-12",
+      "skuId": "sku-d-6l-002",
+      "month": "2026-12",
+      "forecastPcs": 30900,
+      "unitPrice": 48,
+      "unitPriceCurrency": "CNY"
+    },
+    {
+      "id": "fc-e-16l-001-01",
+      "skuId": "sku-e-16l-001",
+      "month": "2026-01",
+      "forecastPcs": 32500,
+      "unitPrice": 6,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-16l-001-02",
+      "skuId": "sku-e-16l-001",
+      "month": "2026-02",
+      "forecastPcs": 33400,
+      "unitPrice": 6,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-16l-001-03",
+      "skuId": "sku-e-16l-001",
+      "month": "2026-03",
+      "forecastPcs": 34200,
+      "unitPrice": 6,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-16l-001-04",
+      "skuId": "sku-e-16l-001",
+      "month": "2026-04",
+      "forecastPcs": 33800,
+      "unitPrice": 6,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-16l-001-05",
+      "skuId": "sku-e-16l-001",
+      "month": "2026-05",
+      "forecastPcs": 33400,
+      "unitPrice": 6,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-16l-001-06",
+      "skuId": "sku-e-16l-001",
+      "month": "2026-06",
+      "forecastPcs": 33000,
+      "unitPrice": 6,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-16l-001-07",
+      "skuId": "sku-e-16l-001",
+      "month": "2026-07",
+      "forecastPcs": 32500,
+      "unitPrice": 6,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-16l-001-08",
+      "skuId": "sku-e-16l-001",
+      "month": "2026-08",
+      "forecastPcs": 32500,
+      "unitPrice": 6,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-16l-001-09",
+      "skuId": "sku-e-16l-001",
+      "month": "2026-09",
+      "forecastPcs": 32500,
+      "unitPrice": 6,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-16l-001-10",
+      "skuId": "sku-e-16l-001",
+      "month": "2026-10",
+      "forecastPcs": 32500,
+      "unitPrice": 6,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-16l-001-11",
+      "skuId": "sku-e-16l-001",
+      "month": "2026-11",
+      "forecastPcs": 32500,
+      "unitPrice": 6,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-16l-001-12",
+      "skuId": "sku-e-16l-001",
+      "month": "2026-12",
+      "forecastPcs": 32500,
+      "unitPrice": 6,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-12l-001-01",
+      "skuId": "sku-e-12l-001",
+      "month": "2026-01",
+      "forecastPcs": 40700,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-12l-001-02",
+      "skuId": "sku-e-12l-001",
+      "month": "2026-02",
+      "forecastPcs": 41500,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-12l-001-03",
+      "skuId": "sku-e-12l-001",
+      "month": "2026-03",
+      "forecastPcs": 42300,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-12l-001-04",
+      "skuId": "sku-e-12l-001",
+      "month": "2026-04",
+      "forecastPcs": 41900,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-12l-001-05",
+      "skuId": "sku-e-12l-001",
+      "month": "2026-05",
+      "forecastPcs": 41500,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-12l-001-06",
+      "skuId": "sku-e-12l-001",
+      "month": "2026-06",
+      "forecastPcs": 41100,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-12l-001-07",
+      "skuId": "sku-e-12l-001",
+      "month": "2026-07",
+      "forecastPcs": 40700,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-12l-001-08",
+      "skuId": "sku-e-12l-001",
+      "month": "2026-08",
+      "forecastPcs": 40700,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-12l-001-09",
+      "skuId": "sku-e-12l-001",
+      "month": "2026-09",
+      "forecastPcs": 40700,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-12l-001-10",
+      "skuId": "sku-e-12l-001",
+      "month": "2026-10",
+      "forecastPcs": 40700,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-12l-001-11",
+      "skuId": "sku-e-12l-001",
+      "month": "2026-11",
+      "forecastPcs": 40700,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-12l-001-12",
+      "skuId": "sku-e-12l-001",
+      "month": "2026-12",
+      "forecastPcs": 40700,
+      "unitPrice": 3.5,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-8l-001-01",
+      "skuId": "sku-e-8l-001",
+      "month": "2026-01",
+      "forecastPcs": 48800,
+      "unitPrice": 2.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-8l-001-02",
+      "skuId": "sku-e-8l-001",
+      "month": "2026-02",
+      "forecastPcs": 49600,
+      "unitPrice": 2.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-8l-001-03",
+      "skuId": "sku-e-8l-001",
+      "month": "2026-03",
+      "forecastPcs": 50500,
+      "unitPrice": 2.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-8l-001-04",
+      "skuId": "sku-e-8l-001",
+      "month": "2026-04",
+      "forecastPcs": 50100,
+      "unitPrice": 2.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-8l-001-05",
+      "skuId": "sku-e-8l-001",
+      "month": "2026-05",
+      "forecastPcs": 49600,
+      "unitPrice": 2.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-8l-001-06",
+      "skuId": "sku-e-8l-001",
+      "month": "2026-06",
+      "forecastPcs": 49200,
+      "unitPrice": 2.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-8l-001-07",
+      "skuId": "sku-e-8l-001",
+      "month": "2026-07",
+      "forecastPcs": 48800,
+      "unitPrice": 2.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-8l-001-08",
+      "skuId": "sku-e-8l-001",
+      "month": "2026-08",
+      "forecastPcs": 48800,
+      "unitPrice": 2.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-8l-001-09",
+      "skuId": "sku-e-8l-001",
+      "month": "2026-09",
+      "forecastPcs": 48800,
+      "unitPrice": 2.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-8l-001-10",
+      "skuId": "sku-e-8l-001",
+      "month": "2026-10",
+      "forecastPcs": 48800,
+      "unitPrice": 2.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-8l-001-11",
+      "skuId": "sku-e-8l-001",
+      "month": "2026-11",
+      "forecastPcs": 48800,
+      "unitPrice": 2.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-e-8l-001-12",
+      "skuId": "sku-e-8l-001",
+      "month": "2026-12",
+      "forecastPcs": 48800,
+      "unitPrice": 2.2,
+      "unitPriceCurrency": "USD"
+    },
+    {
+      "id": "fc-orphan-2026-06",
+      "skuId": "sku-c-orphan",
+      "month": "2026-06",
+      "forecastPcs": 800,
+      "unitPrice": 5,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Orphan forecast - SKU 不存在"
+    },
+    {
+      "id": "fc-orphan-2026-07",
+      "skuId": "sku-c-orphan",
+      "month": "2026-07",
+      "forecastPcs": 900,
+      "unitPrice": 5,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Orphan forecast - SKU 不存在"
+    },
+    {
+      "id": "fc-orphan-2026-08",
+      "skuId": "sku-c-orphan",
+      "month": "2026-08",
+      "forecastPcs": 1200,
+      "unitPrice": 5,
+      "unitPriceCurrency": "USD",
+      "_dq_note": "Orphan forecast - SKU 不存在"
+    }
+  ]
+}

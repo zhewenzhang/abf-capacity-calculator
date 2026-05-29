@@ -49,7 +49,7 @@ Dashboard → Results (BP Analysis) → Results (Key Findings) → AI Copilot
 
 | 步骤 | 页面 | 操作 | 预期发现 |
 |------|------|------|---------|
-| 1 | Dashboard | 打开 Dashboard，查看 BP 达成卡片 | 看到 2026 年 BP 达成率 87.5%，缺口 4 亿 TWD |
+| 1 | Dashboard | 打开 Dashboard，查看 BP 达成卡片 | 看到 2026 年 BP 达成率 87.1%，缺口约 4 亿 TWD |
 | 2 | Dashboard | 查看营收趋势图 | 发现 Q2 营收明显低于 Q1，呈下降趋势 |
 | 3 | Results | 切换到 BP Analysis Tab | 看到年度/季度/月度 BP 达成矩阵 |
 | 4 | Results | 查看 Customer Contribution 表 | 发现 Customer A 贡献了 60% 的 BP 缺口 |
