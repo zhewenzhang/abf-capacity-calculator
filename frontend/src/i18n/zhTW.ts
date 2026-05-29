@@ -1094,6 +1094,7 @@ export const zhTW: Record<string, string> = {
   'copilot.provider.deepseekKeyLabel': 'DeepSeek API 金鑰',
   'copilot.provider.deepseekKeyPlaceholder': '輸入 DeepSeek API 金鑰（僅限本次會話）',
   'copilot.provider.deepseekKeyWarning': '金鑰僅存儲在記憶體中。關閉抽屜將清除金鑰。除非獲得批准，否則請勿輸入正式金鑰。',
+  'copilot.provider.deepseekKeyRequired': '需要 DeepSeek API 金鑰。請在供應商設定中配置。',
   'copilot.status.deterministic': '確定性分析',
   'copilot.status.blocked': '已封鎖',
   'copilot.status.mock': '模擬回應',

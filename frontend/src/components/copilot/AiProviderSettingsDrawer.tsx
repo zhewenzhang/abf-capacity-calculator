@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import { Drawer, Radio, Input, Button, Space, Alert, Typography, Divider } from 'antd';
 import { LockOutlined, ClearOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useI18n } from '../../i18n';
@@ -11,6 +11,9 @@ interface Props {
   currentMode: 'local' | 'mock' | 'external-byok' | 'deepseek';
   onModeChange: (mode: 'local' | 'mock' | 'external-byok' | 'deepseek') => void;
   isViewer: boolean;
+  deepseekApiKey: string;
+  onDeepseekApiKeyChange: (key: string) => void;
+  onClearDeepseekApiKey: () => void;
 }
 
 const AiProviderSettingsDrawer: React.FC<Props> = ({
@@ -19,13 +22,11 @@ const AiProviderSettingsDrawer: React.FC<Props> = ({
   currentMode,
   onModeChange,
   isViewer,
+  deepseekApiKey,
+  onDeepseekApiKeyChange,
+  onClearDeepseekApiKey,
 }) => {
   const { t } = useI18n();
-  const [byokKey, setByokKey] = useState('');
-
-  const handleClearKey = useCallback(() => {
-    setByokKey('');
-  }, []);
 
   return (
     <Drawer
@@ -111,8 +112,7 @@ const AiProviderSettingsDrawer: React.FC<Props> = ({
             <Space direction="vertical" style={{ width: '100%' }}>
               <Input.Password
                 placeholder={t('copilot.provider.keyPlaceholder')}
-                value={byokKey}
-                onChange={(e) => setByokKey(e.target.value)}
+                value=""
                 disabled
                 prefix={<LockOutlined />}
                 suffix={
@@ -129,7 +129,6 @@ const AiProviderSettingsDrawer: React.FC<Props> = ({
               />
               <Button
                 icon={<ClearOutlined />}
-                onClick={handleClearKey}
                 disabled
                 size="small"
               >
@@ -148,8 +147,9 @@ const AiProviderSettingsDrawer: React.FC<Props> = ({
             <Space direction="vertical" style={{ width: '100%' }}>
               <Input.Password
                 placeholder={t('copilot.provider.deepseekKeyPlaceholder')}
-                value={byokKey}
-                onChange={(e) => setByokKey(e.target.value)}
+                value={deepseekApiKey}
+                onChange={(e) => onDeepseekApiKeyChange(e.target.value)}
+                disabled={isViewer}
                 prefix={<LockOutlined />}
                 suffix={
                   <Text type="secondary" style={{ fontSize: 11 }}>
@@ -165,7 +165,8 @@ const AiProviderSettingsDrawer: React.FC<Props> = ({
               />
               <Button
                 icon={<ClearOutlined />}
-                onClick={handleClearKey}
+                onClick={onClearDeepseekApiKey}
+                disabled={isViewer}
                 size="small"
               >
                 {t('copilot.provider.clearKey')}

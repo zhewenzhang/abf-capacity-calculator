@@ -1,14 +1,15 @@
 /**
- * AI Provider Adapter Architecture (v1.40.0)
+ * AI Provider Adapter Architecture (v1.40.0, updated v1.51.1)
  *
  * Defines a pluggable provider adapter interface for AI completions.
  *
  * Key constraints:
  * - No firebase/firestore imports
- * - No fetch() or network API calls
+ * - External AI providers (e.g., DeepSeek) use fetch() for API calls
  * - No localStorage or sessionStorage
  * - API keys are session-only and never persisted
  * - All functions are pure or have controlled side effects only
+ * - DeepSeek provider uses fetch() with session-only BYOK key
  */
 
 // ============================================================

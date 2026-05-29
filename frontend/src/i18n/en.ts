@@ -1085,6 +1085,7 @@ export const en: Record<string, string> = {
   'copilot.provider.deepseekKeyLabel': 'DeepSeek API Key',
   'copilot.provider.deepseekKeyPlaceholder': 'Enter DeepSeek API key (session only)',
   'copilot.provider.deepseekKeyWarning': 'Key is stored in memory only. Closing the drawer clears it. Do not enter production keys unless approved.',
+  'copilot.provider.deepseekKeyRequired': 'DeepSeek API key is required. Please configure it in Provider Settings.',
   'copilot.status.deterministic': 'Deterministic',
   'copilot.status.blocked': 'Blocked',
   'copilot.status.mock': 'Mock Response',
