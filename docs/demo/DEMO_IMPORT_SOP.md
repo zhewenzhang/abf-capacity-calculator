@@ -156,7 +156,7 @@ firebase firestore:export gs://<bucket>/backup-$(Get-Date -Format "yyyyMMdd-HHmm
 | 6 | Order Disappearance | Operations: Customer A | 异常诊断 | [ ] |
 | 7 | Capacity Delay | Operations: F2 2026-07-08 | 异常诊断 | [ ] |
 | 8 | Forecast Surge | Operations: Customer C 2026-11 | 异常诊断 | [ ] |
-| 9 | BP Miss | Dashboard: 2026 | BP 达成率 87.5% | [ ] |
+| 9 | BP Miss | Dashboard: 2026 | BP 达成率 87.1% | [ ] |
 | 10 | Utilization Bottleneck | Results: Core 2026-08 | 风险评分 92 | [ ] |
 
 ### 4.2 功能验证
