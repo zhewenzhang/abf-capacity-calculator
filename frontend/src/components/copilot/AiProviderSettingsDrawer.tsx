@@ -8,8 +8,8 @@ const { Text } = Typography;
 interface Props {
   open: boolean;
   onClose: () => void;
-  currentMode: 'local' | 'mock' | 'external-byok';
-  onModeChange: (mode: 'local' | 'mock' | 'external-byok') => void;
+  currentMode: 'local' | 'mock' | 'external-byok' | 'deepseek';
+  onModeChange: (mode: 'local' | 'mock' | 'external-byok' | 'deepseek') => void;
   isViewer: boolean;
 }
 
@@ -82,6 +82,14 @@ const AiProviderSettingsDrawer: React.FC<Props> = ({
               {t('copilot.provider.externalDesc')}
             </Text>
           </Radio>
+
+          <Radio value="deepseek">
+            <Text>{t('copilot.provider.deepseek')}</Text>
+            <br />
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {t('copilot.provider.deepseekDesc')}
+            </Text>
+          </Radio>
         </Space>
       </Radio.Group>
 
@@ -123,6 +131,41 @@ const AiProviderSettingsDrawer: React.FC<Props> = ({
                 icon={<ClearOutlined />}
                 onClick={handleClearKey}
                 disabled
+                size="small"
+              >
+                {t('copilot.provider.clearKey')}
+              </Button>
+            </Space>
+          </div>
+        </>
+      )}
+
+      {currentMode === 'deepseek' && (
+        <>
+          <Divider />
+          <Text strong>{t('copilot.provider.deepseekKeyLabel')}</Text>
+          <div style={{ marginTop: 8 }}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Input.Password
+                placeholder={t('copilot.provider.deepseekKeyPlaceholder')}
+                value={byokKey}
+                onChange={(e) => setByokKey(e.target.value)}
+                prefix={<LockOutlined />}
+                suffix={
+                  <Text type="secondary" style={{ fontSize: 11 }}>
+                    {t('copilot.provider.sessionOnly')}
+                  </Text>
+                }
+              />
+              <Alert
+                message={t('copilot.provider.deepseekKeyWarning')}
+                type="warning"
+                showIcon
+                style={{ fontSize: 12 }}
+              />
+              <Button
+                icon={<ClearOutlined />}
+                onClick={handleClearKey}
                 size="small"
               >
                 {t('copilot.provider.clearKey')}

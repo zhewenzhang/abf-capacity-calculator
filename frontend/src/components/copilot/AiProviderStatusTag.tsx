@@ -2,7 +2,7 @@ import React from 'react';
 import { Tag } from 'antd';
 
 interface Props {
-  mode: 'local' | 'mock' | 'external-byok';
+  mode: 'local' | 'mock' | 'external-byok' | 'deepseek';
 }
 
 const modeConfig: Record<
@@ -12,6 +12,7 @@ const modeConfig: Record<
   local: { color: 'green', label: 'Local Deterministic' },
   mock: { color: 'blue', label: 'Mock Provider' },
   'external-byok': { color: 'red', label: 'External (Disabled)' },
+  deepseek: { color: 'purple', label: 'DeepSeek AI' },
 };
 
 const AiProviderStatusTag: React.FC<Props> = ({ mode }) => {

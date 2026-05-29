@@ -189,9 +189,9 @@ describe('ExternalByokPlaceholder', () => {
 // ============================================================
 
 describe('Provider registry', () => {
-  it('getAvailableProviders returns 2 providers', () => {
+  it('getAvailableProviders returns 3 providers', () => {
     const providers = getAvailableProviders();
-    expect(providers).toHaveLength(2);
+    expect(providers).toHaveLength(3);
   });
 
   it('getProviderById returns correct provider for mock', () => {

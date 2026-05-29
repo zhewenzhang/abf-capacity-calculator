@@ -18,7 +18,7 @@ interface Props {
   context: AiCopilotContext;
 }
 
-type ProviderMode = 'local' | 'mock' | 'external-byok';
+type ProviderMode = 'local' | 'mock' | 'external-byok' | 'deepseek';
 
 const CopilotChat: React.FC<Props> = ({ context }) => {
   const { t } = useI18n();
