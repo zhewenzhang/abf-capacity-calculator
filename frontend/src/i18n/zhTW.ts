@@ -1059,6 +1059,7 @@ export const zhTW: Record<string, string> = {
   'copilot.quick.suggestFixes': '建議修復',
   'copilot.quick.scenarioImpact': '情境影響',
   'copilot.quick.lookAhead': '前瞻分析',
+  'copilot.quick.workbenchOverview': '工作台總覽',
   'copilot.confidence.high': '高信心度',
   'copilot.confidence.medium': '中信心度',
   'copilot.confidence.low': '低信心度',
@@ -1070,6 +1071,36 @@ export const zhTW: Record<string, string> = {
   'copilot.source': '來源',
   'copilot.noMatch': '此問題需要外部 AI 分析，請使用 Export Prompt Pack 匯出資料。',
   'copilot.viewer.noFixes': '檢視者模式無法執行修復建議',
+
+  // AI 供應商設定
+  'copilot.provider.settings': '供應商設定',
+  'copilot.provider.mode': '供應商模式',
+  'copilot.provider.local': '本地確定性分析',
+  'copilot.provider.localDesc': '使用內建關鍵字路由與診斷工具，無外部呼叫。',
+  'copilot.provider.mock': '模擬供應商（測試用）',
+  'copilot.provider.mockDesc': '回傳確定性測試回應，非真實 AI 呼叫。',
+  'copilot.provider.external': '外部 BYOK（未啟用）',
+  'copilot.provider.externalDesc': '自備 API 金鑰。此版本未啟用。',
+  'copilot.provider.keyLabel': 'API 金鑰',
+  'copilot.provider.keyPlaceholder': '輸入 API 金鑰（僅限本次連線）',
+  'copilot.provider.sessionOnly': '僅限連線期間',
+  'copilot.provider.keyWarning': '金鑰僅儲存在記憶體中，關閉面板即清除。除非經核准，請勿輸入正式環境金鑰。',
+  'copilot.provider.clearKey': '清除金鑰',
+  'copilot.provider.viewerReadonly': '檢視者角色：供應商設定僅供檢視。',
+  'copilot.provider.mockInfo': '模擬供應商回傳確定性測試回應，非真實 AI 呼叫。',
+  'copilot.provider.notEnabled': '外部供應商在此版本中未啟用。',
+  'copilot.status.deterministic': '確定性分析',
+  'copilot.status.blocked': '已封鎖',
+  'copilot.status.mock': '模擬回應',
+  'copilot.status.warning': '警告',
+  'copilot.status.needsExternalAi': '需外部 AI',
+  'copilot.whyThisAnswer': '為何產生此回答？',
+  'copilot.why.toolUsed': '使用工具：',
+  'copilot.why.dataAnalyzed': '分析資料：',
+  'copilot.why.caveats': '注意事項：',
+  'copilot.why.validationStatus': '驗證狀態：',
+  'copilot.why.validationPassed': '驗證通過',
+  'copilot.why.validationWarning': '驗證警告',
 
   // 情境模擬
   'menu.scenario': '情境模擬',
@@ -1100,4 +1131,121 @@ export const zhTW: Record<string, string> = {
   'scenario.vs': 'vs',
   'scenario.baseline': '基線',
   'scenario.current': '情境',
+
+  // 每日營運工作台 (v1.42)
+  'menu.operations': '營運工作台',
+  'workbench.title': '每日營運工作台',
+  'workbench.subtitle': '產能就緒與生產管理總覽',
+
+  // 工作流程階段
+  'workbench.stage.products': '產品就緒',
+  'workbench.stage.forecasts': '預測就緒',
+  'workbench.stage.capacity': '產能匹配',
+  'workbench.stage.parameters': '參數就緒',
+  'workbench.stage.bpTargets': 'BP 目標就緒',
+  'workbench.stage.analysis': '營收預估就緒',
+  'workbench.stage.scenario': '情境檢視就緒',
+
+  // 階段 CTA 標籤
+  'workbench.stage.products.cta': '前往產品',
+  'workbench.stage.forecasts.cta': '前往預測',
+  'workbench.stage.capacity.cta': '前往產能',
+  'workbench.stage.parameters.cta': '前往參數',
+  'workbench.stage.bpTargets.cta': '前往 BP 目標',
+  'workbench.stage.analysis.cta': '前往結果',
+  'workbench.stage.scenario.cta': '前往情境',
+
+  // 狀態標籤
+  'workbench.status.ready': '就緒',
+  'workbench.status.warning': '警告',
+  'workbench.status.blocked': '阻斷',
+  'workbench.status.notStarted': '未開始',
+
+  // CTA 按鈕
+  'workbench.cta.fix': '立即修復',
+  'workbench.cta.view': '檢視',
+
+  // 異常摘要
+  'workbench.abnormality.title': '問題摘要',
+  'workbench.abnormality.data.fix': '至產品頁修復資料問題',
+  'workbench.abnormality.capacity.shortage': '檢視短缺月份的產能規劃',
+  'workbench.abnormality.capacity.overUtil': '考慮擴產或需求重新平衡',
+  'workbench.abnormality.sales.trend': '調查營收下降趨勢',
+  'workbench.abnormality.sales.concentration': '檢視客戶集中度風險',
+  'workbench.abnormality.bp.miss': '以產能或定價行動處理 BP 未達標',
+  'workbench.abnormality.bp.watch': '密切監控 BP 達成率',
+
+  // 前瞻焦點
+  'workbench.lookahead.title': '前瞻焦點',
+  'workbench.lookahead.month': '月份',
+  'workbench.lookahead.coreUtil': 'Core 稼動率',
+  'workbench.lookahead.buUtil': 'BU 稼動率',
+  'workbench.lookahead.bottleneck': '瓶頸',
+  'workbench.lookahead.shortage': '短缺',
+
+  // 營收 / BP 摘要
+  'workbench.revenue.title': '營收 vs BP 目標',
+  'workbench.revenue.current': '目前預測',
+  'workbench.revenue.target': 'BP 目標',
+  'workbench.revenue.attainment': '達成率',
+  'workbench.revenue.gap': '差距',
+
+  // 情境快捷
+  'workbench.scenario.title': '情境快捷',
+  'workbench.scenario.volumeUp10': '數量 +10%',
+  'workbench.scenario.volumeUp10.desc': '模擬預測數量增加 10%',
+  'workbench.scenario.volumeDown10': '數量 -10%',
+  'workbench.scenario.volumeDown10.desc': '模擬預測數量減少 10%',
+  'workbench.scenario.capacityUp20': '產能 +20%',
+  'workbench.scenario.capacityUp20.desc': '模擬產能增加 20%（Core + BU）',
+  'workbench.scenario.priceUp5': '單價 +5%',
+  'workbench.scenario.priceUp5.desc': '模擬單價上漲 5%',
+  'workbench.scenario.stressTest': '壓力測試',
+  'workbench.scenario.stressTest.desc': '數量 +20%、單價 -5% 壓力情境',
+
+  // Copilot 快捷操作
+  'workbench.copilot.title': 'AI Copilot 快捷操作',
+  'workbench.copilot.dq': '解釋資料問題',
+  'workbench.copilot.capacity': '解釋產能風險',
+  'workbench.copilot.bp': '解釋 BP 差距',
+  'workbench.copilot.lookahead': '解釋前瞻分析',
+
+  // 異常智能面板 (v1.43)
+  'workbench.abnormalityIntelligence.title': '異常智能分析',
+  'workbench.abnormalityIntelligence.mustActToday': '今日必處理事項',
+  'workbench.abnormalityIntelligence.score': '分數',
+  'workbench.abnormalityIntelligence.category': '分類',
+  'workbench.abnormalityIntelligence.whyItMatters': '為何重要',
+  'workbench.abnormalityIntelligence.investigate': '調查',
+  'workbench.abnormalityIntelligence.noAbnormalities': '未偵測到異常',
+  'workbench.abnormalityIntelligence.blocking': '阻斷',
+  'workbench.abnormalityIntelligence.distorting': '扭曲',
+  'workbench.abnormalityIntelligence.degrading': '劣化',
+  'workbench.abnormalityIntelligence.informational': '資訊',
+
+  // 情境 v2 快捷 (v1.44)
+  'workbench.scenario.v2.title': '營運情境模擬',
+  'workbench.scenario.v2.buCapacityDelay': 'BU 產能延遲',
+  'workbench.scenario.v2.buCapacityDelay.desc': '模擬 BU 產能延遲 3 個月',
+  'workbench.scenario.v2.topCustomerDown': '主要客戶流失',
+  'workbench.scenario.v2.topCustomerDown.desc': '模擬主要客戶訂單消失',
+  'workbench.scenario.v2.forecastSurge': '預測激增',
+  'workbench.scenario.v2.forecastSurge.desc': '模擬預測量激增 20%',
+
+  // 管理報告 (v1.45)
+  'workbench.report.title': '管理報告',
+  'workbench.report.generateDaily': '產生每日報告',
+  'workbench.report.generateWeekly': '產生每週報告',
+  'workbench.report.exportMarkdown': '匯出 Markdown',
+  'workbench.report.exportJson': '匯出 JSON',
+  'workbench.report.preview': '報告預覽',
+  'workbench.report.generated': '報告已成功產生',
+  'workbench.report.noReport': '點擊產生以建立管理報告',
+  'workbench.report.executiveSummary': '執行摘要',
+  'workbench.report.confidence': '資料可信度',
+
+  // Copilot 快捷按鈕 (v1.43-v1.45)
+  'copilot.quick.abnormalityDetail': '異常詳情',
+  'copilot.quick.scenarioV2': '情境 V2 影響',
+  'copilot.quick.reportNarrative': '報告敘述',
 };

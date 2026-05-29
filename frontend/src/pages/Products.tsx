@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Table,
   Button,
@@ -114,6 +115,19 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
   // Inline add form
   const [addMode, setAddMode] = useState(false);
   const [addForm] = Form.useForm();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Handle createSku URL param from DQ Guided Fix navigation
+  useEffect(() => {
+    const createSku = searchParams.get('createSku');
+    if (createSku && writable) {
+      setAddMode(true);
+      addForm.setFieldsValue({ skuCode: createSku });
+      // Remove the param from URL to avoid re-triggering
+      searchParams.delete('createSku');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Inline editing
   const [editingKey, setEditingKey] = useState<string | null>(null);

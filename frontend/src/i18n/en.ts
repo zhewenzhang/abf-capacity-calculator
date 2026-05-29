@@ -1050,6 +1050,7 @@ export const en: Record<string, string> = {
   'copilot.quick.suggestFixes': 'Suggest Fixes',
   'copilot.quick.scenarioImpact': 'Scenario Impact',
   'copilot.quick.lookAhead': 'Look Ahead',
+  'copilot.quick.workbenchOverview': 'Workbench Overview',
   'copilot.confidence.high': 'High Confidence',
   'copilot.confidence.medium': 'Medium Confidence',
   'copilot.confidence.low': 'Low Confidence',
@@ -1061,6 +1062,36 @@ export const en: Record<string, string> = {
   'copilot.source': 'Source',
   'copilot.noMatch': 'This question requires external AI. Please use Export Prompt Pack.',
   'copilot.viewer.noFixes': 'Fix suggestions are not available in viewer mode',
+
+  // AI Provider Settings
+  'copilot.provider.settings': 'Provider Settings',
+  'copilot.provider.mode': 'Provider Mode',
+  'copilot.provider.local': 'Local Deterministic',
+  'copilot.provider.localDesc': 'Uses built-in keyword routing and diagnostic tools. No external calls.',
+  'copilot.provider.mock': 'Mock Provider (Testing)',
+  'copilot.provider.mockDesc': 'Returns deterministic test responses. No real AI calls.',
+  'copilot.provider.external': 'External BYOK (Not Enabled)',
+  'copilot.provider.externalDesc': 'Bring your own API key. Not available in this build.',
+  'copilot.provider.keyLabel': 'API Key',
+  'copilot.provider.keyPlaceholder': 'Enter API key (session only)',
+  'copilot.provider.sessionOnly': 'Session Only',
+  'copilot.provider.keyWarning': 'Key is stored in memory only. Closing the drawer clears it. Do not enter production keys unless approved.',
+  'copilot.provider.clearKey': 'Clear Key',
+  'copilot.provider.viewerReadonly': 'Viewer role: provider settings are read-only.',
+  'copilot.provider.mockInfo': 'Mock provider returns deterministic test responses. No real AI calls are made.',
+  'copilot.provider.notEnabled': 'External provider is not enabled in this build.',
+  'copilot.status.deterministic': 'Deterministic',
+  'copilot.status.blocked': 'Blocked',
+  'copilot.status.mock': 'Mock Response',
+  'copilot.status.warning': 'Warning',
+  'copilot.status.needsExternalAi': 'Needs External AI',
+  'copilot.whyThisAnswer': 'Why this answer?',
+  'copilot.why.toolUsed': 'Tool used:',
+  'copilot.why.dataAnalyzed': 'Data analyzed:',
+  'copilot.why.caveats': 'Caveats:',
+  'copilot.why.validationStatus': 'Validation status:',
+  'copilot.why.validationPassed': 'Validation passed',
+  'copilot.why.validationWarning': 'Validation warning(s)',
 
   // Scenario Planning
   'menu.scenario': 'Scenario Planning',
@@ -1091,4 +1122,121 @@ export const en: Record<string, string> = {
   'scenario.vs': 'vs',
   'scenario.baseline': 'Baseline',
   'scenario.current': 'Scenario',
+
+  // Daily Operations Workbench (v1.42)
+  'menu.operations': 'Operations',
+  'workbench.title': 'Daily Operations Workbench',
+  'workbench.subtitle': 'Capacity readiness and production management overview',
+
+  // Workflow stages
+  'workbench.stage.products': 'Products Ready',
+  'workbench.stage.forecasts': 'Forecast Ready',
+  'workbench.stage.capacity': 'Capacity Matched',
+  'workbench.stage.parameters': 'Parameters Ready',
+  'workbench.stage.bpTargets': 'BP Targets Ready',
+  'workbench.stage.analysis': 'Revenue Estimate Ready',
+  'workbench.stage.scenario': 'Scenario Review Ready',
+
+  // Stage CTA labels
+  'workbench.stage.products.cta': 'Go to Products',
+  'workbench.stage.forecasts.cta': 'Go to Forecasts',
+  'workbench.stage.capacity.cta': 'Go to Capacity',
+  'workbench.stage.parameters.cta': 'Go to Parameters',
+  'workbench.stage.bpTargets.cta': 'Go to BP Targets',
+  'workbench.stage.analysis.cta': 'Go to Results',
+  'workbench.stage.scenario.cta': 'Go to Scenario',
+
+  // Status labels
+  'workbench.status.ready': 'Ready',
+  'workbench.status.warning': 'Warning',
+  'workbench.status.blocked': 'Blocked',
+  'workbench.status.notStarted': 'Not Started',
+
+  // CTA buttons
+  'workbench.cta.fix': 'Fix Now',
+  'workbench.cta.view': 'View',
+
+  // Abnormality summary
+  'workbench.abnormality.title': 'Issues Summary',
+  'workbench.abnormality.data.fix': 'Fix data issues in Products',
+  'workbench.abnormality.capacity.shortage': 'Review capacity plans for shortage months',
+  'workbench.abnormality.capacity.overUtil': 'Consider capacity expansion or demand rebalancing',
+  'workbench.abnormality.sales.trend': 'Investigate declining revenue trend',
+  'workbench.abnormality.sales.concentration': 'Review customer concentration risk',
+  'workbench.abnormality.bp.miss': 'Address BP target miss with capacity or pricing actions',
+  'workbench.abnormality.bp.watch': 'Monitor BP attainment closely',
+
+  // Look-ahead focus
+  'workbench.lookahead.title': 'Look-Ahead Focus',
+  'workbench.lookahead.month': 'Month',
+  'workbench.lookahead.coreUtil': 'Core Util',
+  'workbench.lookahead.buUtil': 'BU Util',
+  'workbench.lookahead.bottleneck': 'Bottleneck',
+  'workbench.lookahead.shortage': 'Shortage',
+
+  // Revenue / BP summary
+  'workbench.revenue.title': 'Revenue vs BP Target',
+  'workbench.revenue.current': 'Current Forecast',
+  'workbench.revenue.target': 'BP Target',
+  'workbench.revenue.attainment': 'Attainment',
+  'workbench.revenue.gap': 'Gap',
+
+  // Scenario shortcuts
+  'workbench.scenario.title': 'Scenario Shortcuts',
+  'workbench.scenario.volumeUp10': 'Volume +10%',
+  'workbench.scenario.volumeUp10.desc': 'Simulate 10% forecast volume increase',
+  'workbench.scenario.volumeDown10': 'Volume -10%',
+  'workbench.scenario.volumeDown10.desc': 'Simulate 10% forecast volume decrease',
+  'workbench.scenario.capacityUp20': 'Capacity +20%',
+  'workbench.scenario.capacityUp20.desc': 'Simulate 20% capacity increase (Core + BU)',
+  'workbench.scenario.priceUp5': 'Price +5%',
+  'workbench.scenario.priceUp5.desc': 'Simulate 5% unit price increase',
+  'workbench.scenario.stressTest': 'Stress Test',
+  'workbench.scenario.stressTest.desc': 'Volume +20%, Price -5% stress scenario',
+
+  // Copilot quick actions
+  'workbench.copilot.title': 'AI Copilot Quick Actions',
+  'workbench.copilot.dq': 'Explain Data Issues',
+  'workbench.copilot.capacity': 'Explain Capacity Risk',
+  'workbench.copilot.bp': 'Explain BP Gap',
+  'workbench.copilot.lookahead': 'Explain Look-Ahead',
+
+  // Abnormality Intelligence Panel (v1.43)
+  'workbench.abnormalityIntelligence.title': 'Abnormality Intelligence',
+  'workbench.abnormalityIntelligence.mustActToday': 'Must Act Today',
+  'workbench.abnormalityIntelligence.score': 'Score',
+  'workbench.abnormalityIntelligence.category': 'Category',
+  'workbench.abnormalityIntelligence.whyItMatters': 'Why It Matters',
+  'workbench.abnormalityIntelligence.investigate': 'Investigate',
+  'workbench.abnormalityIntelligence.noAbnormalities': 'No abnormalities detected',
+  'workbench.abnormalityIntelligence.blocking': 'Blocking',
+  'workbench.abnormalityIntelligence.distorting': 'Distorting',
+  'workbench.abnormalityIntelligence.degrading': 'Degrading',
+  'workbench.abnormalityIntelligence.informational': 'Informational',
+
+  // Scenario v2 shortcuts (v1.44)
+  'workbench.scenario.v2.title': 'Operational Scenarios',
+  'workbench.scenario.v2.buCapacityDelay': 'BU Capacity Delay',
+  'workbench.scenario.v2.buCapacityDelay.desc': 'Simulate 3-month BU capacity shift delay',
+  'workbench.scenario.v2.topCustomerDown': 'Top Customer Down',
+  'workbench.scenario.v2.topCustomerDown.desc': 'Simulate top customer order disappearance',
+  'workbench.scenario.v2.forecastSurge': 'Forecast Surge',
+  'workbench.scenario.v2.forecastSurge.desc': 'Simulate 20% forecast volume surge',
+
+  // Management Report (v1.45)
+  'workbench.report.title': 'Management Report',
+  'workbench.report.generateDaily': 'Generate Daily Report',
+  'workbench.report.generateWeekly': 'Generate Weekly Report',
+  'workbench.report.exportMarkdown': 'Export Markdown',
+  'workbench.report.exportJson': 'Export JSON',
+  'workbench.report.preview': 'Report Preview',
+  'workbench.report.generated': 'Report generated successfully',
+  'workbench.report.noReport': 'Click generate to create a management report',
+  'workbench.report.executiveSummary': 'Executive Summary',
+  'workbench.report.confidence': 'Data Confidence',
+
+  // Copilot quick buttons (v1.43-v1.45)
+  'copilot.quick.abnormalityDetail': 'Abnormality Detail',
+  'copilot.quick.scenarioV2': 'Scenario V2 Impact',
+  'copilot.quick.reportNarrative': 'Report Narrative',
 };

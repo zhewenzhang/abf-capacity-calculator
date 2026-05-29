@@ -27,6 +27,10 @@ export interface CopilotToolResult {
   confidence: 'high' | 'medium' | 'low' | 'blocked';
   caveats: string[];
   data: Record<string, unknown>;
+  // Provider adapter metadata (optional, populated when provider mode is active)
+  validationIssues?: string[];
+  isMockProvider?: boolean;
+  blockedReason?: string;
 }
 
 // ============================================================
@@ -657,77 +661,806 @@ export function buildLookAheadFocus(context: AiCopilotContext): CopilotToolResul
 }
 
 // ============================================================
+// Tool 7: explainWorkbenchOverview
+// ============================================================
+
+export function explainWorkbenchOverview(context: AiCopilotContext): CopilotToolResult {
+  const dq = context.dataQualitySummary;
+  const cap = context.capacitySummary;
+  const bp = context.bpSummary;
+  const risk = context.riskBriefSummary;
+  const sc = context.scenarioSummary;
+
+  // --- Derive workflow stage statuses from existing context ---
+
+  // Products stage
+  const productsReady = context.projectSummary.skuCount > 0;
+  const hasHighDqIssues = dq.topIssues.some(i => i.decisionImpact === 'high');
+
+  // Forecasts stage
+  const forecastsReady = context.projectSummary.forecastMonthCount > 0;
+
+  // Capacity stage
+  const capacityReady = cap.monthlySummaries.length > 0;
+
+  // BP Targets stage
+  const bpReady = bp.yearly.length > 0;
+
+  // Analysis stage
+  const analysisReady = context.projectSummary.totalForecastPcs > 0;
+
+  const stageStatuses = [
+    { name: 'Products', ready: productsReady, blocked: !productsReady },
+    { name: 'Forecasts', ready: forecastsReady, blocked: !forecastsReady },
+    { name: 'Capacity', ready: capacityReady, blocked: !capacityReady },
+    { name: 'BP Targets', ready: bpReady, blocked: !bpReady },
+    { name: 'Analysis', ready: analysisReady, blocked: !analysisReady },
+  ];
+
+  const readyCount = stageStatuses.filter(s => s.ready).length;
+  const blockedStages = stageStatuses.filter(s => s.blocked);
+
+  // --- Compute top abnormalities ---
+
+  // Shortage months
+  const shortageMonths = cap.monthlySummaries.filter(
+    m => m.coreShortage > 0 || m.buShortage > 0
+  );
+
+  // High utilization months (>90%)
+  const highUtilMonths = cap.monthlySummaries.filter(
+    m => (m.coreUtilization !== null && m.coreUtilization > 0.9) ||
+         (m.buUtilization !== null && m.buUtilization > 0.9)
+  );
+
+  // BP miss years
+  const bpMissYears = bp.yearly.filter(r => r.status === 'miss');
+  const bpWatchYears = bp.yearly.filter(r => r.status === 'watch');
+
+  // --- Compute look-ahead highlights ---
+  const today = new Date();
+  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const futureConcernMonths = cap.monthlySummaries.filter(
+    m => m.month >= currentMonth &&
+         ((m.coreUtilization !== null && m.coreUtilization > 0.85) ||
+          (m.buUtilization !== null && m.buUtilization > 0.85) ||
+          m.coreShortage > 0 ||
+          m.buShortage > 0)
+  ).slice(0, 6);
+
+  // --- Build facts ---
+  const facts: string[] = [
+    `Workflow stages: ${readyCount}/${stageStatuses.length} ready`,
+    `SKU count: ${context.projectSummary.skuCount}`,
+    `Forecast months: ${context.projectSummary.forecastMonthCount}`,
+    `Total revenue: ${context.projectSummary.totalRevenueUsd.toFixed(2)} USD`,
+    `Shortage months: ${shortageMonths.length}`,
+    `High utilization months (>90%): ${highUtilMonths.length}`,
+    `BP miss years: ${bpMissYears.length}`,
+    `BP watch years: ${bpWatchYears.length}`,
+    `DQ confidence: ${dq.confidence} (score: ${dq.confidenceScore})`,
+    `Top risk drivers: ${risk.topDrivers.length}`,
+  ];
+
+  if (cap.worstMonth) {
+    facts.push(`Worst capacity month: ${cap.worstMonth}`);
+  }
+  if (bp.worstPeriod) {
+    facts.push(`Worst BP period: ${bp.worstPeriod}`);
+  }
+  if (sc !== null && sc.isActive) {
+    facts.push(`Scenario active: forecastVolume ${sc.multipliers.forecastVolume}x`);
+  }
+
+  // Blocked stages
+  for (const stage of blockedStages) {
+    facts.push(`Stage blocked: ${stage.name}`);
+  }
+
+  // Top abnormalities
+  const criticalAbnormalities: string[] = [];
+  if (hasHighDqIssues) {
+    const highCount = dq.topIssues.filter(i => i.decisionImpact === 'high').length;
+    criticalAbnormalities.push(`${highCount} high-impact data quality issues`);
+  }
+  if (shortageMonths.length > 0) {
+    criticalAbnormalities.push(`${shortageMonths.length} month(s) with capacity shortage`);
+  }
+  if (bpMissYears.length > 0) {
+    criticalAbnormalities.push(`BP target missed in ${bpMissYears.map(y => y.period).join(', ')}`);
+  }
+
+  for (const ab of criticalAbnormalities) {
+    facts.push(`Abnormality: ${ab}`);
+  }
+
+  // Look-ahead highlights
+  for (const m of futureConcernMonths.slice(0, 4)) {
+    const corePct = m.coreUtilization !== null ? `${(m.coreUtilization * 100).toFixed(1)}%` : 'N/A';
+    const buPct = m.buUtilization !== null ? `${(m.buUtilization * 100).toFixed(1)}%` : 'N/A';
+    const hasShortage = m.coreShortage > 0 || m.buShortage > 0;
+    facts.push(`Look-ahead ${m.month}: Core ${corePct}, BU ${buPct}${hasShortage ? ', SHORTAGE' : ''}`);
+  }
+
+  // --- Build inferences ---
+  const inferences: string[] = [];
+
+  if (blockedStages.length > 0) {
+    inferences.push(`${blockedStages.length} workflow stage(s) are blocked: ${blockedStages.map(s => s.name).join(', ')}. Complete these stages to unlock full analysis.`);
+  }
+
+  if (readyCount === stageStatuses.length) {
+    inferences.push('All workflow stages are ready. The workbench has complete data for full operational analysis.');
+  }
+
+  if (shortageMonths.length > 0) {
+    inferences.push(`Capacity shortage is detected in ${shortageMonths.length} month(s), indicating a supply-demand imbalance.`);
+  }
+
+  if (bpMissYears.length > 0) {
+    inferences.push(`${bpMissYears.length} year(s) have BP targets missed. Revenue forecast falls below business plan targets.`);
+  }
+
+  if (futureConcernMonths.length > 0) {
+    inferences.push(`${futureConcernMonths.length} upcoming month(s) require attention due to high utilization or shortage.`);
+  }
+
+  if (dq.confidence === 'low' || dq.confidence === 'blocked') {
+    inferences.push('Data quality confidence is low. Analysis results may not be reliable for decision-making.');
+  }
+
+  if (criticalAbnormalities.length === 0 && blockedStages.length === 0) {
+    inferences.push('No critical abnormalities detected. Operations appear normal across all domains.');
+  }
+
+  // --- Build recommendations (viewer-safe: no actionable fix steps) ---
+  const recommendations: string[] = [];
+
+  if (blockedStages.length > 0) {
+    recommendations.push('Address blocked workflow stages to enable full analysis capabilities.');
+  }
+  if (shortageMonths.length > 0) {
+    recommendations.push('Review capacity plans for shortage months to understand supply constraints.');
+  }
+  if (bpMissYears.length > 0) {
+    recommendations.push('Examine BP gap analysis for details on revenue shortfall.');
+  }
+  if (dq.confidence !== 'high') {
+    recommendations.push('Improve data quality to increase analysis confidence.');
+  }
+  if (criticalAbnormalities.length === 0 && blockedStages.length === 0) {
+    recommendations.push('Continue monitoring key metrics through the Dashboard and Results pages.');
+  }
+
+  // --- Confidence ---
+  let confidence: 'high' | 'medium' | 'low' | 'blocked' = dq.confidence;
+  if (blockedStages.length >= 3) {
+    confidence = 'blocked';
+  } else if (blockedStages.length > 0 && dq.confidence !== 'high') {
+    confidence = 'low';
+  }
+
+  return {
+    toolName: 'explainWorkbenchOverview',
+    title: 'Workbench Overview',
+    summary: `${readyCount}/${stageStatuses.length} stages ready. ${criticalAbnormalities.length} critical abnormalit(y/ies). ${shortageMonths.length} shortage month(s). ${futureConcernMonths.length} look-ahead concern(s).`,
+    facts,
+    assumptions: [
+      'Workflow stage status is derived from data presence and data quality',
+      'Abnormalities are classified by severity: critical > warning > info',
+      'Look-ahead covers next 6 months with utilization > 85% or shortage',
+    ],
+    inferences,
+    recommendations,
+    sourceReferences: [
+      'dataQuality module',
+      'calculationEngine + analytics',
+      'bpTargets module',
+      'riskAttribution module',
+    ],
+    confidence,
+    caveats: [
+      'This is a summary view; use specific tools (data quality, capacity risk, BP gap) for deeper analysis',
+      ...(dq.confidence === 'low' ? ['Data confidence is low; summary may be incomplete'] : []),
+      ...(dq.confidence === 'blocked' ? ['Data confidence is blocked; most stages may be unreliable'] : []),
+    ],
+    data: {
+      stageCount: stageStatuses.length,
+      readyCount,
+      blockedStageNames: blockedStages.map(s => s.name),
+      abnormalityCount: criticalAbnormalities.length,
+      shortageMonthCount: shortageMonths.length,
+      highUtilMonthCount: highUtilMonths.length,
+      bpMissYearCount: bpMissYears.length,
+      lookAheadConcernCount: futureConcernMonths.length,
+      scenarioActive: sc !== null && sc.isActive,
+    },
+  };
+}
+
+// ============================================================
+// Tool 8: explainAbnormalityDetail
+// ============================================================
+
+export function explainAbnormalityDetail(context: AiCopilotContext): CopilotToolResult {
+  const dq = context.dataQualitySummary;
+  const cap = context.capacitySummary;
+  const bp = context.bpSummary;
+  const risk = context.riskBriefSummary;
+
+  const isViewer = context.role === 'viewer';
+
+  // Collect all abnormalities across domains
+  const abnormalities: Array<{
+    domain: string;
+    title: string;
+    severity: 'critical' | 'warning' | 'info';
+    evidence: string;
+    whyItMatters: string;
+    investigationRoute: string;
+  }> = [];
+
+  // Data domain abnormalities
+  for (const issue of dq.topIssues) {
+    if (issue.decisionImpact === 'high') {
+      abnormalities.push({
+        domain: 'data',
+        title: `${issue.titleMessage.key} (${issue.domain})`,
+        severity: issue.severity === 'error' ? 'critical' : issue.severity === 'warning' ? 'warning' : 'info',
+        evidence: `Domain: ${issue.domain}, Impact: ${issue.decisionImpact}`,
+        whyItMatters: 'High-impact data issues distort analysis results and block reliable decision-making.',
+        investigationRoute: '/products',
+      });
+    }
+  }
+
+  // Capacity domain abnormalities
+  const shortageMonths = cap.monthlySummaries.filter(m => m.coreShortage > 0 || m.buShortage > 0);
+  if (shortageMonths.length > 0) {
+    abnormalities.push({
+      domain: 'capacity',
+      title: `Capacity shortage in ${shortageMonths.length} month(s)`,
+      severity: 'critical',
+      evidence: shortageMonths.map(m => `${m.month}: Core ${m.coreShortage.toFixed(0)}, BU ${m.buShortage.toFixed(0)}`).join('; '),
+      whyItMatters: 'Capacity shortage means unfulfilled demand, risking revenue loss and customer dissatisfaction.',
+      investigationRoute: '/capacity',
+    });
+  }
+
+  const highUtilMonths = cap.monthlySummaries.filter(
+    m => (m.coreUtilization !== null && m.coreUtilization > 0.9) ||
+         (m.buUtilization !== null && m.buUtilization > 0.9)
+  );
+  if (highUtilMonths.length > 0) {
+    abnormalities.push({
+      domain: 'capacity',
+      title: `High utilization (>90%) in ${highUtilMonths.length} month(s)`,
+      severity: 'warning',
+      evidence: highUtilMonths.slice(0, 3).map(m => {
+        const core = m.coreUtilization !== null ? `${(m.coreUtilization * 100).toFixed(1)}%` : 'N/A';
+        const bu = m.buUtilization !== null ? `${(m.buUtilization * 100).toFixed(1)}%` : 'N/A';
+        return `${m.month}: Core ${core}, BU ${bu}`;
+      }).join('; '),
+      whyItMatters: 'High utilization leaves no buffer for demand variability, increasing shortage risk.',
+      investigationRoute: '/capacity',
+    });
+  }
+
+  // BP domain abnormalities
+  const bpMissYears = bp.yearly.filter(r => r.status === 'miss');
+  if (bpMissYears.length > 0) {
+    abnormalities.push({
+      domain: 'bp',
+      title: `BP target missed in ${bpMissYears.map(y => y.period).join(', ')}`,
+      severity: 'critical',
+      evidence: bpMissYears.map(y => `${y.period}: attainment ${y.attainment !== null ? (y.attainment * 100).toFixed(1) : 'N/A'}%, gap ${y.gapMillionTwd?.toFixed(1) ?? 'N/A'}M TWD`).join('; '),
+      whyItMatters: 'BP target miss signals potential revenue shortfall against business plan commitments.',
+      investigationRoute: '/bp-targets',
+    });
+  }
+
+  const bpWatchYears = bp.yearly.filter(r => r.status === 'watch');
+  if (bpWatchYears.length > 0) {
+    abnormalities.push({
+      domain: 'bp',
+      title: `BP target at risk in ${bpWatchYears.map(y => y.period).join(', ')}`,
+      severity: 'warning',
+      evidence: bpWatchYears.map(y => `${y.period}: attainment ${y.attainment !== null ? (y.attainment * 100).toFixed(1) : 'N/A'}%`).join('; '),
+      whyItMatters: 'BP attainment below threshold requires monitoring to avoid a full miss.',
+      investigationRoute: '/bp-targets',
+    });
+  }
+
+  // Risk driver abnormalities
+  for (const driver of risk.topDrivers.slice(0, 3)) {
+    if (driver.severity === 'critical') {
+      abnormalities.push({
+        domain: driver.dimension,
+        title: `Top risk driver: ${driver.label} (${driver.metric})`,
+        severity: 'critical',
+        evidence: `Value: ${driver.value}, Share: ${driver.share !== undefined ? (driver.share * 100).toFixed(1) + '%' : 'N/A'}, Periods: ${driver.affectedPeriods.join(', ')}`,
+        whyItMatters: `This driver contributes significantly to capacity pressure during shortage periods.`,
+        investigationRoute: '/results',
+      });
+    }
+  }
+
+  // Sort by severity
+  const severityOrder: Record<string, number> = { critical: 0, warning: 1, info: 2 };
+  abnormalities.sort((a, b) => (severityOrder[a.severity] ?? 2) - (severityOrder[b.severity] ?? 2));
+
+  const topAbnormalities = abnormalities.slice(0, 8);
+
+  const facts: string[] = [
+    `Total abnormalities detected: ${abnormalities.length}`,
+    `Critical: ${abnormalities.filter(a => a.severity === 'critical').length}`,
+    `Warning: ${abnormalities.filter(a => a.severity === 'warning').length}`,
+  ];
+
+  for (const ab of topAbnormalities) {
+    facts.push(`[${ab.severity.toUpperCase()}][${ab.domain}] ${ab.title}`);
+  }
+
+  const inferences: string[] = [];
+  const criticalCount = abnormalities.filter(a => a.severity === 'critical').length;
+  if (criticalCount > 0) {
+    inferences.push(`${criticalCount} critical abnormality(ies) require immediate investigation.`);
+  }
+  if (shortageMonths.length > 0) {
+    inferences.push('Capacity shortage is the most urgent operational risk.');
+  }
+  if (bpMissYears.length > 0) {
+    inferences.push('BP target misses indicate revenue forecast is below business plan.');
+  }
+  if (abnormalities.length === 0) {
+    inferences.push('No abnormalities detected. Operations appear normal.');
+  }
+
+  const recommendations: string[] = [];
+  if (!isViewer) {
+    for (const ab of topAbnormalities.filter(a => a.severity === 'critical').slice(0, 3)) {
+      recommendations.push(`Investigate: ${ab.title} (route: ${ab.investigationRoute})`);
+    }
+  }
+  if (isViewer) {
+    recommendations.push('Contact your workspace editor for actionable fix recommendations.');
+  }
+  if (abnormalities.length === 0) {
+    recommendations.push('Continue monitoring key metrics through the Dashboard.');
+  }
+
+  return {
+    toolName: 'explainAbnormalityDetail',
+    title: 'Abnormality Intelligence Detail',
+    summary: abnormalities.length > 0
+      ? `${abnormalities.length} abnormality(ies) detected: ${criticalCount} critical, ${abnormalities.filter(a => a.severity === 'warning').length} warning.`
+      : 'No abnormalities detected in current data.',
+    facts,
+    assumptions: [
+      'Abnormality classification is based on data quality rules and threshold analysis',
+      'Severity scoring uses data quality impact levels and utilization thresholds',
+    ],
+    inferences,
+    recommendations,
+    sourceReferences: [
+      'dataQuality module',
+      'calculationEngine + analytics',
+      'bpTargets module',
+      'riskAttribution module',
+    ],
+    confidence: dq.confidence,
+    caveats: [
+      'Abnormality detection is deterministic and threshold-based',
+      ...(dq.confidence === 'low' ? ['Data confidence is low; some abnormalities may not be detected'] : []),
+      ...(dq.confidence === 'blocked' ? ['Data confidence is blocked; abnormality detection is severely limited'] : []),
+    ],
+    data: {
+      totalAbnormalities: abnormalities.length,
+      criticalCount: abnormalities.filter(a => a.severity === 'critical').length,
+      warningCount: abnormalities.filter(a => a.severity === 'warning').length,
+      topAbnormalities: topAbnormalities.map(a => ({
+        domain: a.domain,
+        title: a.title,
+        severity: a.severity,
+        evidence: a.evidence,
+        whyItMatters: a.whyItMatters,
+      })),
+    },
+  };
+}
+
+// ============================================================
+// Tool 9: explainScenarioV2Impact
+// ============================================================
+
+export function explainScenarioV2Impact(context: AiCopilotContext): CopilotToolResult {
+  const sc = context.scenarioSummary;
+
+  if (sc === null || !sc.isActive) {
+    return {
+      toolName: 'explainScenarioV2Impact',
+      title: 'Operational Scenario V2 Impact',
+      summary: 'No active operational scenario. Run a scenario from the workbench to see impact analysis.',
+      facts: ['No active operational scenario'],
+      assumptions: [],
+      inferences: [],
+      recommendations: [
+        'Run an operational scenario from the workbench (BU Capacity Delay, Top Customer Down, or Forecast Surge)',
+        'Use the Scenario Planning page for detailed what-if analysis',
+      ],
+      sourceReferences: ['operationalScenario module'],
+      confidence: 'medium',
+      caveats: ['No active scenario to analyze'],
+      data: { isActive: false },
+    };
+  }
+
+  const facts: string[] = [
+    `Scenario is active: ${sc.isActive}`,
+    `Forecast volume multiplier: ${sc.multipliers.forecastVolume}x`,
+    `Unit price multiplier: ${sc.multipliers.unitPrice}x`,
+    `Core capacity multiplier: ${sc.multipliers.coreCapacity}x`,
+    `BU capacity multiplier: ${sc.multipliers.buCapacity}x`,
+  ];
+
+  // Revenue delta
+  if (sc.deltas.totalRevenueUsd.delta !== null) {
+    const dir = sc.deltas.totalRevenueUsd.delta > 0 ? 'increase' : 'decrease';
+    facts.push(`Revenue ${dir}: ${Math.abs(sc.deltas.totalRevenueUsd.delta).toFixed(2)} USD`);
+  }
+
+  // Shortage delta
+  if (sc.deltas.shortageMonthCount.delta !== null) {
+    const dir = sc.deltas.shortageMonthCount.delta > 0 ? 'increase' : 'decrease';
+    facts.push(`Shortage months ${dir}: ${Math.abs(sc.deltas.shortageMonthCount.delta)} month(s)`);
+  }
+
+  // BP delta
+  if (sc.deltas.bpAttainmentPct.delta !== null) {
+    const dir = sc.deltas.bpAttainmentPct.delta > 0 ? 'improvement' : 'decline';
+    facts.push(`BP attainment ${dir}: ${Math.abs(sc.deltas.bpAttainmentPct.delta).toFixed(1)}pp`);
+  }
+
+  const inferences: string[] = [];
+
+  // Scenario type inference
+  if (sc.multipliers.coreCapacity !== 1.0 || sc.multipliers.buCapacity !== 1.0) {
+    const coreShift = ((sc.multipliers.coreCapacity - 1) * 100).toFixed(0);
+    const buShift = ((sc.multipliers.buCapacity - 1) * 100).toFixed(0);
+    inferences.push(`[Assumption] This is a capacity shift scenario: Core ${coreShift}%, BU ${buShift}%. Capacity changes affect supply sufficiency.`);
+  }
+
+  if (sc.multipliers.forecastVolume !== 1.0) {
+    const pct = ((sc.multipliers.forecastVolume - 1) * 100).toFixed(0);
+    inferences.push(`[Assumption] Forecast volume change of ${pct}% will proportionally affect revenue and capacity demand.`);
+  }
+
+  if (sc.multipliers.unitPrice !== 1.0) {
+    const pct = ((sc.multipliers.unitPrice - 1) * 100).toFixed(0);
+    inferences.push(`[Assumption] Unit price change of ${pct}% will proportionally affect revenue but not capacity demand.`);
+  }
+
+  // Customer/SKU impact inference
+  if (sc.deltas.totalRevenueUsd.delta !== null && sc.deltas.totalRevenueUsd.delta < 0) {
+    inferences.push('Revenue decline scenario: review customer impact and identify mitigation strategies.');
+  }
+
+  if (sc.deltas.shortageMonthCount.delta !== null && sc.deltas.shortageMonthCount.delta > 0) {
+    inferences.push('Shortage months increased: capacity constraints are tightening under this scenario.');
+  }
+
+  return {
+    toolName: 'explainScenarioV2Impact',
+    title: 'Operational Scenario V2 Impact',
+    summary: `Scenario active with multipliers: Volume ${sc.multipliers.forecastVolume}x, Price ${sc.multipliers.unitPrice}x, Core ${sc.multipliers.coreCapacity}x, BU ${sc.multipliers.buCapacity}x.`,
+    facts,
+    assumptions: [
+      'Scenario multipliers are user-defined what-if parameters',
+      'Impact is computed by re-running calculation with transformed inputs',
+    ],
+    inferences,
+    recommendations: [
+      'Review customer and SKU impact breakdown for targeted mitigation',
+      'Compare multiple scenarios to find optimal capacity allocation',
+    ],
+    sourceReferences: ['operationalScenario module', 'scenarioEngine module'],
+    confidence: context.dataQualitySummary.confidence,
+    caveats: [
+      'This result is a what-if projection based on simplified assumptions',
+      'Actual outcomes may differ due to supply chain dynamics, lead times, and other factors not captured in this model',
+      'Customer/SKU impact is proportional attribution, not causal',
+    ],
+    data: {
+      isActive: sc.isActive,
+      multipliers: sc.multipliers,
+      deltas: sc.deltas,
+    },
+  };
+}
+
+// ============================================================
+// Tool 10: generateReportNarrative
+// ============================================================
+
+export function generateReportNarrative(context: AiCopilotContext): CopilotToolResult {
+  const dq = context.dataQualitySummary;
+  const cap = context.capacitySummary;
+  const bp = context.bpSummary;
+  const risk = context.riskBriefSummary;
+  const sc = context.scenarioSummary;
+  const proj = context.projectSummary;
+
+  const facts: string[] = [
+    `Total revenue: ${proj.totalRevenueUsd.toFixed(2)} USD`,
+    `Total forecast: ${proj.totalForecastPcs.toFixed(0)} PCS`,
+    `SKU count: ${proj.skuCount}`,
+    `Forecast months: ${proj.forecastMonthCount}`,
+    `Data confidence: ${dq.confidence} (score: ${dq.confidenceScore})`,
+  ];
+
+  // Executive summary paragraphs
+  const paragraphs: string[] = [];
+  const keyTakeaways: string[] = [];
+
+  // Confidence paragraph
+  paragraphs.push(
+    `Based on ${dq.confidence} data confidence (score: ${dq.confidenceScore}/100), this report covers the current operational state. ${proj.skuCount} SKUs are tracked across ${proj.forecastMonthCount} forecast months with total revenue of ${proj.totalRevenueUsd.toFixed(2)} USD.`
+  );
+
+  // Top risk
+  const shortageMonths = cap.monthlySummaries.filter(m => m.coreShortage > 0 || m.buShortage > 0);
+  const bpMissYears = bp.yearly.filter(r => r.status === 'miss');
+  const highImpactIssues = dq.topIssues.filter(i => i.decisionImpact === 'high');
+
+  if (highImpactIssues.length > 0) {
+    paragraphs.push(
+      `${highImpactIssues.length} high-impact data quality issue(s) detected. These issues may distort analysis results and should be addressed before making critical decisions.`
+    );
+    keyTakeaways.push(`${highImpactIssues.length} DQ issue(s) need fixing before analysis can be fully trusted.`);
+    facts.push(`High-impact DQ issues: ${highImpactIssues.length}`);
+  }
+
+  if (shortageMonths.length > 0) {
+    paragraphs.push(
+      `Capacity shortage detected in ${shortageMonths.length} upcoming month(s): ${shortageMonths.map(m => m.month).join(', ')}. Primary bottleneck is ${shortageMonths[0]?.bottleneck ?? 'unknown'}.`
+    );
+    keyTakeaways.push(`${shortageMonths.length} month(s) face capacity shortage.`);
+    facts.push(`Shortage months: ${shortageMonths.length}`);
+  } else {
+    paragraphs.push('No capacity shortage detected in the look-ahead window.');
+    keyTakeaways.push('No capacity shortage in look-ahead window.');
+  }
+
+  if (bpMissYears.length > 0) {
+    const missDetails = bpMissYears.map(y =>
+      `${y.period} (gap: ${y.gapMillionTwd?.toFixed(1) ?? 'N/A'}M TWD)`
+    ).join(', ');
+    paragraphs.push(
+      `BP target miss detected in: ${missDetails}. Revenue forecast falls short of business plan targets.`
+    );
+    keyTakeaways.push(`BP target missed in ${bpMissYears.length} period(s).`);
+    facts.push(`BP miss years: ${bpMissYears.length}`);
+  } else if (bp.yearly.length > 0) {
+    paragraphs.push('All BP targets are met or at watch level under current forecast.');
+    keyTakeaways.push('BP targets are on track.');
+  }
+
+  if (sc !== null && sc.isActive && sc.deltas.totalRevenueUsd.delta !== null) {
+    const dir = sc.deltas.totalRevenueUsd.delta >= 0 ? 'increase' : 'decrease';
+    paragraphs.push(
+      `Active scenario shows a ${dir} of ${Math.abs(sc.deltas.totalRevenueUsd.delta).toFixed(2)} USD in total revenue.`
+    );
+  }
+
+  // Top risk drivers
+  if (risk.topDrivers.length > 0) {
+    const topDriver = risk.topDrivers[0];
+    paragraphs.push(
+      `Top risk driver: ${topDriver.label} (${topDriver.metric}), contributing ${topDriver.share !== undefined ? (topDriver.share * 100).toFixed(1) + '%' : 'significant'} of capacity pressure.`
+    );
+    keyTakeaways.push(`Focus: ${topDriver.label} is the primary risk driver.`);
+    facts.push(`Top risk driver: ${topDriver.label}`);
+  }
+
+  // Recommended focus
+  const recommendations: string[] = [];
+  if (highImpactIssues.length > 0) {
+    recommendations.push('Priority 1: Resolve high-impact data quality issues to improve analysis confidence.');
+  }
+  if (shortageMonths.length > 0) {
+    recommendations.push(`Priority ${highImpactIssues.length > 0 ? '2' : '1'}: Address capacity shortage in ${shortageMonths[0]?.month ?? 'upcoming months'}.`);
+  }
+  if (bpMissYears.length > 0) {
+    recommendations.push(`Priority 3: Review BP gap analysis for ${bpMissYears[0]?.period ?? 'missed periods'} and develop mitigation plan.`);
+  }
+  if (recommendations.length === 0) {
+    recommendations.push('Continue monitoring key metrics. No critical actions required.');
+  }
+
+  return {
+    toolName: 'generateReportNarrative',
+    title: 'Management Report Narrative',
+    summary: `${paragraphs.length} sections generated. ${keyTakeaways.length} key takeaways identified. Data confidence: ${dq.confidence}.`,
+    facts,
+    assumptions: [
+      'This is a deterministic narrative template — no external AI was used',
+      'Numbers use fixed precision (1 decimal)',
+      'Attribution is proportional, not causal',
+    ],
+    inferences: keyTakeaways,
+    recommendations,
+    sourceReferences: [
+      'dataQuality module',
+      'calculationEngine + analytics',
+      'bpTargets module',
+      'riskAttribution module',
+    ],
+    confidence: dq.confidence,
+    caveats: [
+      'This narrative is a deterministic template. No external AI was used. No causality claims are made.',
+      'Numbers use fixed precision (1 decimal). All values are deterministic and reproducible.',
+      ...(dq.confidence === 'low' ? ['Data confidence is LOW. Results may not be reliable for capital decisions.'] : []),
+      ...(dq.confidence === 'blocked' ? ['Data confidence is BLOCKED. Most analysis is not meaningful.'] : []),
+    ],
+    data: {
+      paragraphs,
+      keyTakeaways,
+      recommendedFocus: recommendations,
+      dataConfidence: dq.confidence,
+      scenarioActive: sc !== null && sc.isActive,
+    },
+  };
+}
+
+// ============================================================
 // Keyword Router
 // ============================================================
 
 export function routeQuestion(question: string, context: AiCopilotContext): CopilotToolResult {
   const lower = question.toLowerCase();
 
+  // Abnormality / anomaly — English + Traditional Chinese (must match before general "data")
+  if (
+    lower.includes('abnormality') ||
+    lower.includes('anomaly') ||
+    lower.includes('異常') ||
+    lower.includes('異常分析')
+  ) {
+    return explainAbnormalityDetail(context);
+  }
+
+  // Data quality — English + Traditional Chinese
   if (
     lower.includes('data') ||
     lower.includes('quality') ||
     lower.includes('missing') ||
     lower.includes('dirty') ||
-    lower.includes('problem')
+    lower.includes('problem') ||
+    lower.includes('資料') ||
+    lower.includes('品質') ||
+    lower.includes('缺失') ||
+    lower.includes('問題')
   ) {
     return inspectDataQuality(context);
   }
 
+  // Capacity risk — English + Traditional Chinese
   if (
     lower.includes('capacity') ||
     lower.includes('shortage') ||
     lower.includes('utilization') ||
-    lower.includes('bottleneck')
+    lower.includes('bottleneck') ||
+    lower.includes('產能') ||
+    lower.includes('短缺') ||
+    lower.includes('稼動') ||
+    lower.includes('瓶頸')
   ) {
     return explainCapacityRisk(context);
   }
 
+  // BP gap — English + Traditional Chinese
   if (
     lower.includes('bp') ||
     lower.includes('gap') ||
     lower.includes('attainment') ||
-    lower.includes('target')
+    lower.includes('target') ||
+    lower.includes('差距') ||
+    lower.includes('達成') ||
+    lower.includes('目標')
   ) {
     return explainBpGap(context);
   }
 
+  // Fix suggestions — English + Traditional Chinese
   if (
     lower.includes('fix') ||
     lower.includes('clean') ||
     lower.includes('repair') ||
-    lower.includes('suggest')
+    lower.includes('suggest') ||
+    lower.includes('修復') ||
+    lower.includes('建議') ||
+    lower.includes('修正')
   ) {
     return suggestDataFixes(context);
   }
 
+  // Report / management report — English + Traditional Chinese (must match before general "scenario")
+  if (
+    lower.includes('report') ||
+    lower.includes('management report') ||
+    lower.includes('報告') ||
+    lower.includes('管理報告')
+  ) {
+    return generateReportNarrative(context);
+  }
+
+  // Scenario v2 / operational scenario — English + Traditional Chinese
+  if (
+    lower.includes('scenario v2') ||
+    lower.includes('operational what-if') ||
+    lower.includes('operational scenario') ||
+    lower.includes('營運情境')
+  ) {
+    return explainScenarioV2Impact(context);
+  }
+
+  // Scenario impact (v1) — English + Traditional Chinese
   if (
     lower.includes('scenario') ||
     lower.includes('what if') ||
-    lower.includes('multiplier')
+    lower.includes('multiplier') ||
+    lower.includes('情境') ||
+    lower.includes('假如') ||
+    lower.includes('乘數')
   ) {
     return explainScenarioImpact(context);
   }
 
+  // Look-ahead — English + Traditional Chinese
   if (
     lower.includes('look ahead') ||
     lower.includes('focus') ||
-    lower.includes('upcoming')
+    lower.includes('upcoming') ||
+    lower.includes('前瞻') ||
+    lower.includes('焦點') ||
+    lower.includes('未來')
   ) {
     return buildLookAheadFocus(context);
   }
 
-  // Default: unknown question
+  // Workbench overview — English + Traditional Chinese
+  if (
+    lower.includes('workbench') ||
+    lower.includes('overview') ||
+    lower.includes('operations summary') ||
+    lower.includes('daily status') ||
+    lower.includes('工作台') ||
+    lower.includes('總覽') ||
+    lower.includes('營運摘要') ||
+    lower.includes('每日狀態')
+  ) {
+    return explainWorkbenchOverview(context);
+  }
+
+  // Default: unknown question — explain what data is needed
   return {
     toolName: 'unknown',
     title: '無法辨識問題',
-    summary: '此問題需要外部 AI 分析。請使用 Export Prompt Pack 將資料匯出後，貼到外部 AI 工具中提問。',
+    summary: '此問題需要外部 AI 分析。本地模式僅支援以下分析：資料品質、產能風險、BP 差距、修復建議、情境影響、前瞻分析、工作台總覽、異常詳情、情境 V2、報告敘述。請使用 Export Prompt Pack 將資料匯出後，貼到外部 AI 工具中提問。',
     facts: [],
     assumptions: [],
     inferences: [],
-    recommendations: ['使用 Export Prompt Pack 功能匯出資料', '將匯出的 JSON 貼到 Claude / GPT / Gemini 等 AI 工具'],
+    recommendations: [
+      '使用 Export Prompt Pack 功能匯出資料',
+      '將匯出的 JSON 貼到 Claude / GPT / Gemini 等 AI 工具',
+      '嘗試使用以下關鍵字：data quality、capacity risk、bp gap、fix、scenario、look ahead、workbench overview、abnormality、scenario v2、report',
+    ],
     sourceReferences: [],
     confidence: 'blocked',
-    caveats: ['本地模式無法回答此問題，需要外部 AI'],
+    caveats: [
+      '本地模式無法回答此問題，需要外部 AI',
+      '可回答的問題類型：資料品質 / 產能風險 / BP 差距 / 修復建議 / 情境影響 / 前瞻分析 / 工作台總覽 / 異常詳情 / 情境 V2 / 報告敘述',
+    ],
     data: {},
   };
 }
@@ -747,6 +1480,10 @@ export function runTool(
     suggestFixes: suggestDataFixes,
     scenarioImpact: explainScenarioImpact,
     lookAhead: buildLookAheadFocus,
+    workbenchOverview: explainWorkbenchOverview,
+    abnormalityDetail: explainAbnormalityDetail,
+    scenarioV2: explainScenarioV2Impact,
+    reportNarrative: generateReportNarrative,
   };
   const tool = toolMap[toolId];
   if (tool) return tool(context);

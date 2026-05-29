@@ -108,7 +108,7 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
         titleMessage: msg('dq.skuMissingAttr.title'),
         detailMessage: msg('dq.skuMissingAttr.detail', { skuCode: sku.skuCode, attrs: missingAttrs.join(', ') }),
         affectedSkuIds: [sku.id],
-        evidence: { skuCode: sku.skuCode, missingCount: missingAttrs.length },
+        evidence: { skuCode: sku.skuCode, missingCount: missingAttrs.length, missingAttrs: missingAttrs.join(',') },
       });
     }
 

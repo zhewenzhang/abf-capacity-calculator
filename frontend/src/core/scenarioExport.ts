@@ -16,6 +16,7 @@
 import type { ScenarioMultipliers, ScenarioDeltas } from './scenarioEngine';
 import type { CalculationResult } from '../types';
 import type { BpAnalysisModel } from './bpTargets';
+import { isSensitiveKey } from './sensitiveDataUtils';
 
 // --- Interfaces ---
 
@@ -60,25 +61,7 @@ export interface ScenarioExportPack {
 
 // --- Sensitive key detection ---
 
-const SENSITIVE_KEYS = [
-  'uid',
-  'email',
-  'token',
-  'workspaceId',
-  'userId',
-  'member',
-  'password',
-  'secret',
-  'apiKey',
-];
-
-/**
- * Check if a key matches any known sensitive key pattern.
- */
-function isSensitiveKey(key: string): boolean {
-  const lowerKey = key.toLowerCase();
-  return SENSITIVE_KEYS.some((sk) => lowerKey === sk.toLowerCase());
-}
+// Sensitive key check is now imported from sensitiveDataUtils.ts
 
 // --- Helper: extract summary metrics ---
 

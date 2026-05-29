@@ -4,10 +4,12 @@ _archived_backend/
 task/
 frontend/.env.local
 frontend/node_modules/
+node_modules/
 frontend/dist/
 firebase-debug.log
 *.log
 frontend/code_trans_keys*.txt
 .claude/CODE_QUALITY_FIX_PLAN.md
 .claude/MIGRATION_PLAN.md
+.claude/settings.json
 PROJECT_ARCHIVE.md
