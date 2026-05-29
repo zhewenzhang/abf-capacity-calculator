@@ -1,0 +1,79 @@
+{
+  "_comment": "ABF Capacity Calculator Demo Seed - Parameters 参数配置",
+  "_version": "v1.0",
+  "_date": "2026-05-29",
+  "parameters": {
+    "yieldMatrix": {
+      "small": {
+        "4-8L": 0.95,
+        "10-14L": 0.92,
+        "16-20L": 0.88,
+        "20L+": 0.82
+      },
+      "medium": {
+        "4-8L": 0.93,
+        "10-14L": 0.90,
+        "16-20L": 0.85,
+        "20L+": 0.78
+      },
+      "large": {
+        "4-8L": 0.90,
+        "10-14L": 0.87,
+        "16-20L": 0.82,
+        "20L+": 0.75
+      },
+      "xlarge": {
+        "4-8L": 0.88,
+        "10-14L": 0.85,
+        "16-20L": 0.80,
+        "20L+": 0.72
+      }
+    },
+    "panelParams": {
+      "panelLengthMm": 244.1,
+      "panelWidthMm": 246.2,
+      "marginLengthMm": 10,
+      "marginWidthMm": 5.3,
+      "toleranceMm": 0
+    },
+    "defaultWorkingDays": 28,
+    "factories": [
+      {"id": "factory-f1", "name": "Factory 1 (F1) - 主力厂"},
+      {"id": "factory-f2", "name": "Factory 2 (F2) - 扩张中"},
+      {"id": "factory-f3", "name": "Factory 3 (F3) - 新厂"}
+    ],
+    "currencySettings": {
+      "baseCurrency": "USD",
+      "displayCurrency": "TWD",
+      "exchangeRateMode": "constant",
+      "constantUsdToTwdRate": 32.5,
+      "yearlyUsdToTwdRates": {},
+      "constantUsdToCnyRate": 7.25,
+      "yearlyUsdToCnyRates": {},
+      "_note": "故意不配置 CNY->TWD 汇率，用于测试 currency DQ 检测"
+    },
+    "bpTargets": {
+      "mode": "yearly",
+      "yearlyRevenueTargetsMillionTwd": {
+        "2026": 3200,
+        "2027": 3800
+      },
+      "_dq_note": "2028 年故意缺失，用于测试 missing BP target DQ 检测"
+    }
+  },
+  "_dq_issues": [
+    {
+      "type": "data:unsupported-currency",
+      "description": "B-EUR-001 使用 EUR，系统不支持",
+      "skuCode": "B-EUR-001",
+      "currency": "EUR",
+      "severity": "High"
+    },
+    {
+      "type": "bp:missing-target-with-forecast",
+      "description": "2028 年有预测但无 BP 目标",
+      "year": "2028",
+      "severity": "Medium"
+    }
+  ]
+}
