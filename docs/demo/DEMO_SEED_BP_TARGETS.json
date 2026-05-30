@@ -1,0 +1,51 @@
+{
+  "_comment": "ABF Capacity Calculator Demo Seed - BP Targets 营业目标数据",
+  "_version": "v1.0",
+  "_date": "2026-05-29",
+  "_note": "2028 年故意缺失，用于测试 missing BP target DQ 检测",
+  "bpTargets": {
+    "mode": "yearly",
+    "yearlyRevenueTargetsMillionTwd": {
+      "2026": 3200,
+      "2027": 3800
+    }
+  },
+  "_demo_story_data": {
+    "story_1_bp_gap": {
+      "target_2026": 3200,
+      "forecast_revenue_2026": 2800,
+      "gap": 400,
+      "gap_percentage": 12.5,
+      "attainment_rate": 87.5,
+      "quarterly_breakdown": {
+        "Q1": {"target": 800, "forecast": 750, "gap": 50},
+        "Q2": {"target": 850, "forecast": 720, "gap": 130},
+        "Q3": {"target": 780, "forecast": 680, "gap": 100},
+        "Q4": {"target": 770, "forecast": 650, "gap": 120}
+      },
+      "gap_attribution": {
+        "Customer A": {"contribution": 0.60, "amount": 240},
+        "Customer B": {"contribution": 0.10, "amount": 40},
+        "Price Impact": {"contribution": 0.30, "amount": 120}
+      }
+    }
+  },
+  "_dq_issues": [
+    {
+      "type": "bp:missing-target-with-forecast",
+      "description": "2028 年有预测但无 BP 目标",
+      "year": "2028",
+      "severity": "Medium",
+      "trigger": "当系统检测到 2028 年有 forecast 数据但 bpTargets 中没有 2028 年配置时触发"
+    },
+    {
+      "type": "bp:target-missed",
+      "description": "2026 年 BP 未达标",
+      "year": "2026",
+      "target": 3200,
+      "forecast": 2800,
+      "attainment": 87.5,
+      "severity": "Critical"
+    }
+  ]
+}
