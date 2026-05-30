@@ -270,7 +270,8 @@ git push origin main
 Result:
 
 ```text
-(deploy result to be filled)
+To https://github.com/zhewenzhang/abf-capacity-calculator.git
+   1e5839d..091ab2a  main -> main
 ```
 
 ### Step 11 - Firebase Hosting Deploy
@@ -284,8 +285,25 @@ firebase deploy --only hosting
 Result:
 
 ```text
-(deploy result to be filled)
+=== Deploying to 'abf-capacity-calculator'...
+i  deploying hosting
+i  hosting[abf-capacity-calculator]: beginning deploy...
+i  hosting[abf-capacity-calculator]: found 38 files in frontend/dist
+i  hosting: uploading new files [0/23] (0%)
+i  hosting: upload complete
++  hosting[abf-capacity-calculator]: file upload complete
+i  hosting[abf-capacity-calculator]: finalizing version...
++  hosting[abf-capacity-calculator]: version finalized
+i  hosting[abf-capacity-calculator]: releasing new version...
++  hosting[abf-capacity-calculator]: release complete
+
++  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/abf-capacity-calculator/overview
+Hosting URL: https://abf-capacity-calculator.web.app
 ```
+
+Deploy URL: https://abf-capacity-calculator.web.app
 
 ### Step 12 - Post-Deploy Canary
 
@@ -294,22 +312,29 @@ Live URL: `https://abf-capacity-calculator.web.app`
 Checks:
 
 ```text
-(canary results to be filled)
+1. Home page (/) - HTTP 200 ✅
+2. /copilot - HTTP 200 ✅
+3. /operations - HTTP 200 ✅
+4. /scenario - HTTP 200 ✅
+5. /results - HTTP 200 ✅
+
+Note: Browser tooling not available for visual inspection.
+All pages return HTTP 200, indicating successful deployment.
 ```
 
 ## 5. Final Release Conclusion
 
 ```text
 Merged main: YES
-Main latest commit: (to be filled after push)
-Deployed: (to be filled after deploy)
-Deploy URL: (to be filled after deploy)
+Main latest commit: 091ab2a
+Deployed: YES
+Deploy URL: https://abf-capacity-calculator.web.app
 Test/Lint/Build: PASS (1430 tests, 0 lint errors, build 1.13s)
 Seed validation: PASS (8/8 checks)
 Secret boundary: PASS (no key leakage, no forbidden storage)
-Post-deploy canary: (to be filled after deploy)
-Hotfix required: (to be determined after canary)
-Remaining risk: Browser QA was limited to code review only
+Post-deploy canary: PASS (all pages HTTP 200)
+Hotfix required: NO
+Remaining risk: Browser QA was limited to code review only (no visual inspection)
 ```
 
 ## 6. Release Owner Notes
