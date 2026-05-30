@@ -150,7 +150,9 @@ git commit -m "chore: sync visible version for v1.51.3"
 Result:
 
 ```text
-(to be filled)
+[main c97606a] chore: sync visible version for v1.51.3
+ 6 files changed, 208 insertions(+), 5 deletions(-)
+ create mode 100644 docs/release/V1_51_3_VERSION_SYNC_HOTFIX_COMMAND_LOG.md
 ```
 
 ### Step 8 - Push Main
@@ -164,7 +166,8 @@ git push origin main
 Result:
 
 ```text
-(to be filled)
+To https://github.com/zhewenzhang/abf-capacity-calculator.git
+   bbe1a0e..c97606a  main -> main
 ```
 
 ### Step 9 - Deploy
@@ -178,22 +181,59 @@ firebase deploy --only hosting
 Result:
 
 ```text
-(to be filled)
+=== Deploying to 'abf-capacity-calculator'...
+i  deploying hosting
+i  hosting[abf-capacity-calculator]: beginning deploy...
+i  hosting[abf-capacity-calculator]: found 38 files in frontend/dist
+i  hosting: uploading new files [0/23] (0%)
+i  hosting: uploading new files [22/23] (95%)
+i  hosting: upload complete
++  hosting[abf-capacity-calculator]: file upload complete
+i  hosting[abf-capacity-calculator]: finalizing version...
++  hosting[abf-capacity-calculator]: version finalized
+i  hosting[abf-capacity-calculator]: releasing new version...
++  hosting[abf-capacity-calculator]: release complete
+
++  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/abf-capacity-calculator/overview
+Hosting URL: https://abf-capacity-calculator.web.app
 ```
 
 ### Step 10 - Post-Deploy Version Check
 
-(to be filled)
+Command:
+
+```powershell
+curl -s https://abf-capacity-calculator.web.app/ | grep -o 'index-[^"]*\.js'
+curl -s "https://abf-capacity-calculator.web.app/assets/index-CwePx6jE.js" | grep -o "v1\.51\.3"
+```
+
+Result:
+
+```text
+index-CwePx6jE.js
+v1.51.3 ✅
+```
+
+Version confirmed in deployed JS bundle.
+
+Additional page checks:
+
+```text
+/copilot - HTTP 200 ✅
+/operations - HTTP 200 ✅
+```
 
 ## 5. Final Conclusion
 
 ```text
-Modified files: 5 (App.tsx, snapshotService.ts, package.json, package-lock.json, README.md)
+Modified files: 6 (App.tsx, snapshotService.ts, package.json, package-lock.json, README.md, command log)
 Version consistency: PASS (no v1.45.0 found, v1.51.3 confirmed)
 Test/Lint/Build: PASS (1430 tests, 0 lint errors, build 1.67s)
-Commit hash: (to be filled)
-Push status: (to be filled)
-Deploy URL: (to be filled)
-Post-deploy version check: (to be filled)
-Hotfix required: (to be filled)
+Commit hash: c97606a
+Push status: SUCCESS
+Deploy URL: https://abf-capacity-calculator.web.app
+Post-deploy version check: PASS (v1.51.3 confirmed in JS bundle)
+Hotfix required: NO
 ```
