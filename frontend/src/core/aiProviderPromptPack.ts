@@ -23,7 +23,7 @@ import type { AiCopilotContext } from './aiCopilotContext';
 // Types
 // ============================================================
 
-export type ProviderMode = 'local' | 'mock' | 'external-byok';
+export type ProviderMode = 'local' | 'mock' | 'external-byok' | 'deepseek';
 
 export interface ProviderPromptPack {
   readonly systemPrompt: string;
@@ -153,6 +153,8 @@ function getModeNote(mode: ProviderMode): string {
       return 'Running in mock provider mode - responses are deterministic test data';
     case 'external-byok':
       return 'External provider mode - all guardrails apply with extra strictness';
+    case 'deepseek':
+      return 'Running in DeepSeek AI provider mode - all guardrails apply with extra strictness';
   }
 }
 

@@ -7,6 +7,8 @@ import type { CopilotToolResult } from '../../core/aiCopilotTools';
 import { routeQuestion, runTool } from '../../core/aiCopilotTools';
 import { copyAiCopilotPrompt } from '../../core/aiCopilotExport';
 import { validateProviderOutput as validateOutputText } from '../../core/aiCopilotOutputValidation';
+import { getProviderById, type ProviderConfig } from '../../core/aiProviderAdapter';
+import { buildProviderSystemPrompt, buildProviderUserMessage } from '../../core/aiProviderPromptPack';
 import CopilotMessage from './CopilotMessage';
 import CopilotQuickButtons from './CopilotQuickButtons';
 import AiProviderSettingsDrawer from './AiProviderSettingsDrawer';
@@ -18,7 +20,7 @@ interface Props {
   context: AiCopilotContext;
 }
 
-type ProviderMode = 'local' | 'mock' | 'external-byok';
+type ProviderMode = 'local' | 'mock' | 'external-byok' | 'deepseek';
 
 const CopilotChat: React.FC<Props> = ({ context }) => {
   const { t } = useI18n();
@@ -27,9 +29,7 @@ const CopilotChat: React.FC<Props> = ({ context }) => {
   const [processing, setProcessing] = useState(false);
   const [providerMode, setProviderMode] = useState<ProviderMode>('local');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [sessionKey, setSessionKey] = useState('');
-  void sessionKey;
-  void setSessionKey;
+  const [deepseekSessionKey, setDeepseekSessionKey] = useState('');
 
   const isViewer = context.role === 'viewer';
 
@@ -84,43 +84,121 @@ const CopilotChat: React.FC<Props> = ({ context }) => {
     [context, applyOutputValidation]
   );
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     const q = input.trim();
     if (!q || processing) return;
     setProcessing(true);
-    setTimeout(() => {
-      // Always use deterministic tools as primary
-      const result = routeQuestion(q, context);
 
-      if (providerMode === 'external-byok') {
-        // External BYOK: show blocked message, fall back to deterministic tools
+    // Always use deterministic tools as primary
+    const result = routeQuestion(q, context);
+
+    if (providerMode === 'external-byok') {
+      // External BYOK: show blocked message, fall back to deterministic tools
+      const blockedResult: CopilotToolResult = {
+        ...result,
+        caveats: [...result.caveats, t('copilot.provider.notEnabled')],
+        blockedReason: t('copilot.provider.notEnabled'),
+        confidence: 'blocked',
+      };
+      const validated = applyOutputValidation(blockedResult);
+      setHistory((prev) => [...prev, validated]);
+    } else if (providerMode === 'mock') {
+      // Mock mode: deterministic tools are primary, note enhanced response availability
+      const mockResult: CopilotToolResult = {
+        ...result,
+        caveats: [...result.caveats, 'Mock provider enhanced response available'],
+        isMockProvider: true,
+      };
+      const validated = applyOutputValidation(mockResult);
+      setHistory((prev) => [...prev, validated]);
+    } else if (providerMode === 'deepseek') {
+      // DeepSeek mode: call DeepSeek provider with session key
+      if (!deepseekSessionKey || deepseekSessionKey.trim().length === 0) {
         const blockedResult: CopilotToolResult = {
           ...result,
-          caveats: [...result.caveats, t('copilot.provider.notEnabled')],
-          blockedReason: t('copilot.provider.notEnabled'),
+          caveats: [...result.caveats, t('copilot.provider.deepseekKeyRequired')],
+          blockedReason: t('copilot.provider.deepseekKeyRequired'),
           confidence: 'blocked',
         };
         const validated = applyOutputValidation(blockedResult);
         setHistory((prev) => [...prev, validated]);
-      } else if (providerMode === 'mock') {
-        // Mock mode: deterministic tools are primary, note enhanced response availability
-        const mockResult: CopilotToolResult = {
-          ...result,
-          caveats: [...result.caveats, 'Mock provider enhanced response available'],
-          isMockProvider: true,
-        };
-        const validated = applyOutputValidation(mockResult);
-        setHistory((prev) => [...prev, validated]);
       } else {
-        // Local mode: also validate through safety layer
-        const validated = applyOutputValidation(result);
-        setHistory((prev) => [...prev, validated]);
-      }
+        try {
+          const provider = getProviderById('deepseek');
+          if (!provider) {
+            throw new Error('DeepSeek provider not found');
+          }
 
-      setInput('');
-      setProcessing(false);
-    }, 300);
-  }, [input, context, processing, providerMode, t, applyOutputValidation]);
+          const config: ProviderConfig = {
+            providerId: 'deepseek',
+            apiKey: deepseekSessionKey,
+          };
+
+          // Validate config
+          const validation = provider.validateConfig(config);
+          if (!validation.valid) {
+            throw new Error(validation.errors.join(', '));
+          }
+
+          // Build prompt pack
+          const systemPrompt = buildProviderSystemPrompt(context, 'deepseek');
+          const userMessage = buildProviderUserMessage(context, q);
+
+          // Build request
+          const request = provider.buildRequest(config, systemPrompt, userMessage, {});
+
+          // Call DeepSeek
+          const response = await provider.runCompletion(config, request);
+
+          if (response.confidence === 'blocked' || response.isFallback) {
+            // DeepSeek failed, fall back to deterministic
+            const fallbackResult: CopilotToolResult = {
+              ...result,
+              caveats: [...result.caveats, `DeepSeek fallback: ${response.content}`],
+              blockedReason: response.content,
+              confidence: 'low',
+            };
+            const validated = applyOutputValidation(fallbackResult);
+            setHistory((prev) => [...prev, validated]);
+          } else {
+            // DeepSeek succeeded, validate output
+            const aiResult: CopilotToolResult = {
+              toolName: 'DeepSeek AI',
+              title: 'DeepSeek AI Response',
+              summary: response.content,
+              facts: [],
+              assumptions: [],
+              inferences: [],
+              recommendations: [],
+              sourceReferences: ['DeepSeek v4 Flash'],
+              confidence: 'high',
+              caveats: ['AI-generated response - verify with data'],
+              data: { tokensUsed: response.tokensUsed },
+            };
+            const validated = applyOutputValidation(aiResult);
+            setHistory((prev) => [...prev, validated]);
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          const fallbackResult: CopilotToolResult = {
+            ...result,
+            caveats: [...result.caveats, `DeepSeek error: ${errorMessage}`],
+            blockedReason: `DeepSeek error: ${errorMessage}`,
+            confidence: 'low',
+          };
+          const validated = applyOutputValidation(fallbackResult);
+          setHistory((prev) => [...prev, validated]);
+        }
+      }
+    } else {
+      // Local mode: also validate through safety layer
+      const validated = applyOutputValidation(result);
+      setHistory((prev) => [...prev, validated]);
+    }
+
+    setInput('');
+    setProcessing(false);
+  }, [input, context, processing, providerMode, deepseekSessionKey, t, applyOutputValidation]);
 
   const handleExportPrompt = useCallback(async () => {
     await copyAiCopilotPrompt(context);
@@ -250,6 +328,9 @@ const CopilotChat: React.FC<Props> = ({ context }) => {
         currentMode={providerMode}
         onModeChange={handleModeChange}
         isViewer={isViewer}
+        deepseekApiKey={deepseekSessionKey}
+        onDeepseekApiKeyChange={setDeepseekSessionKey}
+        onClearDeepseekApiKey={() => setDeepseekSessionKey('')}
       />
     </div>
   );

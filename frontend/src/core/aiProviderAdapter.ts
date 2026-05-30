@@ -1,14 +1,15 @@
 /**
- * AI Provider Adapter Architecture (v1.40.0)
+ * AI Provider Adapter Architecture (v1.40.0, updated v1.51.1)
  *
  * Defines a pluggable provider adapter interface for AI completions.
  *
  * Key constraints:
  * - No firebase/firestore imports
- * - No fetch() or network API calls
+ * - External AI providers (e.g., DeepSeek) use fetch() for API calls
  * - No localStorage or sessionStorage
  * - API keys are session-only and never persisted
  * - All functions are pure or have controlled side effects only
+ * - DeepSeek provider uses fetch() with session-only BYOK key
  */
 
 // ============================================================
@@ -73,7 +74,7 @@ export interface AiProviderAdapter {
 // Constants
 // ============================================================
 
-export const PROVIDER_IDS = ['mock', 'external-byok'] as const;
+export const PROVIDER_IDS = ['mock', 'external-byok', 'deepseek'] as const;
 
 // ============================================================
 // MockProvider
@@ -214,10 +215,158 @@ const externalByokPlaceholder: AiProviderAdapter = {
 };
 
 // ============================================================
+// DeepSeek Provider
+// ============================================================
+
+const DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
+const DEEPSEEK_MODEL = 'deepseek-v4-flash';
+const DEEPSEEK_TIMEOUT_MS = 30000;
+
+const deepseekProvider: AiProviderAdapter = {
+  providerId: 'deepseek',
+  displayName: 'DeepSeek v4 Flash (BYOK)',
+  capabilities: {
+    supportsStreaming: false,
+    supportsFunctionCalling: false,
+    maxTokens: 4000,
+    requiresApiKey: true,
+  },
+
+  validateConfig(config: ProviderConfig): ValidationResult {
+    const errors: string[] = [];
+    if (!config.apiKey || config.apiKey.trim().length === 0) {
+      errors.push('DeepSeek API key is required');
+    }
+    if (config.apiKey && config.apiKey.length < 10) {
+      errors.push('DeepSeek API key appears invalid (too short)');
+    }
+    return { valid: errors.length === 0, errors };
+  },
+
+  buildRequest(
+    config: ProviderConfig,
+    systemPrompt: string,
+    userMessage: string,
+    context: Record<string, unknown>,
+  ): ProviderRequest {
+    void config;
+    return {
+      systemPrompt,
+      userMessage,
+      context,
+      maxTokens: config.maxTokens ?? 4000,
+    };
+  },
+
+  parseResponse(raw: unknown): ProviderResponse {
+    if (
+      raw !== null &&
+      typeof raw === 'object' &&
+      'choices' in raw &&
+      Array.isArray((raw as Record<string, unknown>).choices)
+    ) {
+      const obj = raw as Record<string, unknown>;
+      const choices = obj.choices as Array<Record<string, unknown>>;
+      if (choices.length > 0 && choices[0].message) {
+        const message = choices[0].message as Record<string, unknown>;
+        return {
+          providerId: 'deepseek',
+          content: typeof message.content === 'string' ? message.content : '',
+          confidence: 'high',
+          tokensUsed: typeof obj.usage === 'object' ? ((obj.usage as Record<string, unknown>).total_tokens as number) ?? 0 : 0,
+          isFallback: false,
+          rawResponse: raw as Record<string, unknown>,
+        };
+      }
+    }
+
+    return {
+      providerId: 'deepseek',
+      content: 'Failed to parse DeepSeek response',
+      confidence: 'blocked',
+      tokensUsed: 0,
+      isFallback: true,
+    };
+  },
+
+  async runCompletion(
+    config: ProviderConfig,
+    request: ProviderRequest,
+  ): Promise<ProviderResponse> {
+    if (!config.apiKey) {
+      return {
+        providerId: 'deepseek',
+        content: 'DeepSeek API key not provided',
+        confidence: 'blocked',
+        tokensUsed: 0,
+        isFallback: true,
+      };
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), DEEPSEEK_TIMEOUT_MS);
+
+      const response = await fetch(`${DEEPSEEK_BASE_URL}/v1/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${config.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: DEEPSEEK_MODEL,
+          messages: [
+            { role: 'system', content: request.systemPrompt },
+            { role: 'user', content: request.userMessage },
+          ],
+          max_tokens: request.maxTokens,
+          stream: false,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unknown error');
+        return {
+          providerId: 'deepseek',
+          content: `DeepSeek API error: ${response.status} - ${errorText}`,
+          confidence: 'blocked',
+          tokensUsed: 0,
+          isFallback: true,
+        };
+      }
+
+      const data = await response.json();
+      return deepseekProvider.parseResponse(data);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.includes('abort')) {
+        return {
+          providerId: 'deepseek',
+          content: 'DeepSeek API request timed out',
+          confidence: 'blocked',
+          tokensUsed: 0,
+          isFallback: true,
+        };
+      }
+      return {
+        providerId: 'deepseek',
+        content: `DeepSeek API error: ${errorMessage}`,
+        confidence: 'blocked',
+        tokensUsed: 0,
+        isFallback: true,
+      };
+    }
+  },
+};
+
+// ============================================================
 // Registry
 // ============================================================
 
-const providers: AiProviderAdapter[] = [mockProvider, externalByokPlaceholder];
+const providers: AiProviderAdapter[] = [mockProvider, externalByokPlaceholder, deepseekProvider];
 
 export function getAvailableProviders(): AiProviderAdapter[] {
   return providers;

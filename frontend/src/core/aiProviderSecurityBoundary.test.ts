@@ -487,12 +487,13 @@ describe('Security Boundary: Core AI modules have no service imports', () => {
 // ============================================================
 
 describe('Security Boundary: Provider registry is closed', () => {
-  it('6a. Only mock and external-byok providers exist', () => {
+  it('6a. Only mock, external-byok, and deepseek providers exist', () => {
     const providers = getAvailableProviders();
     const ids = providers.map(p => p.providerId);
     expect(ids).toContain('mock');
     expect(ids).toContain('external-byok');
-    expect(ids).toHaveLength(2);
+    expect(ids).toContain('deepseek');
+    expect(ids).toHaveLength(3);
   });
 
   it('6b. PROVIDER_IDS matches actual registry', async () => {
