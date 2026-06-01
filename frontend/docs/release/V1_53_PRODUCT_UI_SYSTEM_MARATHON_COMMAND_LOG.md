@@ -384,3 +384,89 @@ dist/assets/index-*.css 包含 --db-* token ✅
 1. 先在 staging 環境驗證 UI 變化
 2. 確認 /copilot 頁面顯示正常
 3. 確認 AntD 組件樣式符合預期
+
+---
+
+## v1.53.1 UI Completion Pass — 繼續執行
+
+### Phase 1 — /operations 深度整合
+
+**修改檔案**: `src/pages/DailyOperationsWorkbench.tsx`
+
+**使用的 db-* class**:
+- `db-page` — 頁面根容器
+- `db-page-header` — 頁面標題區域
+- `db-page-title` — 頁面標題
+- `db-page-subtitle` — 頁面副標題
+- `db-alert db-alert--info` — 檢視者警告
+
+### Phase 2 — /scenario 深度整合
+
+**修改檔案**: `src/pages/ScenarioPlanning.tsx`
+
+**使用的 db-* class**:
+- `db-page` — 頁面根容器
+- `db-page-header` — 頁面標題區域
+- `db-page-title` — 頁面標題
+- `db-page-subtitle` — 頁面副標題
+- `db-alert db-alert--info` — 資訊警告
+- `db-alert db-alert--warning` — 警告
+- `db-toolbar` — 工具列
+- `db-toolbar-group` — 工具列群組
+- `db-card` — 卡片
+- `db-card-header` — 卡片標題
+- `db-card-body` — 卡片內容
+
+### Phase 3 — /results 深度整合
+
+**修改檔案**: `src/pages/CalculationResults.tsx`
+
+**使用的 db-* class**:
+- `db-page` — 頁面根容器
+- `db-page-header` — 頁面標題區域
+- `db-page-title` — 頁面標題
+- `db-page-subtitle` — 頁面副標題
+- `db-alert db-alert--error` — 錯誤警告
+- `db-kpi` — KPI 卡片
+- `db-kpi-label` — KPI 標籤
+- `db-kpi-value` — KPI 數值
+- `db-toolbar` — 工具列
+- `db-toolbar-group` — 工具列群組
+- `db-card` — 卡片
+- `db-card-header` — 卡片標題
+- `db-card-body` — 卡片內容
+
+### Phase 4 — Browser QA
+
+**執行狀態**: 未執行 Browser QA（無可用瀏覽器工具）
+
+**替代方案**:
+- 使用 build 驗證編譯通過 ✅
+- 使用 RTL 測試驗證組件渲染 ✅
+- 使用 lint 驗證代碼品質 ✅
+
+### Phase 5 — 驗證結果
+
+1. ✅ npm run test
+   - Test Files: 59 passed (59)
+   - Tests: 1472 passed (1472)
+
+2. ✅ npm run lint -- --quiet
+   - 無錯誤
+
+3. ✅ npm run build
+   - ✓ built in 1.11s
+
+4. ✅ secret grep
+   - 無真實 API key
+
+5. ✅ git diff -- firestore.rules
+   - 無變更
+
+6. ✅ git diff -- src/core/calculationEngine.ts
+   - 無變更
+
+### Commit (v1.53.1)
+- **Commit**: `97c579e`
+- **Message**: `fix: complete v1.53 designbyte page integration`
+- **Push**: ✅ 已推送至 origin
