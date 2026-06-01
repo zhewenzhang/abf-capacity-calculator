@@ -1,5 +1,5 @@
 /**
- * AI Provider Prompt Pack Builder (v1.40.0)
+ * AI Provider Prompt Pack Builder (v1.52.0)
  *
  * Builds prompt packs specifically for provider request construction.
  * Each pack includes system prompt, user message, guardrails, and
@@ -13,6 +13,7 @@
  * - No localStorage or sessionStorage
  * - Includes F-A-I-R guardrails and safety rules in every prompt
  * - Does NOT mutate the input context
+ * - Supports language-aware prompts (zh-TW / en)
  *
  * Consumes AiCopilotContext from aiCopilotContext.ts.
  */
@@ -23,7 +24,9 @@ import type { AiCopilotContext } from './aiCopilotContext';
 // Types
 // ============================================================
 
-export type ProviderMode = 'local' | 'mock' | 'external-byok' | 'deepseek';
+export type ProviderMode = 'local' | 'mock' | 'deepseek-proxy';
+
+export type SupportedLanguage = 'en' | 'zh-TW';
 
 export interface ProviderPromptPack {
   readonly systemPrompt: string;
@@ -74,6 +77,37 @@ const FAIR_OUTPUT_FORMAT = `F-A-I-R Output Format Instructions:
 - [Inference]: Trends or possibilities derived from data patterns. Example: "If demand grows 10%, bottleneck month may shift to Q2"
 - [Recommendation]: Suggested action plans. Example: "Consider evaluating 5% Core capacity expansion"
 All conclusions must be labeled with one of the four F-A-I-R categories. Every recommendation must cite source references.`;
+
+// ============================================================
+// Language Rules
+// ============================================================
+
+function getLanguageRule(lang: SupportedLanguage): string {
+  if (lang === 'zh-TW') {
+    return [
+      '## 語言要求',
+      '你必須完全以繁體中文（Traditional Chinese）回答。',
+      '絕對不可使用簡體中文。',
+      '使用以下專業術語：',
+      '- Utilization → 稼動率',
+      '- Capacity → 產能',
+      '- Forecast → 預測',
+      '- Shortage → 缺口',
+      '- Bottleneck → 瓶頸',
+      '- Revenue → 營收',
+      '- Attainment → 達成率',
+      '- Gap → 差距',
+      '- Risk → 風險',
+      '- Scenario → 情境',
+      '- Look Ahead → 前瞻',
+      '',
+      '回答語氣：專業、簡潔、有條理。',
+      '使用條列式（bullet points）呈現重點。',
+    ].join('\n');
+  }
+
+  return '## Language Requirement\nRespond in English. Use professional and concise language.';
+}
 
 // ============================================================
 // Helpers
@@ -151,10 +185,8 @@ function getModeNote(mode: ProviderMode): string {
       return 'Running in local deterministic mode';
     case 'mock':
       return 'Running in mock provider mode - responses are deterministic test data';
-    case 'external-byok':
-      return 'External provider mode - all guardrails apply with extra strictness';
-    case 'deepseek':
-      return 'Running in DeepSeek AI provider mode - all guardrails apply with extra strictness';
+    case 'deepseek-proxy':
+      return 'Running in DeepSeek AI provider mode (server-managed) - all guardrails apply with extra strictness';
   }
 }
 
@@ -167,14 +199,16 @@ function getModeNote(mode: ProviderMode): string {
  *
  * Includes identity, guardrails, context summary, source references,
  * allowed/forbidden operations, F-A-I-R output format, currency rules,
- * attribution warning, and no-write requirement.
+ * attribution warning, no-write requirement, and language rules.
  */
 export function buildProviderSystemPrompt(
   context: AiCopilotContext,
   mode: ProviderMode,
+  lang: SupportedLanguage = 'en',
 ): string {
   const contextSummary = buildContextSummary(context);
   const modeNote = getModeNote(mode);
+  const languageRule = getLanguageRule(lang);
 
   const sourceReferences = [
     '[projectSummary] Project summary — revenue, quantity, SKU, month statistics',
@@ -192,6 +226,8 @@ export function buildProviderSystemPrompt(
     '',
     '## Mode',
     modeNote,
+    '',
+    languageRule,
     '',
     '## Guardrails',
     ...GUARDRAILS.map((g, i) => `${i + 1}. ${g}`),
@@ -239,8 +275,13 @@ export function buildProviderSystemPrompt(
 export function buildProviderUserMessage(
   context: AiCopilotContext,
   question: string,
+  lang: SupportedLanguage = 'en',
 ): string {
   const contextSummary = buildContextSummary(context);
+
+  const responseInstructions = lang === 'zh-TW'
+    ? '請提供 F-A-I-R 標註的回應（Fact / Assumption / Inference / Recommendation），使用上述資料回答用戶問題。請引用資料來源。'
+    : 'Please provide a FAIR-labeled response (Fact / Assumption / Inference / Recommendation) that addresses the user question using the context data above. Cite source references for each conclusion.';
 
   const sections = [
     `User Question: ${question}`,
@@ -249,7 +290,7 @@ export function buildProviderUserMessage(
     contextSummary,
     '',
     '## Response Instructions',
-    'Please provide a FAIR-labeled response (Fact / Assumption / Inference / Recommendation) that addresses the user question using the context data above. Cite source references for each conclusion.',
+    responseInstructions,
   ];
 
   return sections.join('\n');
@@ -269,10 +310,11 @@ export function buildProviderPromptPack(
   context: AiCopilotContext,
   userQuestion: string,
   mode: ProviderMode,
+  lang: SupportedLanguage = 'en',
 ): ProviderPromptPack {
   return {
-    systemPrompt: buildProviderSystemPrompt(context, mode),
-    userMessage: buildProviderUserMessage(context, userQuestion),
+    systemPrompt: buildProviderSystemPrompt(context, mode, lang),
+    userMessage: buildProviderUserMessage(context, userQuestion, lang),
     guardrails: [...GUARDRAILS],
     allowedOperations: [...ALLOWED_OPERATIONS],
     forbiddenOperations: [...FORBIDDEN_OPERATIONS],

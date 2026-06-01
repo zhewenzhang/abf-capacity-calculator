@@ -47,7 +47,7 @@ export const FORBIDDEN_EXTERNAL_PATTERNS = [
   'api.openai.com',
   'api.anthropic.com',
   'generativelanguage.googleapis.com',
-  'api.deepseek.com',
+  // 'api.deepseek.com' removed: now accessed via Firebase Functions secure proxy
   'api.cohere.com',
 ] as const;
 

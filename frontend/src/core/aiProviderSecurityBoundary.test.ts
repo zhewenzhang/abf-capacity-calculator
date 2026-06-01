@@ -1,5 +1,5 @@
 /**
- * AI Provider Security Boundary Tests — v1.41.0
+ * AI Provider Security Boundary Tests — v1.52.0
  *
  * Comprehensive grep + runtime verification that no security boundary
  * violations exist in the AI copilot codebase.
@@ -9,12 +9,12 @@
  * 2. No localStorage/sessionStorage/cookies/IndexedDB access in copilot modules
  * 3. No save* function imports in copilot core or component modules
  * 4. No external provider URLs constructable from adapter config
- * 5. ExternalByokPlaceholder.runCompletion makes no network calls
- * 6. MockProvider.runCompletion makes no network calls
- * 7. Core AI modules import no service-layer dependencies
- * 8. Copilot UI components import no service-layer dependencies
- * 9. ProviderConfig type does not expose base URLs
- * 10. Sensitive key patterns are only used defensively (in blocklists)
+ * 5. MockProvider.runCompletion makes no network calls
+ * 6. Core AI modules import no service-layer dependencies
+ * 7. Copilot UI components import no service-layer dependencies
+ * 8. ProviderConfig type does not expose base URLs
+ * 9. Sensitive key patterns are only used defensively (in blocklists)
+ * 10. Proxy provider does not require API key
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -32,9 +32,9 @@ function getMockProvider(): AiProviderAdapter {
   return provider;
 }
 
-function getExternalProvider(): AiProviderAdapter {
-  const provider = getProviderById('external-byok');
-  if (!provider) throw new Error('External provider not found');
+function getProxyProvider(): AiProviderAdapter {
+  const provider = getProviderById('deepseek-proxy');
+  if (!provider) throw new Error('Proxy provider not found');
   return provider;
 }
 
@@ -44,8 +44,6 @@ function getExternalProvider(): AiProviderAdapter {
 
 describe('Security Boundary: No network calls in copilot core', () => {
   it('1a. ProviderConfig type has no baseUrl or endpoint field', () => {
-    // The ProviderConfig interface should only have: providerId, apiKey?, model?, temperature?, maxTokens?
-    // No URL or endpoint fields.
     const config: ProviderConfig = {
       providerId: 'mock',
       apiKey: 'test',
@@ -54,7 +52,6 @@ describe('Security Boundary: No network calls in copilot core', () => {
       maxTokens: 2000,
     };
 
-    // Verify the config object shape — no URL-like properties
     const keys = Object.keys(config);
     expect(keys).not.toContain('baseUrl');
     expect(keys).not.toContain('endpoint');
@@ -67,7 +64,6 @@ describe('Security Boundary: No network calls in copilot core', () => {
   it('1b. No provider adapter accepts or uses URL configuration', () => {
     const providers = getAvailableProviders();
     for (const provider of providers) {
-      // Try passing URL-related config — should be ignored
       const configWithUrl = {
         providerId: provider.providerId,
         apiKey: 'test-key',
@@ -75,15 +71,6 @@ describe('Security Boundary: No network calls in copilot core', () => {
         endpoint: '/v1/chat',
       } as unknown as ProviderConfig;
 
-      // ExternalByokPlaceholder.buildRequest throws "Not implemented" by design
-      if (provider.providerId === 'external-byok') {
-        expect(() => {
-          provider.buildRequest(configWithUrl, 'system', 'user', {});
-        }).toThrow('Not implemented');
-        continue;
-      }
-
-      // buildRequest should not include URL data
       const request = provider.buildRequest(configWithUrl, 'system', 'user', {});
       const reqStr = JSON.stringify(request);
       expect(reqStr).not.toContain('evil.example.com');
@@ -91,34 +78,7 @@ describe('Security Boundary: No network calls in copilot core', () => {
     }
   });
 
-  it('1c. ExternalByokPlaceholder.runCompletion makes no network calls', async () => {
-    // Spy on global fetch to detect any network attempt
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
-
-    const external = getExternalProvider();
-    const config: ProviderConfig = { providerId: 'external-byok', apiKey: 'test-key' };
-    const request: ProviderRequest = {
-      systemPrompt: 'system',
-      userMessage: 'user',
-      context: {},
-      maxTokens: 4000,
-    };
-
-    const response = await external.runCompletion(config, request);
-
-    // Should return blocked response without network
-    expect(response.providerId).toBe('external-byok');
-    expect(response.confidence).toBe('blocked');
-    expect(response.isFallback).toBe(true);
-    expect(response.tokensUsed).toBe(0);
-    expect(response.content).toContain('not enabled');
-
-    // No fetch call should have been made
-    expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
-  });
-
-  it('1d. MockProvider.runCompletion makes no network calls', async () => {
+  it('1c. MockProvider.runCompletion makes no network calls', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
     const mock = getMockProvider();
@@ -132,24 +92,20 @@ describe('Security Boundary: No network calls in copilot core', () => {
 
     const response = await mock.runCompletion(config, request);
 
-    // Should return deterministic mock response
     expect(response.providerId).toBe('mock');
     expect(response.confidence).toBe('medium');
     expect(response.tokensUsed).toBe(42);
     expect(response.content).toContain('mock data');
 
-    // No fetch call
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });
 
-  it('1e. No provider runCompletion uses XMLHttpRequest', async () => {
-    // Spy on XMLHttpRequest constructor
+  it('1d. No provider runCompletion uses XMLHttpRequest', async () => {
     const xhrOpenSpy = vi.fn();
     const xhrSendSpy = vi.fn();
     const OriginalXHR = globalThis.XMLHttpRequest;
 
-    // Replace XMLHttpRequest with a spy
     globalThis.XMLHttpRequest = class {
       open = xhrOpenSpy;
       send = xhrSendSpy;
@@ -181,7 +137,6 @@ describe('Security Boundary: No network calls in copilot core', () => {
     expect(xhrOpenSpy).not.toHaveBeenCalled();
     expect(xhrSendSpy).not.toHaveBeenCalled();
 
-    // Restore
     globalThis.XMLHttpRequest = OriginalXHR;
   });
 });
@@ -242,23 +197,6 @@ describe('Security Boundary: No storage access in copilot modules', () => {
     ssGetItem.mockRestore();
     ssSetItem.mockRestore();
   });
-
-  it('2c. ProviderConfig.apiKey is documented as session-only and never persisted', () => {
-    // The type annotation says "// session-only, never persisted"
-    // We verify the config object doesn't trigger any storage write
-    const lsSetItem = vi.spyOn(Storage.prototype, 'setItem');
-
-    const _config: ProviderConfig = {
-      providerId: 'mock',
-      apiKey: 'super-secret-key-12345',
-    };
-
-    // Just constructing the config should not write to storage
-    expect(lsSetItem).not.toHaveBeenCalled();
-    void _config;
-
-    lsSetItem.mockRestore();
-  });
 });
 
 // ============================================================
@@ -269,7 +207,6 @@ describe('Security Boundary: No write operations from copilot modules', () => {
   it('3a. aiProviderAdapter does not import any save functions', async () => {
     const mod = await import('./aiProviderAdapter');
     const modStr = JSON.stringify(Object.keys(mod));
-    // Should not have any save-related exports
     expect(modStr).not.toMatch(/save/i);
   });
 
@@ -322,16 +259,14 @@ describe('Security Boundary: No write operations from copilot modules', () => {
 
 describe('Security Boundary: No external provider URLs from config', () => {
   it('4a. ProviderConfig contains no URL or endpoint fields', () => {
-    // Type-level check: construct a config and verify no URL properties exist
     const config: ProviderConfig = {
-      providerId: 'external-byok',
+      providerId: 'deepseek-proxy',
       apiKey: 'test-key',
       model: 'gpt-4',
       temperature: 0.5,
       maxTokens: 4000,
     };
 
-    // Check that no URL-like values are present
     const configStr = JSON.stringify(config);
     expect(configStr).not.toMatch(/https?:\/\//);
     expect(configStr).not.toMatch(/\.com/);
@@ -340,26 +275,13 @@ describe('Security Boundary: No external provider URLs from config', () => {
   });
 
   it('4b. FORBIDDEN_EXTERNAL_PATTERNS are only used for detection, not construction', () => {
-    // The forbidden patterns should all be domain-only strings (no https:// prefix)
     for (const pattern of FORBIDDEN_EXTERNAL_PATTERNS) {
       expect(pattern).not.toMatch(/^https?:\/\//);
       expect(pattern).toMatch(/^[a-z0-9.-]+$/);
     }
   });
 
-  it('4c. ExternalByokPlaceholder.buildRequest throws before any URL usage', () => {
-    const external = getExternalProvider();
-    const config: ProviderConfig = {
-      providerId: 'external-byok',
-      apiKey: 'test-key',
-    };
-
-    expect(() => {
-      external.buildRequest(config, 'system', 'user', {});
-    }).toThrow('Not implemented');
-  });
-
-  it('4d. No provider adapter constructs external URLs in runCompletion', async () => {
+  it('4c. No provider adapter constructs external URLs in runCompletion', async () => {
     const providers = getAvailableProviders();
     for (const provider of providers) {
       const config: ProviderConfig = {
@@ -376,7 +298,6 @@ describe('Security Boundary: No external provider URLs from config', () => {
       const response = await provider.runCompletion(config, request);
       const respStr = JSON.stringify(response);
 
-      // Response should not contain any external URL
       expect(respStr).not.toMatch(/https?:\/\/(?!localhost)/);
       for (const pattern of FORBIDDEN_EXTERNAL_PATTERNS) {
         expect(respStr).not.toContain(pattern);
@@ -384,7 +305,7 @@ describe('Security Boundary: No external provider URLs from config', () => {
     }
   });
 
-  it('4e. API key is not leaked in any provider response', async () => {
+  it('4d. API key is not leaked in any provider response', async () => {
     const secretKey = 'sk-secret-leak-test-key-12345';
     const providers = getAvailableProviders();
 
@@ -400,25 +321,12 @@ describe('Security Boundary: No external provider URLs from config', () => {
         maxTokens: 2000,
       };
 
-      // buildRequest — ExternalByokPlaceholder throws "Not implemented" by design
-      if (provider.providerId === 'external-byok') {
-        expect(() => {
-          provider.buildRequest(config, 'system', 'user', {});
-        }).toThrow('Not implemented');
+      const builtRequest = provider.buildRequest(config, 'system', 'user', {});
+      expect(JSON.stringify(builtRequest)).not.toContain(secretKey);
 
-        // parseResponse also throws for external-byok
-        expect(() => {
-          provider.parseResponse({ content: 'test' });
-        }).toThrow('Not implemented');
-      } else {
-        const builtRequest = provider.buildRequest(config, 'system', 'user', {});
-        expect(JSON.stringify(builtRequest)).not.toContain(secretKey);
+      const parsed = provider.parseResponse({ content: 'test' });
+      expect(JSON.stringify(parsed)).not.toContain(secretKey);
 
-        const parsed = provider.parseResponse({ content: 'test' });
-        expect(JSON.stringify(parsed)).not.toContain(secretKey);
-      }
-
-      // runCompletion works for all providers
       const response = await provider.runCompletion(config, request);
       expect(JSON.stringify(response)).not.toContain(secretKey);
     }
@@ -432,7 +340,6 @@ describe('Security Boundary: No external provider URLs from config', () => {
 describe('Security Boundary: Core AI modules have no service imports', () => {
   it('5a. aiProviderAdapter has no firebase/service imports', async () => {
     const mod = await import('./aiProviderAdapter');
-    // The module should only export provider types and functions
     const exports = Object.keys(mod);
     expect(exports).not.toContain('save');
     expect(exports).not.toContain('firebase');
@@ -442,7 +349,6 @@ describe('Security Boundary: Core AI modules have no service imports', () => {
   it('5b. aiCopilotContext imports only core calculation modules', async () => {
     const mod = await import('./aiCopilotContext');
     const exports = Object.keys(mod);
-    // Should only export buildAiCopilotContext and AiCopilotContext type
     expect(exports).toContain('buildAiCopilotContext');
     expect(exports).not.toContain('save');
     expect(exports).not.toContain('firebase');
@@ -451,7 +357,6 @@ describe('Security Boundary: Core AI modules have no service imports', () => {
   it('5c. aiCopilotTools imports only AiCopilotContext type', async () => {
     const mod = await import('./aiCopilotTools');
     const exports = Object.keys(mod);
-    // Should export tool functions, not service functions
     expect(exports).toContain('inspectDataQuality');
     expect(exports).toContain('explainCapacityRisk');
     expect(exports).toContain('routeQuestion');
@@ -476,7 +381,6 @@ describe('Security Boundary: Core AI modules have no service imports', () => {
   it('5f. aiCopilotOutputValidation imports nothing external', async () => {
     const mod = await import('./aiCopilotOutputValidation');
     const exports = Object.keys(mod);
-    // This module is purely functions, no external deps
     expect(exports).toContain('validateProviderOutput');
     expect(exports).not.toContain('save');
   });
@@ -487,13 +391,14 @@ describe('Security Boundary: Core AI modules have no service imports', () => {
 // ============================================================
 
 describe('Security Boundary: Provider registry is closed', () => {
-  it('6a. Only mock, external-byok, and deepseek providers exist', () => {
+  it('6a. Only mock and deepseek-proxy providers exist', () => {
     const providers = getAvailableProviders();
     const ids = providers.map(p => p.providerId);
     expect(ids).toContain('mock');
-    expect(ids).toContain('external-byok');
-    expect(ids).toContain('deepseek');
-    expect(ids).toHaveLength(3);
+    expect(ids).toContain('deepseek-proxy');
+    expect(ids).not.toContain('external-byok');
+    expect(ids).not.toContain('deepseek');
+    expect(ids).toHaveLength(2);
   });
 
   it('6b. PROVIDER_IDS matches actual registry', async () => {
@@ -510,49 +415,17 @@ describe('Security Boundary: Provider registry is closed', () => {
     expect(getProviderById('anthropic')).toBeNull();
     expect(getProviderById('gemini')).toBeNull();
     expect(getProviderById('cohere')).toBeNull();
+    expect(getProviderById('external-byok')).toBeNull();
+    expect(getProviderById('deepseek')).toBeNull();
     expect(getProviderById('')).toBeNull();
     expect(getProviderById('random-string')).toBeNull();
   });
 
-  it('6d. External provider always returns blocked confidence', async () => {
-    const external = getExternalProvider();
-    const request: ProviderRequest = {
-      systemPrompt: 'system',
-      userMessage: 'user',
-      context: {},
-      maxTokens: 4000,
-    };
-
-    // Test with various configs
-    const configs: ProviderConfig[] = [
-      { providerId: 'external-byok' },
-      { providerId: 'external-byok', apiKey: 'test' },
-      { providerId: 'external-byok', apiKey: 'test', model: 'gpt-4' },
-      { providerId: 'external-byok', apiKey: 'test', model: 'claude-3', temperature: 0.5, maxTokens: 8000 },
-    ];
-
-    for (const config of configs) {
-      const response = await external.runCompletion(config, request);
-      expect(response.confidence).toBe('blocked');
-      expect(response.isFallback).toBe(true);
-      expect(response.tokensUsed).toBe(0);
-    }
-  });
-
-  it('6e. External provider validateConfig always returns invalid', () => {
-    const external = getExternalProvider();
-    const configs: ProviderConfig[] = [
-      { providerId: 'external-byok' },
-      { providerId: 'external-byok', apiKey: 'test' },
-      { providerId: 'external-byok', apiKey: 'test', model: 'gpt-4' },
-    ];
-
-    for (const config of configs) {
-      const result = external.validateConfig(config);
-      expect(result.valid).toBe(false);
-      expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors[0]).toContain('not enabled');
-    }
+  it('6d. Proxy provider does not require API key', () => {
+    const proxy = getProxyProvider();
+    expect(proxy.capabilities.requiresApiKey).toBe(false);
+    const result = proxy.validateConfig({ providerId: 'deepseek-proxy' });
+    expect(result.valid).toBe(true);
   });
 });
 
@@ -593,10 +466,8 @@ describe('Security Boundary: Sensitive keys are defensive-only', () => {
     };
 
     const response = mock.parseResponse(raw);
-    // The parsed response should only include defined fields
     expect(response.content).toBe('analysis result');
     expect(response.tokensUsed).toBe(100);
-    // Raw response is kept for debugging but should be sanitized at export
     expect(response.providerId).toBe('mock');
   });
 });
@@ -626,7 +497,6 @@ describe('Security Boundary: Provider response isolation', () => {
 
     const response = await mock.runCompletion(config, request);
 
-    // The mock response is hardcoded and should not echo back any input
     expect(response.content).not.toContain('user-123');
     expect(response.content).not.toContain('test@example.com');
     expect(response.content).not.toContain('bearer-xyz');
@@ -634,9 +504,9 @@ describe('Security Boundary: Provider response isolation', () => {
     expect(response.content).not.toContain('top-secret');
   });
 
-  it('8b. ExternalByokPlaceholder response is static and does not leak input', async () => {
-    const external = getExternalProvider();
-    const config: ProviderConfig = { providerId: 'external-byok', apiKey: 'test' };
+  it('8b. Proxy provider response does not leak input', async () => {
+    const proxy = getProxyProvider();
+    const config: ProviderConfig = { providerId: 'deepseek-proxy' };
     const request: ProviderRequest = {
       systemPrompt: 'secret system prompt',
       userMessage: 'secret user message',
@@ -644,12 +514,11 @@ describe('Security Boundary: Provider response isolation', () => {
       maxTokens: 4000,
     };
 
-    const response = await external.runCompletion(config, request);
+    // Proxy provider will fail in test (no auth), but should not leak input
+    const response = await proxy.runCompletion(config, request);
 
-    // Response is hardcoded static text
     expect(response.content).not.toContain('secret system prompt');
     expect(response.content).not.toContain('secret user message');
     expect(response.content).not.toContain('context-secret');
-    expect(response.content).toContain('not enabled');
   });
 });

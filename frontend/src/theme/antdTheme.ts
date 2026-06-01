@@ -13,43 +13,56 @@ import type { ThemeConfig } from 'antd';
 
 export const antdTheme: ThemeConfig = {
   token: {
-    // Brand
-    colorPrimary: '#1677ff',
+    // Brand - Designbyte Primary Blue
+    colorPrimary: '#2563eb',
 
     // Typography
     fontSize: 14,
     fontFamily: `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif`,
 
-    // Shape
-    borderRadius: 6,
-    borderRadiusSM: 4,
-    borderRadiusLG: 8,
+    // Shape - Designbyte radius
+    borderRadius: 8,
+    borderRadiusSM: 6,
+    borderRadiusLG: 12,
 
     // Spacing
     padding: 16,
     paddingSM: 12,
     paddingXS: 8,
 
-    // Borders
+    // Borders - Designbyte border color
+    colorBorder: '#e2e8f0',
+    colorBorderSecondary: '#f1f5f9',
     lineWidth: 1,
     lineType: 'solid' as const,
 
-    // Shadows
-    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02)',
+    // Shadows - Designbyte shadows
+    boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
 
-    // Semantic colors
-    colorSuccess: '#52c41a',
-    colorWarning: '#faad14',
-    colorError: '#ff4d4f',
-    colorInfo: '#1677ff',
+    // Background - Designbyte background
+    colorBgLayout: '#f8fafc',
+    colorBgContainer: '#ffffff',
+    colorBgElevated: '#ffffff',
+
+    // Text - Designbyte text colors
+    colorText: '#0f172a',
+    colorTextSecondary: '#64748b',
+    colorTextTertiary: '#94a3b8',
+    colorTextQuaternary: '#cbd5e1',
+
+    // Semantic colors - Designbyte status colors
+    colorSuccess: '#16a34a',
+    colorWarning: '#d97706',
+    colorError: '#dc2626',
+    colorInfo: '#2563eb',
   },
   components: {
     Card: {
       headerPadding: 12,
     },
     Table: {
-      headerBg: '#fafafa',
-      headerColor: 'rgba(0, 0, 0, 0.88)',
+      headerBg: '#f1f5f9',
+      headerColor: '#64748b',
       fontWeightStrong: 600,
       cellPaddingBlock: 6,
       cellPaddingInline: 12,
@@ -61,13 +74,22 @@ export const antdTheme: ThemeConfig = {
       titleFontSize: 13,
     },
     Tag: {
-      defaultBg: '#fafafa',
+      defaultBg: '#f1f5f9',
     },
     Alert: {
       paddingXS: 12,
     },
     Tabs: {
       cardPaddingSM: '6px 16px',
+    },
+    Button: {
+      borderRadius: 6,
+    },
+    Input: {
+      borderRadius: 6,
+    },
+    Select: {
+      borderRadius: 6,
     },
   },
 };

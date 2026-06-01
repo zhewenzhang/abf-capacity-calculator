@@ -63,9 +63,9 @@ function getMockProvider(): AiProviderAdapter {
   return provider;
 }
 
-function getExternalProvider(): AiProviderAdapter {
-  const provider = getProviderById('external-byok');
-  if (!provider) throw new Error('External provider not found');
+function getProxyProvider(): AiProviderAdapter {
+  const provider = getProviderById('deepseek-proxy');
+  if (!provider) throw new Error('Proxy provider not found');
   return provider;
 }
 
@@ -96,47 +96,32 @@ describe('AI Copilot Provider Red Team Tests', () => {
   });
 
   // -----------------------------------------------------------------------
-  // 2. External placeholder returns blocked
+  // 2. Proxy provider validates config successfully (no API key required)
   // -----------------------------------------------------------------------
-  it('2. External placeholder completion returns blocked confidence', async () => {
-    const external = getExternalProvider();
-    const config: ProviderConfig = { providerId: 'external-byok', apiKey: 'test-key' };
-    const request: ProviderRequest = {
-      systemPrompt: 'system',
-      userMessage: 'user',
-      context: {},
-      maxTokens: 4000,
-    };
-
-    const response = await external.runCompletion(config, request);
-    expect(response.confidence).toBe('blocked');
-    expect(response.isFallback).toBe(true);
+  it('2. Proxy provider validates config successfully without API key', () => {
+    const proxy = getProxyProvider();
+    const config: ProviderConfig = { providerId: 'deepseek-proxy' };
+    const result = proxy.validateConfig(config);
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
   });
 
   // -----------------------------------------------------------------------
-  // 3. Invalid provider config rejected
+  // 3. Proxy provider does not require API key
   // -----------------------------------------------------------------------
-  it('3. ExternalByokPlaceholder rejects any config via validateConfig', () => {
-    const external = getExternalProvider();
+  it('3. Proxy provider does not require API key', () => {
+    const proxy = getProxyProvider();
+    expect(proxy.capabilities.requiresApiKey).toBe(false);
 
-    // Config with API key
-    const resultWithKey = external.validateConfig({
-      providerId: 'external-byok',
-      apiKey: 'sk-test-12345',
+    // Config without API key is valid
+    const resultNoKey = proxy.validateConfig({
+      providerId: 'deepseek-proxy',
     });
-    expect(resultWithKey.valid).toBe(false);
-    expect(resultWithKey.errors.length).toBeGreaterThan(0);
+    expect(resultNoKey.valid).toBe(true);
 
-    // Config without API key
-    const resultNoKey = external.validateConfig({
-      providerId: 'external-byok',
-    });
-    expect(resultNoKey.valid).toBe(false);
-    expect(resultNoKey.errors.length).toBeGreaterThan(0);
-
-    // Empty config
-    const resultEmpty = external.validateConfig({ providerId: '' });
-    expect(resultEmpty.valid).toBe(false);
+    // Empty config is also valid
+    const resultEmpty = proxy.validateConfig({ providerId: '' });
+    expect(resultEmpty.valid).toBe(true);
   });
 
   // -----------------------------------------------------------------------

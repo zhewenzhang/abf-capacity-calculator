@@ -20,9 +20,9 @@ function getMockProvider(): AiProviderAdapter {
   return provider;
 }
 
-function getExternalProvider(): AiProviderAdapter {
-  const provider = getProviderById('external-byok');
-  if (!provider) throw new Error('External provider not found');
+function getProxyProvider(): AiProviderAdapter {
+  const provider = getProviderById('deepseek-proxy');
+  if (!provider) throw new Error('Proxy provider not found');
   return provider;
 }
 
@@ -137,50 +137,64 @@ describe('MockProvider', () => {
 });
 
 // ============================================================
-// ExternalByokPlaceholder
+// ProxyProvider (DeepSeek via Firebase Functions)
 // ============================================================
 
-describe('ExternalByokPlaceholder', () => {
-  it('validateConfig returns invalid', () => {
-    const external = getExternalProvider();
-    const result = external.validateConfig({
-      providerId: 'external-byok',
-      apiKey: 'test-key',
+describe('ProxyProvider', () => {
+  it('has correct providerId and displayName', () => {
+    const proxy = getProxyProvider();
+    expect(proxy.providerId).toBe('deepseek-proxy');
+    expect(proxy.displayName).toBe('DeepSeek AI (Managed)');
+  });
+
+  it('capabilities are correct', () => {
+    const proxy = getProxyProvider();
+    expect(proxy.capabilities).toEqual({
+      supportsStreaming: false,
+      supportsFunctionCalling: false,
+      maxTokens: 4000,
+      requiresApiKey: false,
     });
-    expect(result.valid).toBe(false);
-    expect(result.errors).toContain(
-      'External provider is not enabled in this build',
+  });
+
+  it('validateConfig returns valid (no API key required)', () => {
+    const proxy = getProxyProvider();
+    const result = proxy.validateConfig({ providerId: 'deepseek-proxy' });
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  it('buildRequest produces correct shape', () => {
+    const proxy = getProxyProvider();
+    const request = proxy.buildRequest(
+      { providerId: 'deepseek-proxy', maxTokens: 3000 },
+      'system prompt',
+      'user message',
+      { key: 'value' },
     );
+    expect(request.systemPrompt).toBe('system prompt');
+    expect(request.userMessage).toBe('user message');
+    expect(request.maxTokens).toBe(3000);
   });
 
-  it('buildRequest throws not implemented', () => {
-    const external = getExternalProvider();
-    expect(() =>
-      external.buildRequest(sampleConfig, 'sys', 'user', {}),
-    ).toThrow('Not implemented');
+  it('parseResponse handles valid response', () => {
+    const proxy = getProxyProvider();
+    const raw = { content: 'test content', tokensUsed: 100 };
+    const response = proxy.parseResponse(raw);
+    expect(response.providerId).toBe('deepseek-proxy');
+    expect(response.content).toBe('test content');
+    expect(response.confidence).toBe('high');
+    expect(response.tokensUsed).toBe(100);
+    expect(response.isFallback).toBe(false);
   });
 
-  it('parseResponse throws not implemented', () => {
-    const external = getExternalProvider();
-    expect(() => external.parseResponse({})).toThrow('Not implemented');
-  });
-
-  it('runCompletion returns blocked response', async () => {
-    const external = getExternalProvider();
-    const response = await external.runCompletion(sampleConfig, sampleRequest);
-    expect(response.providerId).toBe('external-byok');
+  it('parseResponse handles malformed input', () => {
+    const proxy = getProxyProvider();
+    const response = proxy.parseResponse('not an object');
+    expect(response.providerId).toBe('deepseek-proxy');
+    expect(response.content).toBe('Failed to parse AI response');
     expect(response.confidence).toBe('blocked');
     expect(response.isFallback).toBe(true);
-    expect(response.content).toContain('not enabled in this build');
-    expect(response.tokensUsed).toBe(0);
-  });
-
-  it('does not call fetch', async () => {
-    const external = getExternalProvider();
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    await external.runCompletion(sampleConfig, sampleRequest);
-    expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
   });
 });
 
@@ -189,9 +203,9 @@ describe('ExternalByokPlaceholder', () => {
 // ============================================================
 
 describe('Provider registry', () => {
-  it('getAvailableProviders returns 3 providers', () => {
+  it('getAvailableProviders returns 2 providers', () => {
     const providers = getAvailableProviders();
-    expect(providers).toHaveLength(3);
+    expect(providers).toHaveLength(2);
   });
 
   it('getProviderById returns correct provider for mock', () => {
@@ -201,14 +215,24 @@ describe('Provider registry', () => {
     expect(provider!.displayName).toBe('Mock Provider (Testing)');
   });
 
-  it('getProviderById returns correct provider for external-byok', () => {
-    const provider = getProviderById('external-byok');
+  it('getProviderById returns correct provider for deepseek-proxy', () => {
+    const provider = getProviderById('deepseek-proxy');
     expect(provider).not.toBeNull();
-    expect(provider!.providerId).toBe('external-byok');
+    expect(provider!.providerId).toBe('deepseek-proxy');
   });
 
   it('getProviderById returns null for unknown id', () => {
     const provider = getProviderById('unknown-provider');
+    expect(provider).toBeNull();
+  });
+
+  it('getProviderById returns null for removed external-byok', () => {
+    const provider = getProviderById('external-byok');
+    expect(provider).toBeNull();
+  });
+
+  it('getProviderById returns null for removed deepseek (BYOK)', () => {
+    const provider = getProviderById('deepseek');
     expect(provider).toBeNull();
   });
 
@@ -217,6 +241,13 @@ describe('Provider registry', () => {
     for (const provider of providers) {
       expect(PROVIDER_IDS).toContain(provider.providerId);
     }
+  });
+
+  it('PROVIDER_IDS contains mock and deepseek-proxy', () => {
+    expect(PROVIDER_IDS).toContain('mock');
+    expect(PROVIDER_IDS).toContain('deepseek-proxy');
+    expect(PROVIDER_IDS).not.toContain('external-byok');
+    expect(PROVIDER_IDS).not.toContain('deepseek');
   });
 });
 
@@ -246,5 +277,10 @@ describe('Security constraints', () => {
     });
     const responseStr = JSON.stringify(response);
     expect(responseStr).not.toContain('secret-key-12345');
+  });
+
+  it('proxy provider does not require API key', () => {
+    const proxy = getProxyProvider();
+    expect(proxy.capabilities.requiresApiKey).toBe(false);
   });
 });

@@ -205,9 +205,9 @@ describe('validateNoExternalAiCall', () => {
     expect(validateNoExternalAiCall(code)).toBe(false);
   });
 
-  it('returns false for DeepSeek API calls', () => {
+  it('returns true for DeepSeek API calls (now accessed via secure proxy)', () => {
     const code = `const endpoint = 'https://api.deepseek.com/v1/chat'`;
-    expect(validateNoExternalAiCall(code)).toBe(false);
+    expect(validateNoExternalAiCall(code)).toBe(true);
   });
 
   it('returns false for Cohere API calls', () => {
@@ -460,8 +460,8 @@ describe('Constants', () => {
     expect(AI_CONTEXT_SENSITIVE_KEYS.length).toBeGreaterThanOrEqual(10);
   });
 
-  it('FORBIDDEN_EXTERNAL_PATTERNS has at least 5 entries', () => {
-    expect(FORBIDDEN_EXTERNAL_PATTERNS.length).toBeGreaterThanOrEqual(5);
+  it('FORBIDDEN_EXTERNAL_PATTERNS has at least 4 entries', () => {
+    expect(FORBIDDEN_EXTERNAL_PATTERNS.length).toBeGreaterThanOrEqual(4);
   });
 
   it('all sensitive keys are non-empty strings', () => {

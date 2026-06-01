@@ -233,17 +233,16 @@ describe('AI Copilot Red Team / Safety Tests', () => {
   // -----------------------------------------------------------------------
   // 8. Forbidden patterns cover external AI services
   // -----------------------------------------------------------------------
-  it('8. FORBIDDEN_EXTERNAL_PATTERNS includes openai, anthropic, cohere, huggingface, googleapis patterns', () => {
+  it('8. FORBIDDEN_EXTERNAL_PATTERNS includes openai, anthropic, cohere, googleapis patterns', () => {
     const patternString = FORBIDDEN_EXTERNAL_PATTERNS.join(' ').toLowerCase();
 
     expect(patternString).toContain('openai');
     expect(patternString).toContain('anthropic');
     expect(patternString).toContain('cohere');
     expect(patternString).toContain('googleapis');
-    // Note: deepseek is included in the actual patterns as a substitute
-    // for huggingface. The key invariant is that major external AI
-    // service endpoints are blocked.
-    expect(FORBIDDEN_EXTERNAL_PATTERNS.length).toBeGreaterThanOrEqual(5);
+    // Note: deepseek is NOT in forbidden patterns because it's accessed
+    // via our secure Firebase Functions proxy, not directly from frontend.
+    expect(FORBIDDEN_EXTERNAL_PATTERNS.length).toBeGreaterThanOrEqual(4);
   });
 
   // -----------------------------------------------------------------------
