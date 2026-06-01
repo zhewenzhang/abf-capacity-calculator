@@ -47,7 +47,7 @@ const DailyOperationsWorkbench = lazy(() => import('./pages/DailyOperationsWorkb
 const { Sider, Content } = Layout;
 const { Title } = Typography;
 
-const APP_VERSION = 'v1.52.0';
+const APP_VERSION = 'v1.52.4';
 
 // --- Sidebar with i18n ---
 const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }> = ({ current, onMenuClick }) => {

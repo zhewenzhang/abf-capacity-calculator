@@ -1104,6 +1104,14 @@ export const zhTW: Record<string, string> = {
   'copilot.why.validationPassed': '驗證通過',
   'copilot.why.validationWarning': '驗證警告',
 
+  // v1.52.4 品質提示與驗證降噪
+  'copilot.qualityHint.title': '品質提示',
+  'copilot.qualityHint.missingSource': '部分建議缺少明確資料來源，請人工核對。',
+  'copilot.qualityHint.currencyComparison': '偵測到跨幣別比較，請確認是否已套用匯率。',
+  'copilot.qualityHint.humanConfirm': '建議人工確認後再採取行動',
+  'copilot.qualityHint.noAutoWrite': '此建議不會自動寫入系統',
+  'copilot.markdown.rendered': 'Markdown 回答',
+
   // 情境模擬
   'menu.scenario': '情境模擬',
   'scenario.title': '情境模擬',
