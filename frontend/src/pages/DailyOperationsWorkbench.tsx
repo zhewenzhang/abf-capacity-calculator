@@ -56,7 +56,7 @@ import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
 import type { ProjectScope, SKU, Forecast, CapacityPlan, ProjectParameters } from '../types';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 // ============================================================
 // Props
@@ -488,12 +488,6 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   // ---- Render ----
   return (
     <div className="db-page">
-      {/* Title — Designbyte Page Header */}
-      <div className="db-page-header">
-        <Title level={3} className="db-page-title">{t('workbench.title')}</Title>
-        <Text className="db-page-subtitle">{t('workbench.subtitle')}</Text>
-      </div>
-
       {/* Viewer read-only warning — Designbyte Alert */}
       {!writable && (
         <div className="db-alert db-alert--info" style={{ marginBottom: 16 }}>
@@ -508,36 +502,39 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
           <span className="db-card-title"><CalendarOutlined /> Pipeline Readiness</span>
         </div>
         <div className="db-card-body">
-          <Row gutter={[12, 12]}>
+          <div className="db-readiness-grid">
             {vm.stages.map((stage) => (
-              <Col xs={12} sm={8} md={6} lg={Math.floor(24 / vm.stages.length)} key={stage.id}>
-                <div
-                  className="db-kpi"
-                  style={{
-                    borderColor: statusColor(stage.status) === 'default' ? undefined :
-                      statusColor(stage.status) === 'green' ? 'var(--db-success)' :
-                      statusColor(stage.status) === 'orange' ? 'var(--db-warning)' : 'var(--db-error)',
-                    cursor: stage.cta ? 'pointer' : 'default',
-                  }}
-                  onClick={() => {
-                    if (stage.cta && stage.status !== 'ready') {
-                      navigate(stage.cta);
-                    }
-                  }}
-                >
-                  <Space size={8} style={{ marginBottom: 4 }}>
+              <div
+                className="db-readiness-card"
+                key={stage.id}
+                style={{
+                  borderColor: statusColor(stage.status) === 'default' ? undefined :
+                    statusColor(stage.status) === 'green' ? 'var(--db-success)' :
+                    statusColor(stage.status) === 'orange' ? 'var(--db-warning)' : 'var(--db-error)',
+                  cursor: stage.cta ? 'pointer' : 'default',
+                }}
+                onClick={() => {
+                  if (stage.cta && stage.status !== 'ready') {
+                    navigate(stage.cta);
+                  }
+                }}
+              >
+                <div className="db-readiness-card-top">
+                  <Space size={8}>
                     {STAGE_ICONS[stage.id] || <InfoCircleOutlined />}
                     {statusIcon(stage.status)}
                   </Space>
-                  <Text strong style={{ fontSize: 12, display: 'block' }}>{t(stage.label)}</Text>
-                  <Tag color={statusColor(stage.status)} style={{ fontSize: 11, marginTop: 4 }}>
+                  <Tag color={statusColor(stage.status)} style={{ fontSize: 11 }}>
                     {t(statusLabelKey(stage.status))}
                   </Tag>
-                  {stage.cta && stage.status !== 'ready' && (
+                </div>
+                <div className="db-readiness-title">{t(stage.label)}</div>
+                <div className="db-readiness-footer">
+                  {stage.cta && stage.status !== 'ready' ? (
                     <Button
                       type="link"
                       size="small"
-                      style={{ padding: 0, fontSize: 11, marginTop: 4 }}
+                      style={{ padding: 0, fontSize: 11 }}
                       onClick={(e) => {
                         e.stopPropagation();
                         if (stage.cta) navigate(stage.cta);
@@ -548,11 +545,13 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                         : t('workbench.cta.view')}{' '}
                       <RightOutlined />
                     </Button>
+                  ) : (
+                    <span />
                   )}
                 </div>
-              </Col>
+              </div>
             ))}
-          </Row>
+          </div>
         </div>
       </div>
 

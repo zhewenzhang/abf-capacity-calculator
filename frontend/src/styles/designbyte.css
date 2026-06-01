@@ -18,6 +18,78 @@
  */
 
 /* ============================================================
+   Sidebar Brand
+   ============================================================ */
+
+.db-sidebar-brand {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.db-sidebar-brand-title {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: #ffffff;
+  letter-spacing: 0;
+}
+
+.db-sidebar-brand-subtitle {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.72);
+  white-space: normal;
+}
+
+/* ============================================================
+   Pipeline Readiness Grid
+   ============================================================ */
+
+.db-readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.db-readiness-card {
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 18px;
+  border: 1px solid var(--db-border);
+  border-radius: var(--db-radius-lg);
+  background: var(--db-bg-card);
+  box-shadow: var(--db-shadow-xs);
+  transition: box-shadow var(--db-transition-fast);
+}
+
+.db-readiness-card:hover {
+  box-shadow: var(--db-shadow-sm);
+}
+
+.db-readiness-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.db-readiness-title {
+  margin-top: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--db-text-primary);
+}
+
+.db-readiness-footer {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+/* ============================================================
    CSS Custom Properties — Designbyte Tokens
    ============================================================ */
 

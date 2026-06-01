@@ -47,7 +47,7 @@ const DailyOperationsWorkbench = lazy(() => import('./pages/DailyOperationsWorkb
 const { Sider, Content } = Layout;
 const { Title } = Typography;
 
-const APP_VERSION = 'v1.53.0';
+const APP_VERSION = 'v1.53.3';
 
 // --- Sidebar with i18n ---
 const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }> = ({ current, onMenuClick }) => {
@@ -84,10 +84,9 @@ const AppSider: React.FC<{ current: string; onMenuClick: (key: string) => void }
         flexDirection: 'column',
       }}
     >
-      <div style={{ padding: '16px 12px', textAlign: 'center' }}>
-        <Title level={4} style={{ color: '#fff', margin: 0, fontSize: 18 }}>
-          {t('app.abbrev')}
-        </Title>
+      <div className="db-sidebar-brand">
+        <div className="db-sidebar-brand-title">{t('app.abbrev')}</div>
+        <div className="db-sidebar-brand-subtitle">{t('app.title')}</div>
       </div>
       <div style={{ flex: 1, overflowY: 'auto' }}>
         <Menu
