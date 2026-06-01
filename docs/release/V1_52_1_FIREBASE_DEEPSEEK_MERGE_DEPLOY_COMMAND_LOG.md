@@ -380,7 +380,12 @@ git push origin main
 
 ### 结果
 
-（执行中...）
+```
+[main ed917c6] docs: record v1.52.1 firebase deepseek deploy log
+ 1 file changed, 455 insertions(+)
+To https://github.com/zhewenzhang/abf-capacity-calculator.git
+   b652df1..ed917c6  main -> main
+```
 
 ---
 
@@ -394,7 +399,43 @@ git status --short
 
 ### 结果
 
-（待执行）
+```
+?? functions/lib/
+?? functions/package-lock.json
+```
+
+---
+
+## v1.52.2 — Functions Repo Hygiene Hotfix
+
+### 发布目标
+
+清理 v1.52.1 部署后遗留的构建产物，更新 command log 明确 Functions 部署状态。
+
+### 变更内容
+
+1. `functions/lib/` — 删除构建产物，加入 `.gitignore`
+2. `functions/package-lock.json` — 提交到仓库（由 `npm install` 自动生成，应纳入版本管理）
+3. `.gitignore` — 添加 `functions/lib/` 规则
+4. Command log — 补充 Functions blocked 状态和 next action
+
+### 红线检查
+
+- ✅ 未修改 `firestore.rules`
+- ✅ 未修改 `frontend/src/core/calculationEngine.ts`
+- ✅ 未修改 `frontend/src/` 任何文件
+- ✅ 未提交真实 API key
+- ✅ 未执行 deploy
+
+### 命令
+
+```powershell
+rm -rf functions/lib/
+# .gitignore 添加 functions/lib/
+git add .gitignore functions/package-lock.json docs/release/V1_52_1_FIREBASE_DEEPSEEK_MERGE_DEPLOY_COMMAND_LOG.md
+git commit -m "chore: clean functions deploy artifacts after v1.52.1"
+git push origin main
+```
 
 ---
 
@@ -443,13 +484,20 @@ git status --short
 https://abf-capacity-calculator.web.app
 
 ### 是否需要 hotfix
+- v1.52.2 hygiene hotfix 已执行（清理构建产物、更新 command log）
 - Functions 部署需要先升级 Firebase 项目到 Blaze 计划
-- 升级后需重新执行 `firebase functions:secrets:set DEEPSEEK_API_KEY` 和 `firebase deploy --only functions`
+- 升级后需执行：`firebase functions:secrets:set DEEPSEEK_API_KEY` → `firebase deploy --only functions`
 
 ### 剩余风险
-1. **Functions 未部署：** AI Chat 代理功能不可用，前端 copilot 页面可加载但无法进行 AI 问答
-2. **Blaze 计划升级：** 需项目管理员在 Firebase Console 升级到 Blaze 计划
+1. **Functions blocked by Blaze plan：** AI proxy 不可用，DeepSeek 问答功能无法使用
+2. **DeepSeek proxy unavailable：** Secret + Functions deploy 前，前端 copilot 页面可加载但无 AI 回答
 3. **Flaky test：** `DailyOperationsWorkbench.test.tsx` 偶发 5000ms timeout，与本次变更无关，不阻塞发布
 
+### Next Action
+1. 升级 Firebase 项目到 Blaze 计划
+2. `firebase functions:secrets:set DEEPSEEK_API_KEY`（不写入源码/日志）
+3. `firebase deploy --only functions`
+4. Post-deploy canary 验证 AI 问答功能
+
 ### 工作区是否干净
-⚠️ 部分干净。`functions/lib/` 和 `functions/package-lock.json` 为构建产物（未跟踪），命令日志待提交。
+✅ 干净。`functions/lib/` 已删除并加入 `.gitignore`，`functions/package-lock.json` 已提交，命令日志已提交。

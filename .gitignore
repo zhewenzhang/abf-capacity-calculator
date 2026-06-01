@@ -13,3 +13,4 @@ frontend/code_trans_keys*.txt
 .claude/MIGRATION_PLAN.md
 .claude/settings.json
 PROJECT_ARCHIVE.md
+functions/lib/
