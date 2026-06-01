@@ -195,11 +195,11 @@ const CopilotChat: React.FC<Props> = ({ context }) => {
   );
 
   return (
-    <div className="db-chat" style={{ height: '100%' }}>
+    <div className="twk-chat" style={{ height: '100%' }}>
       {/* 頂部欄 — Designbyte style */}
-      <div className="db-chat-header">
+      <div className="twk-chat-header">
         <Space>
-          <RobotOutlined style={{ fontSize: 24, color: 'var(--db-primary)' }} />
+          <RobotOutlined style={{ fontSize: 24, color: 'var(--twk-text)' }} />
           <Title level={5} style={{ margin: 0 }}>
             {currentLang === 'zh-TW' ? 'AI 資料助手' : 'AI Data Copilot'}
           </Title>
@@ -233,34 +233,34 @@ const CopilotChat: React.FC<Props> = ({ context }) => {
       </div>
 
       {/* 消息區域 — Designbyte style */}
-      <div className="db-chat-messages">
+      <div className="twk-chat-messages">
         {/* 空狀態 */}
         {history.length === 0 && (
-          <div className="db-empty" style={{ minHeight: 400 }}>
-            <RobotOutlined className="db-empty-icon" />
-            <Title level={4} className="db-empty-title">
+          <div className="twk-empty" style={{ minHeight: 400 }}>
+            <RobotOutlined className="twk-empty-icon" />
+            <Title level={4} className="twk-empty-title">
               {currentLang === 'zh-TW' ? '有什麼可以幫您的嗎？' : 'How can I help you today?'}
             </Title>
-            <Text className="db-empty-description">
+            <Text className="twk-empty-description">
               {currentLang === 'zh-TW'
                 ? '詢問您的產能資料，或嘗試下方的快捷操作。'
                 : 'Ask about your capacity data, or try a quick action below.'}
             </Text>
             <div style={{ marginTop: 24, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
               <span
-                className="db-pill"
+                className="twk-pill"
                 onClick={() => handleQuickSelect('dataProblems')}
               >
                 <ThunderboltOutlined /> {currentLang === 'zh-TW' ? '資料問題' : 'Data Problems'}
               </span>
               <span
-                className="db-pill"
+                className="twk-pill"
                 onClick={() => handleQuickSelect('capacityRisk')}
               >
                 <ThunderboltOutlined /> {currentLang === 'zh-TW' ? '產能風險' : 'Capacity Risk'}
               </span>
               <span
-                className="db-pill"
+                className="twk-pill"
                 onClick={() => handleQuickSelect('bpGap')}
               >
                 <ThunderboltOutlined /> {currentLang === 'zh-TW' ? 'BP 差距' : 'BP Gap'}
@@ -271,7 +271,7 @@ const CopilotChat: React.FC<Props> = ({ context }) => {
 
         {/* 消息列表 */}
         {history.map((result, idx) => (
-          <div key={idx} className="db-chat-bubble">
+          <div key={idx} className="twk-chat-bubble">
             <CopilotMessage result={result} showFixes={!isViewer} />
             {/* Fallback CTA */}
             {(result.confidence === 'blocked' || result.confidence === 'low') && (
@@ -302,14 +302,14 @@ const CopilotChat: React.FC<Props> = ({ context }) => {
       </div>
 
       {/* 底部區域 — Designbyte style */}
-      <div className="db-chat-input-area">
+      <div className="twk-chat-input-area">
         {/* 快捷按鈕 */}
         <div style={{ marginBottom: 12 }}>
           <CopilotQuickButtons onSelect={handleQuickSelect} />
         </div>
 
         {/* 輸入框 */}
-        <div className="db-chat-input">
+        <div className="twk-chat-input">
           <TextArea
             value={input}
             onChange={(e) => setInput(e.target.value)}

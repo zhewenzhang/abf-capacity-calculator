@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, Typography, Space, Spin } from 'antd';
+import { Alert, Spin } from 'antd';
 import { RobotOutlined } from '@ant-design/icons';
 import { useI18n } from '../i18n';
 import type { ProjectScope } from '../types';
@@ -13,7 +13,6 @@ import { buildAiCopilotContext, type AiCopilotContext } from '../core/aiCopilotC
 import CopilotChat from '../components/copilot/CopilotChat';
 import { DEFAULT_CURRENCY_SETTINGS } from '../core/currency';
 
-const { Title } = Typography;
 
 interface AiCopilotPageProps {
   scope: ProjectScope;
@@ -89,11 +88,11 @@ const AiCopilotPage: React.FC<AiCopilotPageProps> = ({ scope }) => {
   }
 
   return (
-    <div style={{ maxWidth: 800, margin: '0 auto' }}>
-      <Space style={{ marginBottom: 16 }}>
-        <RobotOutlined style={{ fontSize: 24 }} />
-        <Title level={4} style={{ margin: 0 }}>{t('copilot.title')}</Title>
-      </Space>
+    <div className="twk-page" style={{ maxWidth: 800, margin: '0 auto' }}>
+      <div className="twk-page-header">
+        <h1 className="twk-page-title"><RobotOutlined style={{ marginRight: 8 }} />{t('copilot.title')}</h1>
+        <p className="twk-page-subtitle">{t('copilot.description')}</p>
+      </div>
       <CopilotChat context={context} />
     </div>
   );

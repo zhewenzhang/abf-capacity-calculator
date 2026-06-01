@@ -211,22 +211,22 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
   }
 
   return (
-    <div className="db-page">
+    <div className="twk-page">
       {/* Page Header — Designbyte */}
-      <div className="db-page-header">
-        <h2 className="db-page-title">{t('scenario.title')}</h2>
-        <p className="db-page-subtitle">{t('scenario.description')}</p>
+      <div className="twk-page-header">
+        <h2 className="twk-page-title">{t('scenario.title')}</h2>
+        <p className="twk-page-subtitle">{t('scenario.description')}</p>
       </div>
 
       {/* Info banner — Designbyte Alert */}
-      <div className="db-alert db-alert--info" style={{ marginBottom: 16 }}>
+      <div className="twk-alert twk-alert--info" style={{ marginBottom: 16 }}>
         <InfoCircleOutlined />
         <span>{t('scenario.infoBanner')}</span>
       </div>
 
       {/* Viewer guard — Designbyte Alert */}
       {!writable && (
-        <div className="db-alert db-alert--info" style={{ marginBottom: 16 }}>
+        <div className="twk-alert twk-alert--info" style={{ marginBottom: 16 }}>
           <InfoCircleOutlined />
           <span>{t('scenario.viewerReadOnly')}</span>
         </div>
@@ -234,7 +234,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
 
       {/* DQ caveat — Designbyte Alert */}
       {showDqWarning && (
-        <div className="db-alert db-alert--warning" style={{ marginBottom: 16 }}>
+        <div className="twk-alert twk-alert--warning" style={{ marginBottom: 16 }}>
           <WarningOutlined />
           <span>{t('scenario.dqWarning')}</span>
           <Button
@@ -250,15 +250,15 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
 
       {/* No data guard — Designbyte Alert */}
       {!hasData && (
-        <div className="db-alert db-alert--warning" style={{ marginBottom: 16 }}>
+        <div className="twk-alert twk-alert--warning" style={{ marginBottom: 16 }}>
           <WarningOutlined />
           <span>{t('scenario.noData')}</span>
         </div>
       )}
 
       {/* Action bar — Designbyte Toolbar */}
-      <div className="db-toolbar" style={{ marginBottom: 16 }}>
-        <div className="db-toolbar-group">
+      <div className="twk-toolbar" style={{ marginBottom: 16 }}>
+        <div className="twk-toolbar-group">
           {!scenarioActive ? (
             <Button
               type="primary"
@@ -281,9 +281,9 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
 
       {/* Multiplier panel — Designbyte Card */}
       {scenarioActive && (
-        <div className="db-card" style={{ marginBottom: 16 }}>
-          <div className="db-card-header">
-            <span className="db-card-title">
+        <div className="twk-card" style={{ marginBottom: 16 }}>
+          <div className="twk-card-header">
+            <span className="twk-card-title">
               <ExperimentOutlined /> {t('scenario.title')}
             </span>
             <Button
@@ -295,7 +295,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
               {t('scenario.resetAll')}
             </Button>
           </div>
-          <div className="db-card-body">
+          <div className="twk-card-body">
           <Row gutter={[24, 16]}>
             {MULTIPLIER_FIELDS.map(({ key, i18nLabel }) => (
               <Col xs={24} sm={12} key={key}>
@@ -350,11 +350,11 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
 
       {/* Comparison dashboard — Designbyte Card */}
       {comparison && (
-        <div className="db-card" style={{ marginBottom: 16 }}>
-          <div className="db-card-header">
-            <span className="db-card-title">{t('scenario.comparison.title')}</span>
+        <div className="twk-card" style={{ marginBottom: 16 }}>
+          <div className="twk-card-header">
+            <span className="twk-card-title">{t('scenario.comparison.title')}</span>
           </div>
-          <div className="db-card-body">
+          <div className="twk-card-body">
           <Row gutter={[16, 16]}>
             {/* Total Revenue */}
             <Col xs={24} sm={12} md={8} lg={6}>

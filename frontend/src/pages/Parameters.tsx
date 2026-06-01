@@ -347,7 +347,7 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
     .map(([year, rate]) => ({ year, rate }));
 
   return (
-    <div className="abf-page">
+    <div className="twk-page">
       {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       <WorkspaceSettingsPanel />
       {!writable && (

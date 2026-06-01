@@ -1,5 +1,5 @@
 /**
- * Ant Design Theme Configuration — v1.53.0
+ * Ant Design Theme Configuration — v1.54.0 (deprecated, see tweakcnAntdTheme.ts)
  *
  * Comprehensive theme tokens inspired by tweakcn/designbyte.
  * Maps shadcn/ui design language to AntD component tokens.

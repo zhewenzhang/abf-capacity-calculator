@@ -87,13 +87,13 @@ const STAGE_ICONS: Record<string, React.ReactNode> = {
 function statusIcon(status: WorkflowStageStatus): React.ReactNode {
   switch (status) {
     case 'ready':
-      return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
+      return <CheckCircleOutlined style={{ color: '#22c55e' }} />;
     case 'warning':
-      return <WarningOutlined style={{ color: '#faad14' }} />;
+      return <WarningOutlined style={{ color: '#f59e0b' }} />;
     case 'blocked':
-      return <CloseCircleOutlined style={{ color: '#ff4d4f' }} />;
+      return <CloseCircleOutlined style={{ color: '#ef4444' }} />;
     case 'notStarted':
-      return <InfoCircleOutlined style={{ color: '#d9d9d9' }} />;
+      return <InfoCircleOutlined style={{ color: '#d4d4d8' }} />;
   }
 }
 
@@ -395,7 +395,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   // ---- Error state ----
   if (error) {
     return (
-      <div className="abf-page">
+      <div className="twk-page">
         <Card>
           <Text type="danger">{error}</Text>
         </Card>
@@ -406,7 +406,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   // ---- Empty state ----
   if (!vm || !hasData) {
     return (
-      <div className="abf-page">
+      <div className="twk-page">
         <EmptyState
           title={t('workbench.title')}
           description={t('workbench.subtitle')}
@@ -487,30 +487,30 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
 
   // ---- Render ----
   return (
-    <div className="db-page">
+    <div className="twk-page">
       {/* Viewer read-only warning — Designbyte Alert */}
       {!writable && (
-        <div className="db-alert db-alert--info" style={{ marginBottom: 16 }}>
+        <div className="twk-alert twk-alert--info" style={{ marginBottom: 16 }}>
           <InfoCircleOutlined />
           <span>{t('common.viewerReadOnly')}</span>
         </div>
       )}
 
       {/* SECTION 1: Workflow Stage Stepper — Designbyte db-card */}
-      <div className="db-card" style={{ marginBottom: 16 }}>
-        <div className="db-card-header">
-          <span className="db-card-title"><CalendarOutlined /> Pipeline Readiness</span>
+      <div className="twk-card" style={{ marginBottom: 16 }}>
+        <div className="twk-card-header">
+          <span className="twk-card-title"><CalendarOutlined /> Pipeline Readiness</span>
         </div>
-        <div className="db-card-body">
-          <div className="db-readiness-grid">
+        <div className="twk-card-body">
+          <div className="twk-readiness-grid">
             {vm.stages.map((stage) => (
               <div
-                className="db-readiness-card"
+                className="twk-readiness-card"
                 key={stage.id}
                 style={{
                   borderColor: statusColor(stage.status) === 'default' ? undefined :
-                    statusColor(stage.status) === 'green' ? 'var(--db-success)' :
-                    statusColor(stage.status) === 'orange' ? 'var(--db-warning)' : 'var(--db-error)',
+                    statusColor(stage.status) === 'green' ? 'var(--twk-success)' :
+                    statusColor(stage.status) === 'orange' ? 'var(--twk-warning)' : 'var(--twk-error)',
                   cursor: stage.cta ? 'pointer' : 'default',
                 }}
                 onClick={() => {
@@ -519,7 +519,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                   }
                 }}
               >
-                <div className="db-readiness-card-top">
+                <div className="twk-readiness-card-top">
                   <Space size={8}>
                     {STAGE_ICONS[stage.id] || <InfoCircleOutlined />}
                     {statusIcon(stage.status)}
@@ -528,8 +528,8 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                     {t(statusLabelKey(stage.status))}
                   </Tag>
                 </div>
-                <div className="db-readiness-title">{t(stage.label)}</div>
-                <div className="db-readiness-footer">
+                <div className="twk-readiness-title">{t(stage.label)}</div>
+                <div className="twk-readiness-footer">
                   {stage.cta && stage.status !== 'ready' ? (
                     <Button
                       type="link"
@@ -556,16 +556,16 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
       </div>
 
       {/* SECTION 2: Abnormality Summary — Designbyte db-card */}
-      <div className="db-card" style={{ marginBottom: 16 }}>
-        <div className="db-card-header">
-          <span className="db-card-title"><WarningOutlined /> {t('workbench.abnormality.title')}</span>
+      <div className="twk-card" style={{ marginBottom: 16 }}>
+        <div className="twk-card-header">
+          <span className="twk-card-title"><WarningOutlined /> {t('workbench.abnormality.title')}</span>
         </div>
-        <div className="db-card-body">
+        <div className="twk-card-body">
           {domainKeys.length === 0 ? (
-            <div className="db-empty">
-              <CheckCircleOutlined className="db-empty-icon" style={{ color: 'var(--db-success)' }} />
-              <div className="db-empty-title">{t('workbench.status.ready')}</div>
-              <div className="db-empty-description">{t('workbench.subtitle')}</div>
+            <div className="twk-empty">
+              <CheckCircleOutlined className="twk-empty-icon" style={{ color: 'var(--twk-success)' }} />
+              <div className="twk-empty-title">{t('workbench.status.ready')}</div>
+              <div className="twk-empty-description">{t('workbench.subtitle')}</div>
             </div>
           ) : (
             <Row gutter={[12, 12]}>
@@ -575,14 +575,14 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                 const warnCount = insights.filter(i => i.severity === 'warning').length;
                 return (
                   <Col xs={24} sm={12} key={domain}>
-                    <div className="db-card" style={{ marginBottom: 0 }}>
-                      <div className="db-card-body">
+                    <div className="twk-card" style={{ marginBottom: 0 }}>
+                      <div className="twk-card-body">
                         <Space direction="vertical" size={4} style={{ width: '100%' }}>
                           <Space>
                             {DOMAIN_ICONS[domain] || <InfoCircleOutlined />}
                             <Text strong>{t(domainLabelKey(domain))}</Text>
-                            {errorCount > 0 && <Badge count={errorCount} style={{ backgroundColor: 'var(--db-error)' }} />}
-                            {warnCount > 0 && <Badge count={warnCount} style={{ backgroundColor: 'var(--db-warning)' }} />}
+                            {errorCount > 0 && <Badge count={errorCount} style={{ backgroundColor: 'var(--twk-error)' }} />}
+                            {warnCount > 0 && <Badge count={warnCount} style={{ backgroundColor: 'var(--twk-warning)' }} />}
                           </Space>
                           {insights.slice(0, 3).map((insight, i) => (
                             <Space key={i} size={8} style={{ width: '100%' }}>
@@ -612,11 +612,11 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
 
       {/* SECTION 2B: Abnormality Intelligence Panel (v1.43) — Designbyte db-card */}
       {rankedOutput && rankedOutput.ranked.length > 0 && (
-        <div className="db-card" style={{ marginBottom: 16 }}>
-          <div className="db-card-header">
-            <span className="db-card-title"><AlertOutlined /> {t('workbench.abnormalityIntelligence.title')}</span>
+        <div className="twk-card" style={{ marginBottom: 16 }}>
+          <div className="twk-card-header">
+            <span className="twk-card-title"><AlertOutlined /> {t('workbench.abnormalityIntelligence.title')}</span>
           </div>
-          <div className="db-card-body">
+          <div className="twk-card-body">
           {/* Must Act Today */}
           {rankedOutput.mustActToday.length > 0 && (
             <div style={{ marginBottom: 16 }}>
@@ -720,19 +720,19 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
         </div>
       )}
 
-      {/* SECTION 3: Look-Ahead Focus Panel — Designbyte db-card + db-table-wrapper */}
-      <div className="db-card" style={{ marginBottom: 16 }}>
-        <div className="db-card-header">
-          <span className="db-card-title"><BarChartOutlined /> {t('workbench.lookahead.title')}</span>
+      {/* SECTION 3: Look-Ahead Focus Panel — Designbyte db-card + twk-table-wrapper */}
+      <div className="twk-card" style={{ marginBottom: 16 }}>
+        <div className="twk-card-header">
+          <span className="twk-card-title"><BarChartOutlined /> {t('workbench.lookahead.title')}</span>
         </div>
-        <div className="db-card-body">
+        <div className="twk-card-body">
           {vm.lookAhead.length === 0 ? (
-            <div className="db-empty" style={{ padding: '24px 0' }}>
-              <CheckCircleOutlined className="db-empty-icon" style={{ color: 'var(--db-success)' }} />
-              <div className="db-empty-title">{t('workbench.status.ready')}</div>
+            <div className="twk-empty" style={{ padding: '24px 0' }}>
+              <CheckCircleOutlined className="twk-empty-icon" style={{ color: 'var(--twk-success)' }} />
+              <div className="twk-empty-title">{t('workbench.status.ready')}</div>
             </div>
           ) : (
-            <div className="db-table-wrapper">
+            <div className="twk-table-wrapper">
               <Table
                 columns={lookAheadColumns}
                 dataSource={vm.lookAhead.map((item, idx) => ({ ...item, key: idx }))}
@@ -745,19 +745,19 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
         </div>
       </div>
 
-      {/* SECTION 4: Revenue / BP Summary — Designbyte db-kpi */}
+      {/* SECTION 4: Revenue / BP Summary — Designbyte twk-kpi */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={12}>
-          <div className="db-kpi">
-            <div className="db-kpi-label">{t('workbench.revenue.current')}</div>
-            <div className="db-kpi-value" style={{ color: revenueBpStatusColor(vm.revenueBp.status) }}>
+          <div className="twk-kpi">
+            <div className="twk-kpi-label">{t('workbench.revenue.current')}</div>
+            <div className="twk-kpi-value" style={{ color: revenueBpStatusColor(vm.revenueBp.status) }}>
               {vm.revenueBp.currentRevenue?.toFixed(1) ?? '-'} <span style={{ fontSize: 14, fontWeight: 400 }}>M TWD</span>
             </div>
           </div>
         </Col>
         <Col xs={24} sm={12}>
-          <div className="db-kpi">
-            <div className="db-kpi-label">{t('workbench.revenue.title')}</div>
+          <div className="twk-kpi">
+            <div className="twk-kpi-label">{t('workbench.revenue.title')}</div>
             <div style={{ marginTop: 8 }}>
               <Space>
                 <Text strong>{t('workbench.revenue.target')}:</Text>
@@ -809,11 +809,11 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
       </Row>
 
       {/* SECTION 5: Scenario Shortcuts — Designbyte db-card + db-toolbar */}
-      <div className="db-card" style={{ marginBottom: 16 }}>
-        <div className="db-card-header">
-          <span className="db-card-title"><ExperimentOutlined /> {t('workbench.scenario.title')}</span>
+      <div className="twk-card" style={{ marginBottom: 16 }}>
+        <div className="twk-card-header">
+          <span className="twk-card-title"><ExperimentOutlined /> {t('workbench.scenario.title')}</span>
         </div>
-        <div className="db-card-body">
+        <div className="twk-card-body">
           <Space wrap>
           {vm.scenarioPresets.map(preset => (
             <Button
@@ -838,11 +838,11 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
       </div>
 
       {/* SECTION 5B: Scenario v2 Shortcuts (v1.44) — Designbyte db-card */}
-      <div className="db-card" style={{ marginBottom: 16 }}>
-        <div className="db-card-header">
-          <span className="db-card-title"><ThunderboltOutlined /> {t('workbench.scenario.v2.title')}</span>
+      <div className="twk-card" style={{ marginBottom: 16 }}>
+        <div className="twk-card-header">
+          <span className="twk-card-title"><ThunderboltOutlined /> {t('workbench.scenario.v2.title')}</span>
         </div>
-        <div className="db-card-body">
+        <div className="twk-card-body">
         <Space wrap>
           <Button
             icon={<ExperimentOutlined />}
@@ -905,11 +905,11 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
       </div>
 
       {/* SECTION 5C: Management Report (v1.45) — Designbyte db-card */}
-      <div className="db-card" style={{ marginBottom: 16 }}>
-        <div className="db-card-header">
-          <span className="db-card-title"><FileTextOutlined /> {t('workbench.report.title')}</span>
+      <div className="twk-card" style={{ marginBottom: 16 }}>
+        <div className="twk-card-header">
+          <span className="twk-card-title"><FileTextOutlined /> {t('workbench.report.title')}</span>
         </div>
-        <div className="db-card-body">
+        <div className="twk-card-body">
         <Space wrap style={{ marginBottom: 12 }}>
           <Button
             icon={<FileTextOutlined />}
@@ -994,11 +994,11 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
       </div>
 
       {/* SECTION 6: Copilot Quick Actions — Designbyte db-card */}
-      <div className="db-card">
-        <div className="db-card-header">
-          <span className="db-card-title"><RobotOutlined /> {t('workbench.copilot.title')}</span>
+      <div className="twk-card">
+        <div className="twk-card-header">
+          <span className="twk-card-title"><RobotOutlined /> {t('workbench.copilot.title')}</span>
         </div>
-        <div className="db-card-body">
+        <div className="twk-card-body">
           <Space wrap>
           <Button
             icon={<RobotOutlined />}

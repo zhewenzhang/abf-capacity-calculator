@@ -790,15 +790,15 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
   }
 
   return (
-    <div className="db-page">
+    <div className="twk-page">
       {/* Page Header — Designbyte */}
-      <div className="db-page-header">
-        <h2 className="db-page-title">{t('results.title')}</h2>
-        <p className="db-page-subtitle">{t('results.description')}</p>
+      <div className="twk-page-header">
+        <h2 className="twk-page-title">{t('results.title')}</h2>
+        <p className="twk-page-subtitle">{t('results.description')}</p>
       </div>
 
       {error && (
-        <div className="db-alert db-alert--error" style={{ marginBottom: 16 }}>
+        <div className="twk-alert twk-alert--error" style={{ marginBottom: 16 }}>
           <WarningOutlined />
           <span>{error}</span>
         </div>
@@ -808,29 +808,29 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
           {/* Summary KPIs — Designbyte KPI Cards */}
           <Row gutter={16} style={{ marginBottom: 16 }}>
             <Col xs={24} sm={12} md={6}>
-              <div className="db-kpi">
-                <div className="db-kpi-label">{t('results.totalRevenue')}</div>
-                <div className="db-kpi-value">
+              <div className="twk-kpi">
+                <div className="twk-kpi-label">{t('results.totalRevenue')}</div>
+                <div className="twk-kpi-value">
                   {model.totalRevenue?.toFixed(currencySettings.displayCurrency === 'USD' ? 2 : 0) ?? '-'}
                 </div>
               </div>
             </Col>
             <Col xs={24} sm={12} md={6}>
-              <div className="db-kpi">
-                <div className="db-kpi-label">{t('results.totalForecastPcs')}</div>
-                <div className="db-kpi-value">{model.totalForecastPcs?.toLocaleString() ?? '-'}</div>
+              <div className="twk-kpi">
+                <div className="twk-kpi-label">{t('results.totalForecastPcs')}</div>
+                <div className="twk-kpi-value">{model.totalForecastPcs?.toLocaleString() ?? '-'}</div>
               </div>
             </Col>
             <Col xs={24} sm={12} md={6}>
-              <div className="db-kpi">
-                <div className="db-kpi-label">{t('results.calculationRows')}</div>
-                <div className="db-kpi-value">{model.skuResults.length}</div>
+              <div className="twk-kpi">
+                <div className="twk-kpi-label">{t('results.calculationRows')}</div>
+                <div className="twk-kpi-value">{model.skuResults.length}</div>
               </div>
             </Col>
             <Col xs={24} sm={12} md={6}>
-              <div className="db-kpi">
-                <div className="db-kpi-label">{t('results.shortageMonthCount')}</div>
-                <div className="db-kpi-value" style={{ color: model.shortageMonthCount > 0 ? 'var(--db-error)' : 'var(--db-success)' }}>
+              <div className="twk-kpi">
+                <div className="twk-kpi-label">{t('results.shortageMonthCount')}</div>
+                <div className="twk-kpi-value" style={{ color: model.shortageMonthCount > 0 ? 'var(--twk-error)' : 'var(--twk-success)' }}>
                   {model.shortageMonthCount}
                 </div>
               </div>
@@ -838,8 +838,8 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
           </Row>
 
           {/* View selector + AI Copilot button — Designbyte Toolbar */}
-          <div className="db-toolbar" style={{ marginBottom: 16 }}>
-            <div className="db-toolbar-group">
+          <div className="twk-toolbar" style={{ marginBottom: 16 }}>
+            <div className="twk-toolbar-group">
               <Segmented
                 value={view}
                 onChange={(v) => setView(v as ResultsView)}
@@ -853,7 +853,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
                 ]}
               />
             </div>
-            <div className="db-toolbar-group">
+            <div className="twk-toolbar-group">
               {copilotContext && (
                 <Button
                   icon={<RobotOutlined />}
@@ -885,11 +885,11 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
           {view === 'risk' && riskBrief && analysisPayload && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Executive Summary — Designbyte Card */}
-              <div className="db-card">
-                <div className="db-card-header">
-                  <span className="db-card-title">{t('results.riskBrief.executiveSummaryTitle')}</span>
+              <div className="twk-card">
+                <div className="twk-card-header">
+                  <span className="twk-card-title">{t('results.riskBrief.executiveSummaryTitle')}</span>
                 </div>
-                <div className="db-card-body">
+                <div className="twk-card-body">
                   <List
                     dataSource={riskBrief.executiveSummaryMessages}
                     renderItem={(item) => (

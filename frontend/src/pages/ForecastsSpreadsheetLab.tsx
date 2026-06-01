@@ -340,7 +340,7 @@ const ForecastsSpreadsheetLab: React.FC<ForecastsSpreadsheetLabProps> = ({ scope
   }
 
   return (
-    <div className="abf-page">
+    <div className="twk-page">
       {/* Experimental banner */}
       <ExperimentalBanner
         label={t('forecastsLab.experiment')}

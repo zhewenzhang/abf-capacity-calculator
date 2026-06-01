@@ -1,0 +1,917 @@
+/**
+ * Tweakcn Designbyte Theme System — v1.54.0
+ *
+ * Full-site visual rework targeting tweakcn designbyte aesthetic:
+ * https://tweakcn.com/themes/cmcup07dt000104l4hj4eferh
+ *
+ * Design Principles:
+ * - Light, airy page background (#fafafa)
+ * - White rounded cards with thin borders and 24px radius
+ * - Mint green accent for active states and key metrics
+ * - Top horizontal navigation (no dark sidebar)
+ * - Generous spacing, large breathing room
+ * - Strong black/slate typography
+ * - Subtle shadows, minimal visual noise
+ * - Clean pill tabs and small icon buttons
+ *
+ * Usage:
+ * - Import in main.tsx: import './styles/tweakcnTheme.css'
+ * - AntD tokens via ConfigProvider (tweakcnAntdTheme.ts)
+ * - Custom components use --twk-* classes
+ */
+
+/* ============================================================
+   CSS Custom Properties — Tweakcn Tokens
+   ============================================================ */
+
+:root {
+  /* ---- Background ---- */
+  --twk-bg: #fafafa;
+  --twk-surface: #ffffff;
+  --twk-surface-muted: #f7f7f7;
+  --twk-surface-hover: #f4f4f5;
+  --twk-surface-active: #efefef;
+
+  /* ---- Foreground / Text ---- */
+  --twk-text: #09090b;
+  --twk-text-secondary: #3f3f46;
+  --twk-muted: #71717a;
+  --twk-subtle: #a1a1aa;
+  --twk-text-disabled: #d4d4d8;
+  --twk-text-inverse: #ffffff;
+
+  /* ---- Accent (Mint Green) ---- */
+  --twk-accent: #4ade80;
+  --twk-accent-strong: #22c55e;
+  --twk-accent-soft: #dcfce7;
+  --twk-accent-hover: #16a34a;
+  --twk-accent-text: #15803d;
+
+  /* ---- Primary (Slate — neutral, not blue) ---- */
+  --twk-primary: #18181b;
+  --twk-primary-hover: #27272a;
+  --twk-primary-active: #3f3f46;
+  --twk-primary-soft: #f4f4f5;
+
+  /* ---- Border ---- */
+  --twk-border: #eeeeee;
+  --twk-border-strong: #e4e4e7;
+  --twk-border-focus: #a1a1aa;
+
+  /* ---- Status Colors ---- */
+  --twk-success: #22c55e;
+  --twk-success-soft: #dcfce7;
+  --twk-success-border: #bbf7d0;
+
+  --twk-warning: #f59e0b;
+  --twk-warning-soft: #fef3c7;
+  --twk-warning-border: #fde68a;
+
+  --twk-error: #ef4444;
+  --twk-error-soft: #fee2e2;
+  --twk-error-border: #fecaca;
+
+  --twk-info: #3b82f6;
+  --twk-info-soft: #dbeafe;
+  --twk-info-border: #bfdbfe;
+
+  /* ---- Radius ---- */
+  --twk-radius-sm: 8px;
+  --twk-radius: 12px;
+  --twk-radius-lg: 16px;
+  --twk-radius-xl: 24px;
+  --twk-radius-full: 999px;
+
+  /* ---- Shadows ---- */
+  --twk-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --twk-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --twk-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --twk-shadow-md: 0 8px 16px -2px rgba(15, 23, 42, 0.06), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+
+  /* ---- Spacing ---- */
+  --twk-space-1: 4px;
+  --twk-space-2: 8px;
+  --twk-space-3: 12px;
+  --twk-space-4: 16px;
+  --twk-space-5: 20px;
+  --twk-space-6: 24px;
+  --twk-space-8: 32px;
+  --twk-space-10: 40px;
+  --twk-space-12: 48px;
+  --twk-space-16: 64px;
+
+  /* ---- Typography ---- */
+  --twk-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --twk-font-mono: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+
+  --twk-text-xs: 11px;
+  --twk-text-sm: 13px;
+  --twk-text-base: 14px;
+  --twk-text-lg: 16px;
+  --twk-text-xl: 18px;
+  --twk-text-2xl: 20px;
+  --twk-text-3xl: 24px;
+  --twk-text-4xl: 30px;
+
+  --twk-leading-tight: 1.25;
+  --twk-leading-normal: 1.5;
+  --twk-leading-relaxed: 1.75;
+
+  --twk-font-normal: 400;
+  --twk-font-medium: 500;
+  --twk-font-semibold: 600;
+  --twk-font-bold: 700;
+
+  /* ---- Z-Index ---- */
+  --twk-z-dropdown: 1000;
+  --twk-z-sticky: 1020;
+  --twk-z-fixed: 1030;
+  --twk-z-modal: 1050;
+
+  /* ---- Transitions ---- */
+  --twk-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --twk-transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================================
+   Base Styles
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--twk-font-sans);
+  font-size: var(--twk-text-base);
+  line-height: var(--twk-leading-normal);
+  color: var(--twk-text);
+  background-color: var(--twk-bg);
+  margin: 0;
+  padding: 0;
+}
+
+/* ============================================================
+   Shell — Top Nav Layout
+   ============================================================ */
+
+.twk-shell {
+  min-height: 100vh;
+  background: var(--twk-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.twk-topbar {
+  height: 56px;
+  background: var(--twk-surface);
+  border-bottom: 1px solid var(--twk-border);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--twk-space-6);
+  gap: var(--twk-space-4);
+  position: sticky;
+  top: 0;
+  z-index: var(--twk-z-sticky);
+}
+
+.twk-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--twk-space-3);
+  flex-shrink: 0;
+}
+
+.twk-brand-logo {
+  font-size: 18px;
+  font-weight: var(--twk-font-bold);
+  color: var(--twk-text);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.twk-brand-tag {
+  font-size: 10px;
+  font-weight: var(--twk-font-medium);
+  color: var(--twk-muted);
+  background: var(--twk-surface-muted);
+  padding: 1px 6px;
+  border-radius: var(--twk-radius-full);
+  border: 1px solid var(--twk-border);
+}
+
+.twk-nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--twk-space-1);
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.twk-nav-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.twk-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--twk-radius-full);
+  font-size: var(--twk-text-sm);
+  font-weight: var(--twk-font-medium);
+  color: var(--twk-muted);
+  cursor: pointer;
+  transition: all var(--twk-transition-fast);
+  white-space: nowrap;
+  text-decoration: none;
+  border: none;
+  background: transparent;
+}
+
+.twk-nav-item:hover {
+  color: var(--twk-text);
+  background: var(--twk-surface-hover);
+}
+
+.twk-nav-item-active {
+  color: var(--twk-text);
+  background: var(--twk-primary-soft);
+  font-weight: var(--twk-font-semibold);
+}
+
+.twk-userbar {
+  display: flex;
+  align-items: center;
+  gap: var(--twk-space-3);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.twk-userbar-email {
+  font-size: var(--twk-text-xs);
+  color: var(--twk-muted);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.twk-userbar-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--twk-radius-full);
+  font-size: var(--twk-text-xs);
+  color: var(--twk-muted);
+  cursor: pointer;
+  transition: all var(--twk-transition-fast);
+  border: 1px solid var(--twk-border);
+  background: transparent;
+}
+
+.twk-userbar-logout:hover {
+  color: var(--twk-error);
+  border-color: var(--twk-error-border);
+  background: var(--twk-error-soft);
+}
+
+.twk-main {
+  flex: 1;
+  padding: var(--twk-space-6);
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ============================================================
+   Page
+   ============================================================ */
+
+.twk-page {
+  animation: twk-fade-in 0.2s ease-out;
+}
+
+@keyframes twk-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.twk-page-header {
+  margin-bottom: var(--twk-space-6);
+}
+
+.twk-page-title {
+  font-size: var(--twk-text-2xl);
+  font-weight: var(--twk-font-semibold);
+  color: var(--twk-text);
+  margin: 0 0 var(--twk-space-1) 0;
+  letter-spacing: -0.01em;
+}
+
+.twk-page-subtitle {
+  font-size: var(--twk-text-sm);
+  color: var(--twk-muted);
+  margin: 0;
+}
+
+/* ============================================================
+   Card
+   ============================================================ */
+
+.twk-card {
+  background: var(--twk-surface);
+  border: 1px solid var(--twk-border);
+  border-radius: var(--twk-radius-xl);
+  box-shadow: var(--twk-shadow-xs);
+  transition: box-shadow var(--twk-transition-fast);
+}
+
+.twk-card:hover {
+  box-shadow: var(--twk-shadow-sm);
+}
+
+.twk-card-header {
+  padding: var(--twk-space-5) var(--twk-space-6);
+  border-bottom: 1px solid var(--twk-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--twk-space-3);
+}
+
+.twk-card-title {
+  font-size: var(--twk-text-base);
+  font-weight: var(--twk-font-semibold);
+  color: var(--twk-text);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--twk-space-2);
+}
+
+.twk-card-body {
+  padding: var(--twk-space-6);
+}
+
+.twk-card-footer {
+  padding: var(--twk-space-3) var(--twk-space-6);
+  border-top: 1px solid var(--twk-border);
+  background: var(--twk-surface-muted);
+  border-radius: 0 0 var(--twk-radius-xl) var(--twk-radius-xl);
+}
+
+/* ============================================================
+   KPI Card
+   ============================================================ */
+
+.twk-kpi {
+  background: var(--twk-surface);
+  border: 1px solid var(--twk-border);
+  border-radius: var(--twk-radius-xl);
+  padding: var(--twk-space-6);
+  box-shadow: var(--twk-shadow-xs);
+  transition: all var(--twk-transition-fast);
+}
+
+.twk-kpi:hover {
+  box-shadow: var(--twk-shadow-sm);
+  border-color: var(--twk-border-strong);
+}
+
+.twk-kpi-label {
+  font-size: var(--twk-text-sm);
+  color: var(--twk-muted);
+  margin-bottom: var(--twk-space-2);
+  font-weight: var(--twk-font-medium);
+}
+
+.twk-kpi-value {
+  font-size: var(--twk-text-4xl);
+  font-weight: var(--twk-font-bold);
+  color: var(--twk-text);
+  line-height: var(--twk-leading-tight);
+  letter-spacing: -0.02em;
+  margin-bottom: var(--twk-space-1);
+}
+
+.twk-kpi-accent {
+  color: var(--twk-accent-strong);
+}
+
+.twk-kpi-change {
+  font-size: var(--twk-text-xs);
+  font-weight: var(--twk-font-medium);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: var(--twk-radius-full);
+}
+
+.twk-kpi-change--up {
+  color: var(--twk-accent-text);
+  background: var(--twk-accent-soft);
+}
+
+.twk-kpi-change--down {
+  color: var(--twk-error);
+  background: var(--twk-error-soft);
+}
+
+/* ============================================================
+   Section
+   ============================================================ */
+
+.twk-section {
+  margin-bottom: var(--twk-space-6);
+}
+
+.twk-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--twk-space-4);
+}
+
+.twk-section-title {
+  font-size: var(--twk-text-lg);
+  font-weight: var(--twk-font-semibold);
+  color: var(--twk-text);
+  margin: 0;
+}
+
+.twk-section-subtitle {
+  font-size: var(--twk-text-sm);
+  color: var(--twk-muted);
+  margin: var(--twk-space-1) 0 0 0;
+}
+
+/* ============================================================
+   Toolbar
+   ============================================================ */
+
+.twk-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--twk-space-3);
+  padding: var(--twk-space-3) 0;
+  flex-wrap: wrap;
+}
+
+.twk-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: var(--twk-space-2);
+}
+
+/* ============================================================
+   Tag / Badge (pill style)
+   ============================================================ */
+
+.twk-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: var(--twk-radius-full);
+  font-size: var(--twk-text-xs);
+  font-weight: var(--twk-font-medium);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.twk-tag--default {
+  background: var(--twk-surface-muted);
+  color: var(--twk-text-secondary);
+  border: 1px solid var(--twk-border);
+}
+
+.twk-tag--accent {
+  background: var(--twk-accent-soft);
+  color: var(--twk-accent-text);
+  border: 1px solid transparent;
+}
+
+.twk-tag--success {
+  background: var(--twk-success-soft);
+  color: #15803d;
+  border: 1px solid var(--twk-success-border);
+}
+
+.twk-tag--warning {
+  background: var(--twk-warning-soft);
+  color: #92400e;
+  border: 1px solid var(--twk-warning-border);
+}
+
+.twk-tag--error {
+  background: var(--twk-error-soft);
+  color: #991b1b;
+  border: 1px solid var(--twk-error-border);
+}
+
+.twk-tag--info {
+  background: var(--twk-info-soft);
+  color: #1e40af;
+  border: 1px solid var(--twk-info-border);
+}
+
+/* ============================================================
+   Alert / Notice
+   ============================================================ */
+
+.twk-alert {
+  padding: var(--twk-space-3) var(--twk-space-4);
+  border-radius: var(--twk-radius);
+  font-size: var(--twk-text-sm);
+  line-height: var(--twk-leading-relaxed);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--twk-space-3);
+}
+
+.twk-alert--info {
+  background: var(--twk-info-soft);
+  border: 1px solid var(--twk-info-border);
+  color: #1e40af;
+}
+
+.twk-alert--success {
+  background: var(--twk-success-soft);
+  border: 1px solid var(--twk-success-border);
+  color: #15803d;
+}
+
+.twk-alert--warning {
+  background: var(--twk-warning-soft);
+  border: 1px solid var(--twk-warning-border);
+  color: #92400e;
+}
+
+.twk-alert--error {
+  background: var(--twk-error-soft);
+  border: 1px solid var(--twk-error-border);
+  color: #991b1b;
+}
+
+/* ============================================================
+   Table
+   ============================================================ */
+
+.twk-table-wrapper {
+  border: 1px solid var(--twk-border);
+  border-radius: var(--twk-radius-xl);
+  overflow: hidden;
+  background: var(--twk-surface);
+}
+
+/* ============================================================
+   Readiness Grid
+   ============================================================ */
+
+.twk-readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--twk-space-4);
+}
+
+.twk-readiness-card {
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--twk-space-5);
+  border: 1px solid var(--twk-border);
+  border-radius: var(--twk-radius-xl);
+  background: var(--twk-surface);
+  box-shadow: var(--twk-shadow-xs);
+  transition: all var(--twk-transition-fast);
+}
+
+.twk-readiness-card:hover {
+  box-shadow: var(--twk-shadow-sm);
+  border-color: var(--twk-border-strong);
+}
+
+.twk-readiness-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.twk-readiness-title {
+  margin-top: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--twk-text);
+}
+
+.twk-readiness-footer {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+/* ============================================================
+   Chat Interface (Copilot)
+   ============================================================ */
+
+.twk-chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--twk-bg);
+  border-radius: var(--twk-radius-xl);
+  overflow: hidden;
+}
+
+.twk-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--twk-space-4) var(--twk-space-6);
+  background: var(--twk-surface);
+  border-bottom: 1px solid var(--twk-border);
+}
+
+.twk-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--twk-space-6);
+}
+
+.twk-chat-input-area {
+  padding: var(--twk-space-4) var(--twk-space-6);
+  background: var(--twk-surface);
+  border-top: 1px solid var(--twk-border);
+}
+
+.twk-chat-bubble {
+  max-width: 720px;
+  margin: 0 auto var(--twk-space-4) auto;
+}
+
+.twk-chat-bubble--ai {
+  background: var(--twk-surface);
+  border: 1px solid var(--twk-border);
+  border-radius: var(--twk-radius-xl);
+  padding: var(--twk-space-5);
+  box-shadow: var(--twk-shadow-xs);
+}
+
+/* ============================================================
+   Quick Action Pills
+   ============================================================ */
+
+.twk-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--twk-radius-full);
+  font-size: var(--twk-text-sm);
+  font-weight: var(--twk-font-medium);
+  cursor: pointer;
+  transition: all var(--twk-transition-fast);
+  border: 1px solid var(--twk-border);
+  background: var(--twk-surface);
+  color: var(--twk-text-secondary);
+}
+
+.twk-pill:hover {
+  background: var(--twk-surface-hover);
+  border-color: var(--twk-border-strong);
+  color: var(--twk-text);
+}
+
+.twk-pill--active {
+  background: var(--twk-accent-soft);
+  border-color: var(--twk-accent-strong);
+  color: var(--twk-accent-text);
+}
+
+/* ============================================================
+   Empty State
+   ============================================================ */
+
+.twk-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--twk-space-12) var(--twk-space-6);
+  text-align: center;
+}
+
+.twk-empty-icon {
+  font-size: 48px;
+  color: var(--twk-text-disabled);
+  margin-bottom: var(--twk-space-4);
+}
+
+.twk-empty-title {
+  font-size: var(--twk-text-lg);
+  font-weight: var(--twk-font-medium);
+  color: var(--twk-text-secondary);
+  margin-bottom: var(--twk-space-2);
+}
+
+.twk-empty-description {
+  font-size: var(--twk-text-sm);
+  color: var(--twk-muted);
+  max-width: 360px;
+}
+
+/* ============================================================
+   Section Divider
+   ============================================================ */
+
+.twk-divider {
+  height: 1px;
+  background: var(--twk-border);
+  margin: var(--twk-space-5) 0;
+  border: none;
+}
+
+/* ============================================================
+   Markdown Content
+   ============================================================ */
+
+.twk-markdown {
+  font-size: var(--twk-text-base);
+  line-height: var(--twk-leading-relaxed);
+  color: var(--twk-text);
+}
+
+.twk-markdown h1,
+.twk-markdown h2,
+.twk-markdown h3,
+.twk-markdown h4 {
+  margin-top: var(--twk-space-5);
+  margin-bottom: var(--twk-space-3);
+  font-weight: var(--twk-font-semibold);
+  color: var(--twk-text);
+}
+
+.twk-markdown h1 { font-size: var(--twk-text-2xl); }
+.twk-markdown h2 { font-size: var(--twk-text-xl); }
+.twk-markdown h3 { font-size: var(--twk-text-lg); }
+
+.twk-markdown p {
+  margin-bottom: var(--twk-space-3);
+}
+
+.twk-markdown ul,
+.twk-markdown ol {
+  padding-left: var(--twk-space-5);
+  margin-bottom: var(--twk-space-3);
+}
+
+.twk-markdown li {
+  margin-bottom: var(--twk-space-1);
+}
+
+.twk-markdown strong {
+  font-weight: var(--twk-font-semibold);
+  color: var(--twk-text);
+}
+
+.twk-markdown code {
+  padding: 2px 6px;
+  border-radius: var(--twk-radius-sm);
+  background: var(--twk-surface-muted);
+  border: 1px solid var(--twk-border);
+  font-family: var(--twk-font-mono);
+  font-size: var(--twk-text-sm);
+}
+
+.twk-markdown pre {
+  padding: var(--twk-space-4);
+  border-radius: var(--twk-radius);
+  background: var(--twk-surface-muted);
+  border: 1px solid var(--twk-border);
+  overflow-x: auto;
+  margin-bottom: var(--twk-space-3);
+}
+
+.twk-markdown pre code {
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .twk-topbar {
+    padding: 0 var(--twk-space-4);
+    gap: var(--twk-space-2);
+  }
+
+  .twk-brand-tag {
+    display: none;
+  }
+
+  .twk-main {
+    padding: var(--twk-space-4);
+  }
+
+  .twk-card-body {
+    padding: var(--twk-space-4);
+  }
+
+  .twk-card-header {
+    padding: var(--twk-space-3) var(--twk-space-4);
+  }
+
+  .twk-kpi-value {
+    font-size: var(--twk-text-3xl);
+  }
+
+  .twk-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .twk-toolbar-group {
+    flex-wrap: wrap;
+  }
+
+  .twk-userbar-email {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .twk-main {
+    padding: var(--twk-space-3);
+  }
+
+  .twk-page-title {
+    font-size: var(--twk-text-xl);
+  }
+
+  .twk-kpi-value {
+    font-size: var(--twk-text-xl);
+  }
+
+  .twk-nav-tabs {
+    gap: 0;
+  }
+
+  .twk-nav-item {
+    padding: 4px 8px;
+    font-size: var(--twk-text-xs);
+  }
+}
+
+/* ============================================================
+   AntD Override Helpers
+   ============================================================ */
+
+/* Make AntD Menu items look like tweakcn nav items */
+.ant-menu-dark {
+  background: transparent !important;
+}
+
+.ant-menu-dark .ant-menu-item {
+  border-radius: var(--twk-radius-full) !important;
+  margin: 2px 8px !important;
+}
+
+/* Light sidebar override */
+.twk-light-rail .ant-menu {
+  background: transparent !important;
+}
+
+.twk-light-rail .ant-menu-item {
+  color: var(--twk-muted) !important;
+  border-radius: var(--twk-radius-full) !important;
+  margin: 2px 8px !important;
+}
+
+.twk-light-rail .ant-menu-item-selected {
+  background: var(--twk-primary-soft) !important;
+  color: var(--twk-text) !important;
+}
+
+.twk-light-rail .ant-menu-item:hover {
+  background: var(--twk-surface-hover) !important;
+  color: var(--twk-text) !important;
+}
