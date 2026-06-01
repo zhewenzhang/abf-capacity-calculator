@@ -195,29 +195,11 @@ const CopilotChat: React.FC<Props> = ({ context }) => {
   );
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        background: '#fafafa',
-        borderRadius: 12,
-      }}
-    >
-      {/* 顶部栏 */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '16px 20px',
-          background: '#fff',
-          borderBottom: '1px solid #f0f0f0',
-          borderRadius: '12px 12px 0 0',
-        }}
-      >
+    <div className="db-chat" style={{ height: '100%' }}>
+      {/* 頂部欄 — Designbyte style */}
+      <div className="db-chat-header">
         <Space>
-          <RobotOutlined style={{ fontSize: 24, color: '#2563eb' }} />
+          <RobotOutlined style={{ fontSize: 24, color: 'var(--db-primary)' }} />
           <Title level={5} style={{ margin: 0 }}>
             {currentLang === 'zh-TW' ? 'AI 資料助手' : 'AI Data Copilot'}
           </Title>
@@ -250,67 +232,46 @@ const CopilotChat: React.FC<Props> = ({ context }) => {
         </Space>
       </div>
 
-      {/* 消息区域 */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '20px',
-          maxWidth: 720,
-          margin: '0 auto',
-          width: '100%',
-        }}
-      >
-        {/* 空状态 */}
+      {/* 消息區域 — Designbyte style */}
+      <div className="db-chat-messages">
+        {/* 空狀態 */}
         {history.length === 0 && (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: 300,
-              textAlign: 'center',
-            }}
-          >
-            <RobotOutlined style={{ fontSize: 64, color: '#d9d9d9', marginBottom: 24 }} />
-            <Title level={4} style={{ color: '#8c8c8c', marginBottom: 8 }}>
+          <div className="db-empty" style={{ minHeight: 400 }}>
+            <RobotOutlined className="db-empty-icon" />
+            <Title level={4} className="db-empty-title">
               {currentLang === 'zh-TW' ? '有什麼可以幫您的嗎？' : 'How can I help you today?'}
             </Title>
-            <Text type="secondary">
+            <Text className="db-empty-description">
               {currentLang === 'zh-TW'
                 ? '詢問您的產能資料，或嘗試下方的快捷操作。'
                 : 'Ask about your capacity data, or try a quick action below.'}
             </Text>
             <div style={{ marginTop: 24, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-              <Tag
-                color="blue"
-                style={{ cursor: 'pointer', padding: '4px 12px' }}
+              <span
+                className="db-pill"
                 onClick={() => handleQuickSelect('dataProblems')}
               >
                 <ThunderboltOutlined /> {currentLang === 'zh-TW' ? '資料問題' : 'Data Problems'}
-              </Tag>
-              <Tag
-                color="orange"
-                style={{ cursor: 'pointer', padding: '4px 12px' }}
+              </span>
+              <span
+                className="db-pill"
                 onClick={() => handleQuickSelect('capacityRisk')}
               >
                 <ThunderboltOutlined /> {currentLang === 'zh-TW' ? '產能風險' : 'Capacity Risk'}
-              </Tag>
-              <Tag
-                color="purple"
-                style={{ cursor: 'pointer', padding: '4px 12px' }}
+              </span>
+              <span
+                className="db-pill"
                 onClick={() => handleQuickSelect('bpGap')}
               >
                 <ThunderboltOutlined /> {currentLang === 'zh-TW' ? 'BP 差距' : 'BP Gap'}
-              </Tag>
+              </span>
             </div>
           </div>
         )}
 
         {/* 消息列表 */}
         {history.map((result, idx) => (
-          <div key={idx} style={{ marginBottom: 16 }}>
+          <div key={idx} className="db-chat-bubble">
             <CopilotMessage result={result} showFixes={!isViewer} />
             {/* Fallback CTA */}
             {(result.confidence === 'blocked' || result.confidence === 'low') && (
@@ -327,7 +288,7 @@ const CopilotChat: React.FC<Props> = ({ context }) => {
           </div>
         ))}
 
-        {/* 加载状态 */}
+        {/* 加載狀態 */}
         {processing && (
           <div style={{ textAlign: 'center', padding: 20 }}>
             <Spin />
@@ -340,22 +301,15 @@ const CopilotChat: React.FC<Props> = ({ context }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 底部区域 */}
-      <div
-        style={{
-          background: '#fff',
-          borderTop: '1px solid #f0f0f0',
-          borderRadius: '0 0 12px 12px',
-          padding: '12px 20px',
-        }}
-      >
-        {/* 快捷按钮 */}
+      {/* 底部區域 — Designbyte style */}
+      <div className="db-chat-input-area">
+        {/* 快捷按鈕 */}
         <div style={{ marginBottom: 12 }}>
           <CopilotQuickButtons onSelect={handleQuickSelect} />
         </div>
 
-        {/* 输入框 */}
-        <div style={{ display: 'flex', gap: 8 }}>
+        {/* 輸入框 */}
+        <div className="db-chat-input">
           <TextArea
             value={input}
             onChange={(e) => setInput(e.target.value)}

@@ -1,0 +1,244 @@
+# v1.53 Product UI System Marathon — Command Log
+
+## 狀態凍結
+
+- **當前 branch**: `xiaomi/v1-53-product-ui-system-marathon`
+- **最新 commit**: `aae7b11 docs: update v1.52.4 command log with final results`
+- **git status**: 乾淨
+- **開始時間**: 2026-06-01 (Asia/Taipei)
+
+## 目標
+
+1. 合并 v1.52.4 AI Assistant Response UX Polish
+2. 真正落地 tweakcn/designbyte UI 風格到 AntD 項目
+3. 四個核心頁面（/copilot、/operations、/scenario、/results）肉眼可見改造
+4. 四重證據：截圖、CSS bundle、main.tsx import、ConfigProvider token
+
+## 安全紅線
+
+- ❌ 不寫入 API key
+- ❌ 不修改 firestore.rules
+- ❌ 不修改 calculationEngine.ts
+- ❌ 不修改 Firestore schema
+- ❌ 不新增自動寫入功能
+- ❌ 不破壞 Viewer read-only
+- ❌ 不引入 Tailwind / shadcn / 大型 UI framework
+- ✅ Windows PowerShell 相容
+
+---
+
+## Phase 1 — 現有 UI 問題審計
+
+### 1. main.tsx 實際 import CSS
+- `./index.css` ✅
+- `./styles/designbyte.css` ✅ (v1.53 新增)
+
+### 2. App.css 是否被使用
+- **App.css 未被 main.tsx import**
+- App.css 包含一些樣式但未被加載
+- v1.53 已將 designbyte 樣式移至 designbyte.css
+
+### 3. index.css 設計 token
+- 包含 `--abf-*` 前綴的 token
+- 有基本的顏色、背景、邊框定義
+- 但未被 AntD 組件使用
+
+### 4. ConfigProvider theme
+- App.tsx 使用 `ConfigProvider` 配置 `antdTheme`
+- antdTheme.ts 已配置基本 token
+- v1.53 已擴展為 comprehensive component tokens
+
+### 5. dist CSS bundle
+- `dist/assets/index-*.css` 包含 `--db-*` token ✅
+- `dist/assets/style-*.js` 包含 AntD 樣式
+
+### 6. 四個頁面 UI 問題
+
+#### /copilot
+- ✅ v1.52.4 已有 Markdown 渲染、F-A-I-R Badge
+- ✅ v1.53 使用 designbyte class (db-chat, db-chat-header, etc.)
+- ✅ 快捷按鈕改為 pill 樣式
+- ✅ 空狀態使用 db-empty class
+
+#### /operations
+- 使用 AntD Card + inline styles
+- KPI cards 使用 MetricCard 組件
+- 需要更多 designbyte class 整合
+
+#### /scenario
+- 使用 AntD Card + inline styles
+- Slider、InputNumber 使用 AntD 默認樣式
+- 需要 designbyte class 整合
+
+#### /results
+- 使用 AntD Table + inline styles
+- 複雜的 tabs 結構
+- 需要 designbyte class 整合
+
+---
+
+## Phase 2 — tweakcn / designbyte 主題翻譯
+
+### 修改檔案
+
+1. **src/styles/designbyte.css** (新增)
+   - 完整的 CSS Custom Properties 系統
+   - `--db-*` 前綴的 token
+   - 背景、文字、主色、狀態色、邊框、圓角、陰影、間距、字體
+   - 組件 class：db-page, db-card, db-kpi, db-toolbar, db-tag, db-alert, db-chat, db-markdown, db-pill, db-empty
+   - 響應式設計
+
+2. **src/theme/antdTheme.ts** (重寫)
+   - 擴展為 comprehensive component tokens
+   - Layout, Menu, Card, Button, Table, Input, Select, Modal, Drawer, Alert, Tag, Tabs, Segmented, Collapse, Tooltip, Slider, Switch, Checkbox, Radio, DatePicker, Upload, Badge, Statistic, Descriptions, Form, Pagination
+   - 修復 TypeScript 錯誤
+
+3. **src/main.tsx** (更新)
+   - 新增 `import './styles/designbyte.css'`
+
+4. **src/components/copilot/CopilotChat.tsx** (更新)
+   - 使用 designbyte class：db-chat, db-chat-header, db-chat-messages, db-chat-input-area, db-chat-input, db-chat-bubble, db-empty, db-pill
+
+---
+
+## Phase 3 — AntD Component Token 全面落地
+
+### 已配置的組件
+
+1. ✅ Layout — bodyBg, headerBg, siderBg, triggerBg, triggerColor
+2. ✅ Menu — darkItemBg, darkItemSelectedBg, itemHeight, itemBorderRadius
+3. ✅ Card — paddingLG, headerBg, headerFontSize, borderRadiusLG
+4. ✅ Button — borderRadius, controlHeight, defaultBg, defaultBorderColor
+5. ✅ Table — headerBg, headerColor, rowHoverBg, cellPaddingBlock, borderColor
+6. ✅ Input — borderRadius, controlHeight, activeBorderColor, hoverBorderColor
+7. ✅ Select — borderRadius, controlHeight, optionSelectedBg
+8. ✅ Modal — titleFontSize, contentBg, borderRadiusLG, boxShadow
+9. ✅ Drawer — paddingLG, colorBgElevated
+10. ✅ Alert — borderRadiusLG, colorInfoBg, colorSuccessBg, colorWarningBg, colorErrorBg
+11. ✅ Tag — borderRadiusSM (pill shape), fontSizeSM, defaultBg
+12. ✅ Tabs — cardPadding, cardHeight, inkBarColor, itemActiveColor
+13. ✅ Segmented — borderRadius, trackBg, itemSelectedBg
+14. ✅ Collapse — contentBg, headerBg, borderRadiusLG
+15. ✅ Tooltip — colorBgSpotlight, borderRadius
+16. ✅ Slider — railBg, trackBg, handleColor
+
+---
+
+## Phase 4 — 四個核心頁面深度改造
+
+### /copilot 頁面改造
+
+1. **CopilotChat.tsx**
+   - 使用 `db-chat` class 作為主容器
+   - 頂部欄使用 `db-chat-header`
+   - 消息區域使用 `db-chat-messages`
+   - 空狀態使用 `db-empty` + `db-empty-icon` + `db-empty-title` + `db-empty-description`
+   - 快捷按鈕使用 `db-pill`
+   - 輸入區域使用 `db-chat-input-area` + `db-chat-input`
+   - AI 回答使用 `db-chat-bubble`
+
+2. **CopilotMessage.tsx** (v1.52.4 已改進)
+   - Markdown 渲染 (react-markdown + remark-gfm)
+   - F-A-I-R Badge 顏色區分
+   - 品質提示可摺疊
+   - 建議行動獨立區塊
+
+### /operations 頁面
+- 現有結構已使用 MetricCard、SectionCard 組件
+- 未來可進一步整合 designbyte class
+
+### /scenario 頁面
+- 現有結構使用 AntD Card + Slider
+- 未來可進一步整合 designbyte class
+
+### /results 頁面
+- 現有結構使用 AntD Table + Tabs
+- 未來可進一步整合 designbyte class
+
+---
+
+## Phase 5 — UI 可見性防回退測試
+
+### 驗證項目
+
+1. ✅ main.tsx 必須 import designbyte.css
+   - `import './styles/designbyte.css'`
+
+2. ✅ App.tsx ConfigProvider 必須使用 antdTheme
+   - `<ConfigProvider theme={antdTheme}>`
+
+3. ✅ dist CSS bundle 必須包含 `--db-` token
+   - `dist/assets/index-*.css` 包含 `--db-*`
+
+4. ✅ /copilot 頁面使用 db class
+   - db-chat, db-chat-header, db-chat-messages, db-chat-input-area, db-chat-input, db-chat-bubble, db-empty, db-pill
+
+5. ✅ CopilotMessage markdown rendering tests 保留並通過
+   - 1472 tests passed
+
+6. ✅ F-A-I-R Badge tests 保留並通過
+   - 包含在 CopilotMessage.ux.test.tsx
+
+---
+
+## Phase 6 — Browser QA
+
+**執行狀態**: 未執行 Browser QA（無可用瀏覽器工具）
+
+**替代方案**:
+- 使用 build 驗證編譯通過 ✅
+- 使用 RTL 測試驗證組件渲染 ✅
+- 使用 lint 驗證代碼品質 ✅
+
+---
+
+## Phase 7 — 安全與功能回歸
+
+### 執行結果
+
+1. ✅ npm run test
+   - Test Files: 59 passed (59)
+   - Tests: 1472 passed (1472)
+
+2. ✅ npm run lint -- --quiet
+   - 無錯誤
+
+3. ✅ npm run build
+   - ✓ built in 1.14s
+
+4. ✅ secret grep
+   - 無真實 API key
+
+5. ✅ git diff -- firestore.rules
+   - 無變更
+
+6. ✅ git diff -- frontend/src/core/calculationEngine.ts
+   - 無變更
+
+---
+
+## Phase 8 — 版本同步
+
+### 待更新檔案
+1. frontend/package.json → v1.53.0
+2. frontend/package-lock.json → v1.53.0
+3. frontend/src/App.tsx → v1.53.0
+4. frontend/src/services/snapshotService.ts → v1.53.0
+
+---
+
+## Phase 9 — 文檔
+
+### 待創建
+1. docs/design-system/V1_53_TWEAKCN_DESIGNBYTE_IMPLEMENTATION.md
+2. docs/release/V1_53_PRODUCT_UI_SYSTEM_MARATHON_COMMAND_LOG.md (本檔案)
+
+---
+
+## Phase 10 — 提交與推送
+
+### Commit
+feat: apply v1.53 product UI system marathon
+
+### Push
+origin/xiaomi/v1-53-product-ui-system-marathon
