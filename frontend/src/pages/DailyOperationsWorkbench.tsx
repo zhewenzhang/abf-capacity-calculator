@@ -87,13 +87,13 @@ const STAGE_ICONS: Record<string, React.ReactNode> = {
 function statusIcon(status: WorkflowStageStatus): React.ReactNode {
   switch (status) {
     case 'ready':
-      return <CheckCircleOutlined style={{ color: '#22c55e' }} />;
+      return <CheckCircleOutlined style={{ color: '#15803d' }} />;
     case 'warning':
       return <WarningOutlined style={{ color: '#f59e0b' }} />;
     case 'blocked':
-      return <CloseCircleOutlined style={{ color: '#ef4444' }} />;
+      return <CloseCircleOutlined style={{ color: '#dc2626' }} />;
     case 'notStarted':
-      return <InfoCircleOutlined style={{ color: '#d4d4d8' }} />;
+      return <InfoCircleOutlined style={{ color: '#a3a3a3' }} />;
   }
 }
 

@@ -1,72 +1,75 @@
 /**
- * Tweakcn AntD Theme — v1.54.0
+ * Exact tweakcn AntD Theme — v1.54.0
  *
- * Ant Design theme tokens matching tweakcn designbyte aesthetic.
- * Light shell, mint green accent, 24px card radius, generous spacing.
+ * Maps user-provided tweakcn oklch tokens into Ant Design's ThemeConfig.
+ * Source: https://tweakcn.com/editor/theme
  *
- * Usage: <ConfigProvider theme={tweakcnAntdTheme}> in App.tsx
+ * Font: Plus Jakarta Sans (via Google Fonts in tweakcnTheme.css)
+ * Primary: mint green ≈ #4ade80
+ * Background: off-white ≈ #fcfcfc
+ * Radius: 1.4rem ≈ 22px
  */
 
 import type { ThemeConfig } from 'antd';
 
 export const tweakcnAntdTheme: ThemeConfig = {
   token: {
-    // ---- Brand Colors — Neutral slate primary + mint accent ----
-    colorPrimary: '#18181b',           // Zinc-900 — neutral primary
-    colorPrimaryBg: '#f4f4f5',         // Zinc-100
-    colorPrimaryBgHover: '#e4e4e7',    // Zinc-200
-    colorPrimaryBorder: '#a1a1aa',     // Zinc-400
-    colorPrimaryBorderHover: '#71717a', // Zinc-500
-    colorPrimaryHover: '#27272a',      // Zinc-800
-    colorPrimaryActive: '#3f3f46',     // Zinc-700
-    colorPrimaryTextHover: '#27272a',
-    colorPrimaryText: '#18181b',
-    colorPrimaryTextActive: '#3f3f46',
+    // ---- Primary: mint green oklch(0.8545 0.1675 159.6564) → #4ade80 ----
+    colorPrimary: '#4ade80',
+    colorPrimaryBg: '#f0fdf4',
+    colorPrimaryBgHover: '#dcfce7',
+    colorPrimaryBorder: '#86efac',
+    colorPrimaryBorderHover: '#4ade80',
+    colorPrimaryHover: '#22c55e',
+    colorPrimaryActive: '#16a34a',
+    colorPrimaryTextHover: '#16a34a',
+    colorPrimaryText: '#15803d',
+    colorPrimaryTextActive: '#14532d',
 
     // ---- Link ----
-    colorLink: '#18181b',
-    colorLinkHover: '#27272a',
-    colorLinkActive: '#3f3f46',
+    colorLink: '#15803d',
+    colorLinkHover: '#166534',
+    colorLinkActive: '#14532d',
 
-    // ---- Background — Very light ----
-    colorBgLayout: '#fafafa',          // Zinc-50
-    colorBgContainer: '#ffffff',       // White
-    colorBgElevated: '#ffffff',        // White
-    colorBgSpotlight: '#f4f4f5',      // Zinc-100
-    colorBgMask: 'rgba(0, 0, 0, 0.3)',
+    // ---- Background: oklch(0.9940 0 0) → #fcfcfc ----
+    colorBgLayout: '#fcfcfc',
+    colorBgContainer: '#fcfcfc',
+    colorBgElevated: '#ffffff',
+    colorBgSpotlight: '#f7f7f7',
+    colorBgMask: 'rgba(0, 0, 0, 0.25)',
 
-    // ---- Text — Strong, clear ----
-    colorText: '#09090b',              // Zinc-950
-    colorTextSecondary: '#3f3f46',     // Zinc-700
-    colorTextTertiary: '#71717a',      // Zinc-500
-    colorTextQuaternary: '#a1a1aa',    // Zinc-400
-    colorTextDescription: '#52525b',   // Zinc-600
-    colorTextDisabled: '#d4d4d8',      // Zinc-300
+    // ---- Text: oklch(0 0 0) → #000000 ----
+    colorText: '#000000',
+    colorTextSecondary: '#1a1a1a',
+    colorTextTertiary: '#6b6b6b',
+    colorTextQuaternary: '#a3a3a3',
+    colorTextDescription: '#525252',
+    colorTextDisabled: '#d4d4d4',
 
-    // ---- Border — Thin, light ----
-    colorBorder: '#eeeeee',            // Zinc-200 (very light)
-    colorBorderSecondary: '#f4f4f5',   // Zinc-100
+    // ---- Border: oklch(0.9722 0.0034 247.8581) → #f1f5f9 ----
+    colorBorder: '#f1f5f9',
+    colorBorderSecondary: '#f7f7f7',
     lineWidth: 1,
     lineType: 'solid',
 
-    // ---- Status Colors — Vibrant ----
-    colorSuccess: '#22c55e',           // Green-500
-    colorSuccessBg: '#dcfce7',         // Green-100
-    colorSuccessBorder: '#bbf7d0',     // Green-200
+    // ---- Status ----
+    colorSuccess: '#4ade80',
+    colorSuccessBg: '#f0fdf4',
+    colorSuccessBorder: '#dcfce7',
 
-    colorWarning: '#f59e0b',           // Amber-500
-    colorWarningBg: '#fef3c7',         // Amber-100
-    colorWarningBorder: '#fde68a',     // Amber-200
+    colorWarning: '#f59e0b',
+    colorWarningBg: '#fef9ee',
+    colorWarningBorder: '#fde68a',
 
-    colorError: '#ef4444',             // Red-500
-    colorErrorBg: '#fee2e2',           // Red-100
-    colorErrorBorder: '#fecaca',       // Red-200
+    colorError: '#dc2626',
+    colorErrorBg: '#fef2f2',
+    colorErrorBorder: '#fecaca',
 
-    colorInfo: '#3b82f6',              // Blue-500
-    colorInfoBg: '#dbeafe',            // Blue-100
-    colorInfoBorder: '#bfdbfe',        // Blue-200
+    colorInfo: '#60a5fa',
+    colorInfoBg: '#eff6ff',
+    colorInfoBorder: '#bfdbfe',
 
-    // ---- Typography — Larger, calmer ----
+    // ---- Typography: Plus Jakarta Sans ----
     fontSize: 14,
     fontSizeSM: 13,
     fontSizeLG: 16,
@@ -74,19 +77,19 @@ export const tweakcnAntdTheme: ThemeConfig = {
     fontSizeHeading3: 20,
     fontSizeHeading4: 18,
     fontSizeHeading5: 16,
-    fontFamily: `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif`,
-    fontFamilyCode: `'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace`,
-    lineHeight: 1.5,
+    fontFamily: "'Plus Jakarta Sans', sans-serif",
+    fontFamilyCode: "'IBM Plex Mono', monospace",
+    lineHeight: 1.6,
     lineHeightLG: 1.5,
     lineHeightSM: 1.5,
 
-    // ---- Shape — Large radius ----
-    borderRadius: 12,
-    borderRadiusSM: 8,
-    borderRadiusLG: 16,
-    borderRadiusXS: 6,
+    // ---- Shape: 1.4rem ≈ 22px ----
+    borderRadius: 22,
+    borderRadiusSM: 16,
+    borderRadiusLG: 22,
+    borderRadiusXS: 12,
 
-    // ---- Spacing — Generous ----
+    // ---- Spacing ----
     padding: 16,
     paddingSM: 12,
     paddingXS: 8,
@@ -98,15 +101,15 @@ export const tweakcnAntdTheme: ThemeConfig = {
     marginLG: 24,
     marginXL: 32,
 
-    // ---- Shadows — Very subtle ----
-    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-    boxShadowSecondary: '0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04)',
-    boxShadowTertiary: '0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04)',
+    // ---- Shadows: exact tweakcn values ----
+    boxShadow: '0 1px 3px 0px hsl(0 0% 0% / 0.05)',
+    boxShadowSecondary: '0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10)',
+    boxShadowTertiary: '0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10)',
 
     // ---- Control ----
-    controlHeight: 36,
-    controlHeightSM: 28,
-    controlHeightLG: 44,
+    controlHeight: 38,
+    controlHeightSM: 30,
+    controlHeightLG: 46,
     controlHeightXS: 24,
 
     // ---- Motion ----
@@ -118,24 +121,24 @@ export const tweakcnAntdTheme: ThemeConfig = {
   },
 
   components: {
-    // ---- Layout — Light shell, no dark sidebar ----
+    // ---- Layout: white sidebar (unused now, but set for safety) ----
     Layout: {
-      bodyBg: '#fafafa',
+      bodyBg: '#fcfcfc',
       headerBg: '#ffffff',
-      siderBg: '#ffffff',             // Light sidebar!
-      triggerBg: '#f4f4f5',
-      triggerColor: '#71717a',
+      siderBg: '#ffffff',
+      triggerBg: '#f7f7f7',
+      triggerColor: '#6b6b6b',
       zeroTriggerHeight: 48,
       lightSiderBg: '#ffffff',
     },
 
-    // ---- Menu — Light, pill-style ----
+    // ---- Menu ----
     Menu: {
       darkItemBg: '#ffffff',
-      darkItemSelectedBg: '#f4f4f5',
-      darkItemHoverBg: '#f4f4f5',
-      darkItemColor: '#71717a',
-      darkItemSelectedColor: '#09090b',
+      darkItemSelectedBg: '#f0fdf4',
+      darkItemHoverBg: '#f7f7f7',
+      darkItemColor: '#6b6b6b',
+      darkItemSelectedColor: '#000000',
       darkSubMenuItemBg: '#ffffff',
       itemHeight: 36,
       itemMarginBlock: 2,
@@ -144,14 +147,14 @@ export const tweakcnAntdTheme: ThemeConfig = {
       iconSize: 16,
       collapsedIconSize: 18,
       itemBorderRadius: 999,
-      itemActiveBg: '#f4f4f5',
-      itemSelectedBg: '#f4f4f5',
-      itemSelectedColor: '#09090b',
-      itemHoverBg: '#f4f4f5',
-      itemColor: '#71717a',
+      itemActiveBg: '#f0fdf4',
+      itemSelectedBg: '#f0fdf4',
+      itemSelectedColor: '#000000',
+      itemHoverBg: '#f7f7f7',
+      itemColor: '#6b6b6b',
     },
 
-    // ---- Card — Large radius, thin border ----
+    // ---- Card: 1.4rem radius ----
     Card: {
       paddingLG: 24,
       paddingSM: 16,
@@ -159,96 +162,96 @@ export const tweakcnAntdTheme: ThemeConfig = {
       headerFontSize: 14,
       headerHeight: 52,
       headerHeightSM: 44,
-      actionsBg: '#fafafa',
-      colorBgContainer: '#ffffff',
-      colorBorderSecondary: '#eeeeee',
-      borderRadiusLG: 24,
-      boxShadowTertiary: '0 1px 2px rgba(15, 23, 42, 0.04)',
+      actionsBg: '#fcfcfc',
+      colorBgContainer: '#fcfcfc',
+      colorBorderSecondary: '#f1f5f9',
+      borderRadiusLG: 22,
+      boxShadowTertiary: '0 1px 3px 0px hsl(0 0% 0% / 0.05)',
     },
 
-    // ---- Button — Rounded pill ----
+    // ---- Button: pill radius ----
     Button: {
       borderRadius: 999,
       borderRadiusSM: 999,
       borderRadiusLG: 999,
-      controlHeight: 36,
-      controlHeightSM: 28,
-      controlHeightLG: 44,
-      paddingContentHorizontal: 16,
-      paddingContentHorizontalSM: 12,
-      paddingContentHorizontalLG: 20,
+      controlHeight: 38,
+      controlHeightSM: 30,
+      controlHeightLG: 46,
+      paddingContentHorizontal: 18,
+      paddingContentHorizontalSM: 14,
+      paddingContentHorizontalLG: 22,
       onlyIconSize: 18,
       onlyIconSizeSM: 14,
       onlyIconSizeLG: 22,
-      fontWeight: 500,
+      fontWeight: 600,
       primaryShadow: 'none',
       defaultBg: '#ffffff',
-      defaultBorderColor: '#eeeeee',
-      defaultColor: '#09090b',
-      defaultHoverBg: '#f4f4f5',
-      defaultHoverBorderColor: '#e4e4e7',
-      defaultHoverColor: '#09090b',
+      defaultBorderColor: '#f1f5f9',
+      defaultColor: '#000000',
+      defaultHoverBg: '#f7f7f7',
+      defaultHoverBorderColor: '#e5e5e5',
+      defaultHoverColor: '#000000',
       ghostBg: 'transparent',
     },
 
-    // ---- Table — Light, spacious ----
+    // ---- Table ----
     Table: {
-      headerBg: '#fafafa',
-      headerColor: '#71717a',
-      headerSortActiveBg: '#f4f4f5',
-      headerSortHoverBg: '#f4f4f5',
-      bodySortBg: '#fafafa',
-      rowHoverBg: '#fafafa',
-      rowSelectedBg: '#dcfce7',
-      rowSelectedHoverBg: '#bbf7d0',
-      rowExpandedBg: '#fafafa',
+      headerBg: '#f7f7f7',
+      headerColor: '#6b6b6b',
+      headerSortActiveBg: '#f0fdf4',
+      headerSortHoverBg: '#f0fdf4',
+      bodySortBg: '#f7f7f7',
+      rowHoverBg: '#f7f7f7',
+      rowSelectedBg: '#f0fdf4',
+      rowSelectedHoverBg: '#dcfce7',
+      rowExpandedBg: '#f7f7f7',
       cellPaddingBlock: 14,
       cellPaddingInline: 16,
       cellPaddingBlockMD: 12,
       cellPaddingInlineMD: 12,
       cellPaddingBlockSM: 10,
       cellPaddingInlineSM: 10,
-      borderColor: '#eeeeee',
+      borderColor: '#f1f5f9',
       headerBorderRadius: 0,
-      footerBg: '#fafafa',
-      footerColor: '#71717a',
+      footerBg: '#f7f7f7',
+      footerColor: '#6b6b6b',
       fontSize: 13,
       fontSizeSM: 12,
-      stickyScrollBarBg: '#d4d4d8',
+      stickyScrollBarBg: '#d4d4d4',
     },
 
-    // ---- Input — Rounded ----
+    // ---- Input: 1.4rem radius ----
     Input: {
-      borderRadius: 12,
-      controlHeight: 36,
-      controlHeightSM: 28,
-      controlHeightLG: 44,
-      paddingInline: 12,
-      activeBorderColor: '#a1a1aa',
-      hoverBorderColor: '#d4d4d8',
-      activeShadow: '0 0 0 2px rgba(161, 161, 170, 0.15)',
-      addonBg: '#fafafa',
+      borderRadius: 22,
+      controlHeight: 38,
+      controlHeightSM: 30,
+      controlHeightLG: 46,
+      paddingInline: 14,
+      activeBorderColor: '#4ade80',
+      hoverBorderColor: '#d4d4d4',
+      activeShadow: '0 0 0 2px rgba(74, 222, 128, 0.15)',
+      addonBg: '#f7f7f7',
     },
 
-    // ---- Select — Rounded ----
+    // ---- Select ----
     Select: {
-      borderRadius: 12,
-      controlHeight: 36,
-      controlHeightSM: 28,
-      controlHeightLG: 44,
-      optionSelectedBg: '#dcfce7',
+      borderRadius: 22,
+      controlHeight: 38,
+      controlHeightSM: 30,
+      controlHeightLG: 46,
+      optionSelectedBg: '#f0fdf4',
       optionSelectedColor: '#15803d',
-      optionActiveBg: '#f4f4f5',
+      optionActiveBg: '#f7f7f7',
       optionFontSize: 14,
       optionLineHeight: 1.5,
       singleItemHeightLG: 40,
-      multipleItemBg: '#f4f4f5',
-      multipleItemBorderColor: '#eeeeee',
+      multipleItemBg: '#f7f7f7',
+      multipleItemBorderColor: '#f1f5f9',
       multipleItemHeight: 28,
       selectorBg: '#ffffff',
     },
 
-    // ---- Modal — Large radius ----
+    // ---- Modal ----
     Modal: {
       titleFontSize: 18,
       contentBg: '#ffffff',
@@ -257,8 +260,8 @@ export const tweakcnAntdTheme: ThemeConfig = {
       padding: 24,
       paddingLG: 32,
       paddingSM: 16,
-      borderRadiusLG: 24,
-      boxShadow: '0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04)',
+      borderRadiusLG: 22,
+      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.06), 0 8px 10px -6px rgba(0, 0, 0, 0.04)',
     },
 
     // ---- Drawer ----
@@ -268,9 +271,9 @@ export const tweakcnAntdTheme: ThemeConfig = {
       colorBgElevated: '#ffffff',
     },
 
-    // ---- Alert — Rounded ----
+    // ---- Alert ----
     Alert: {
-      borderRadiusLG: 16,
+      borderRadiusLG: 22,
       paddingSM: 12,
       paddingLG: 16,
       withDescriptionPadding: '16px 16px',
@@ -278,25 +281,25 @@ export const tweakcnAntdTheme: ThemeConfig = {
       fontSizeLG: 14,
       lineHeightSM: 1.5,
       lineHeightLG: 1.5,
-      colorInfoBg: '#dbeafe',
+      colorInfoBg: '#eff6ff',
       colorInfoBorder: '#bfdbfe',
-      colorSuccessBg: '#dcfce7',
-      colorSuccessBorder: '#bbf7d0',
-      colorWarningBg: '#fef3c7',
+      colorSuccessBg: '#f0fdf4',
+      colorSuccessBorder: '#dcfce7',
+      colorWarningBg: '#fef9ee',
       colorWarningBorder: '#fde68a',
-      colorErrorBg: '#fee2e2',
+      colorErrorBg: '#fef2f2',
       colorErrorBorder: '#fecaca',
     },
 
-    // ---- Tag — Pill ----
+    // ---- Tag: pill ----
     Tag: {
       borderRadiusSM: 999,
       fontSizeSM: 11,
       fontSize: 12,
       lineHeightSM: 1.5,
       lineHeight: 1.5,
-      defaultBg: '#f4f4f5',
-      defaultColor: '#3f3f46',
+      defaultBg: '#f7f7f7',
+      defaultColor: '#1a1a1a',
     },
 
     // ---- Tabs ----
@@ -305,85 +308,85 @@ export const tweakcnAntdTheme: ThemeConfig = {
       cardPaddingSM: '6px 12px',
       cardHeight: 40,
       cardGutter: 4,
-      inkBarColor: '#22c55e',
-      itemActiveColor: '#09090b',
-      itemHoverColor: '#27272a',
-      itemSelectedColor: '#09090b',
-      itemColor: '#71717a',
+      inkBarColor: '#4ade80',
+      itemActiveColor: '#000000',
+      itemHoverColor: '#1a1a1a',
+      itemSelectedColor: '#000000',
+      itemColor: '#6b6b6b',
     },
 
-    // ---- Segmented — Pill ----
+    // ---- Segmented ----
     Segmented: {
-      borderRadius: 12,
-      borderRadiusSM: 8,
+      borderRadius: 22,
+      borderRadiusSM: 16,
       itemActiveBg: '#ffffff',
-      itemHoverBg: '#f4f4f5',
+      itemHoverBg: '#f7f7f7',
       itemSelectedBg: '#ffffff',
-      itemSelectedColor: '#09090b',
-      trackBg: '#f4f4f5',
+      itemSelectedColor: '#000000',
+      trackBg: '#f7f7f7',
       trackPadding: 4,
     },
 
-    // ---- Collapse — Rounded ----
+    // ---- Collapse ----
     Collapse: {
       contentBg: '#ffffff',
       headerBg: '#ffffff',
-      borderRadiusLG: 16,
-      borderlessContentBg: '#fafafa',
+      borderRadiusLG: 22,
+      borderlessContentBg: '#fcfcfc',
     },
 
     // ---- Tooltip ----
     Tooltip: {
-      colorBgSpotlight: '#18181b',
+      colorBgSpotlight: '#1a1a1a',
       colorTextLightSolid: '#ffffff',
-      borderRadius: 8,
+      borderRadius: 12,
       paddingSM: 8,
       paddingLG: 12,
       fontSize: 12,
     },
 
-    // ---- Slider — Mint accent ----
+    // ---- Slider: mint accent ----
     Slider: {
-      railBg: '#e4e4e7',
-      railHoverBg: '#d4d4d8',
-      trackBg: '#22c55e',
-      trackHoverBg: '#16a34a',
-      handleColor: '#22c55e',
-      handleActiveColor: '#16a34a',
-      dotBorderColor: '#e4e4e7',
-      dotActiveBorderColor: '#22c55e',
+      railBg: '#e5e5e5',
+      railHoverBg: '#d4d4d4',
+      trackBg: '#4ade80',
+      trackHoverBg: '#22c55e',
+      handleColor: '#4ade80',
+      handleActiveColor: '#22c55e',
+      dotBorderColor: '#e5e5e5',
+      dotActiveBorderColor: '#4ade80',
     },
 
-    // ---- Switch — Mint accent ----
+    // ---- Switch: mint accent ----
     Switch: {
-      colorPrimary: '#22c55e',
-      colorPrimaryHover: '#16a34a',
+      colorPrimary: '#4ade80',
+      colorPrimaryHover: '#22c55e',
     },
 
     // ---- Checkbox ----
     Checkbox: {
-      colorPrimary: '#22c55e',
-      borderRadiusSM: 4,
+      colorPrimary: '#4ade80',
+      borderRadiusSM: 6,
     },
 
     // ---- Radio ----
     Radio: {
       buttonBg: '#ffffff',
-      buttonCheckedBg: '#dcfce7',
-      buttonColor: '#71717a',
+      buttonCheckedBg: '#f0fdf4',
+      buttonColor: '#6b6b6b',
       dotSize: 8,
     },
 
     // ---- DatePicker ----
     DatePicker: {
-      cellHoverWithRangeBg: '#dcfce7',
-      cellActiveWithRangeBg: '#bbf7d0',
+      cellHoverWithRangeBg: '#f0fdf4',
+      cellActiveWithRangeBg: '#dcfce7',
       cellRangeBorderColor: '#86efac',
     },
 
     // ---- Upload ----
     Upload: {
-      actionsColor: '#71717a',
+      actionsColor: '#6b6b6b',
     },
 
     // ---- Badge ----
@@ -391,14 +394,14 @@ export const tweakcnAntdTheme: ThemeConfig = {
       dotSize: 8,
       textFontSize: 12,
       textFontSizeSM: 10,
-      textFontWeight: 600,
+      textFontWeight: 700,
     },
 
     // ---- Statistic ----
     Statistic: {
       titleFontSize: 13,
       contentFontSize: 28,
-      fontFamily: `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif`,
+      fontFamily: "'Plus Jakarta Sans', sans-serif",
     },
 
     // ---- Descriptions ----
@@ -409,7 +412,7 @@ export const tweakcnAntdTheme: ThemeConfig = {
 
     // ---- Form ----
     Form: {
-      labelColor: '#09090b',
+      labelColor: '#000000',
       labelFontSize: 14,
       labelHeight: 36,
       verticalLabelPadding: '0 0 8px',
@@ -418,8 +421,8 @@ export const tweakcnAntdTheme: ThemeConfig = {
 
     // ---- Pagination ----
     Pagination: {
-      itemActiveBg: '#22c55e',
-      borderRadius: 8,
+      itemActiveBg: '#4ade80',
+      borderRadius: 12,
     },
   },
 };
