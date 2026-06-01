@@ -1,6 +1,6 @@
 /**
  * ABF Capacity Calculator - Firebase Functions
- * v1.52.0
+ * v1.52.3
  *
  * AI Chat Proxy - 安全代理 DeepSeek API 调用
  */
@@ -31,6 +31,7 @@ export const api = onRequest(
     memory: '256MiB',
     timeoutSeconds: 60,
     secrets: ['DEEPSEEK_API_KEY'],
+    invoker: 'public',
     cors: [
       'https://abf-capacity-calculator.web.app',
       'https://abf-capacity-calculator.firebaseapp.com',
@@ -47,7 +48,7 @@ export const api = onRequest(
     if (req.method === 'GET' && req.path === '/health') {
       res.json({
         status: 'ok',
-        version: '1.52.0',
+        version: '1.52.3',
         timestamp: new Date().toISOString(),
       });
       return;
