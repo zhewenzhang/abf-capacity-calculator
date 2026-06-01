@@ -1,13 +1,10 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
-  Card,
   Row,
   Col,
   Slider,
   InputNumber,
   Button,
-  Alert,
-  Space,
   Typography,
   Spin,
   Divider,
@@ -16,6 +13,8 @@ import {
   ExperimentOutlined,
   ThunderboltOutlined,
   ReloadOutlined,
+  InfoCircleOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import { useI18n } from '../i18n';
 import { canEdit } from '../services/projectScope';
@@ -44,7 +43,6 @@ import {
   formatPercent,
   formatCurrencyDisplay,
 } from '../core/formatters';
-import PageHeader from '../components/common/PageHeader';
 import MetricCard from '../components/common/MetricCard';
 import { DEFAULT_CURRENCY_SETTINGS, normalizeCurrencySettings } from '../core/currency';
 
@@ -213,83 +211,81 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
   }
 
   return (
-    <div>
-      <PageHeader
-        title={t('scenario.title')}
-        description={t('scenario.description')}
-      />
-
-      {/* Info banner */}
-      <Alert
-        message={t('scenario.infoBanner')}
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-      />
-
-      {/* Viewer guard */}
-      {!writable && (
-        <Alert
-          message={t('scenario.viewerReadOnly')}
-          type="info"
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
-      )}
-
-      {/* DQ caveat */}
-      {showDqWarning && (
-        <Alert
-          message={t('scenario.dqWarning')}
-          type="warning"
-          showIcon
-          closable
-          onClose={() => setDqDismissed(true)}
-          style={{ marginBottom: 16 }}
-        />
-      )}
-
-      {/* No data guard */}
-      {!hasData && (
-        <Alert
-          message={t('scenario.noData')}
-          type="warning"
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
-      )}
-
-      {/* Action bar */}
-      <div style={{ marginBottom: 16 }}>
-        {!scenarioActive ? (
-          <Button
-            type="primary"
-            icon={<ExperimentOutlined />}
-            onClick={handleEnterMode}
-            disabled={!writable || !hasData}
-          >
-            {t('scenario.enterMode')}
-          </Button>
-        ) : (
-          <Button
-            danger
-            onClick={handleExitMode}
-          >
-            {t('scenario.exitMode')}
-          </Button>
-        )}
+    <div className="db-page">
+      {/* Page Header — Designbyte */}
+      <div className="db-page-header">
+        <h2 className="db-page-title">{t('scenario.title')}</h2>
+        <p className="db-page-subtitle">{t('scenario.description')}</p>
       </div>
 
-      {/* Multiplier panel */}
+      {/* Info banner — Designbyte Alert */}
+      <div className="db-alert db-alert--info" style={{ marginBottom: 16 }}>
+        <InfoCircleOutlined />
+        <span>{t('scenario.infoBanner')}</span>
+      </div>
+
+      {/* Viewer guard — Designbyte Alert */}
+      {!writable && (
+        <div className="db-alert db-alert--info" style={{ marginBottom: 16 }}>
+          <InfoCircleOutlined />
+          <span>{t('scenario.viewerReadOnly')}</span>
+        </div>
+      )}
+
+      {/* DQ caveat — Designbyte Alert */}
+      {showDqWarning && (
+        <div className="db-alert db-alert--warning" style={{ marginBottom: 16 }}>
+          <WarningOutlined />
+          <span>{t('scenario.dqWarning')}</span>
+          <Button
+            type="text"
+            size="small"
+            onClick={() => setDqDismissed(true)}
+            style={{ marginLeft: 'auto' }}
+          >
+            ✕
+          </Button>
+        </div>
+      )}
+
+      {/* No data guard — Designbyte Alert */}
+      {!hasData && (
+        <div className="db-alert db-alert--warning" style={{ marginBottom: 16 }}>
+          <WarningOutlined />
+          <span>{t('scenario.noData')}</span>
+        </div>
+      )}
+
+      {/* Action bar — Designbyte Toolbar */}
+      <div className="db-toolbar" style={{ marginBottom: 16 }}>
+        <div className="db-toolbar-group">
+          {!scenarioActive ? (
+            <Button
+              type="primary"
+              icon={<ExperimentOutlined />}
+              onClick={handleEnterMode}
+              disabled={!writable || !hasData}
+            >
+              {t('scenario.enterMode')}
+            </Button>
+          ) : (
+            <Button
+              danger
+              onClick={handleExitMode}
+            >
+              {t('scenario.exitMode')}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Multiplier panel — Designbyte Card */}
       {scenarioActive && (
-        <Card
-          title={
-            <Space>
-              <ExperimentOutlined />
-              <span>{t('scenario.title')}</span>
-            </Space>
-          }
-          extra={
+        <div className="db-card" style={{ marginBottom: 16 }}>
+          <div className="db-card-header">
+            <span className="db-card-title">
+              <ExperimentOutlined /> {t('scenario.title')}
+            </span>
             <Button
               icon={<ReloadOutlined />}
               onClick={handleResetAll}
@@ -298,9 +294,8 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
             >
               {t('scenario.resetAll')}
             </Button>
-          }
-          style={{ marginBottom: 16 }}
-        >
+          </div>
+          <div className="db-card-body">
           <Row gutter={[24, 16]}>
             {MULTIPLIER_FIELDS.map(({ key, i18nLabel }) => (
               <Col xs={24} sm={12} key={key}>
@@ -349,15 +344,17 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
           >
             {computing ? t('scenario.computing') : t('scenario.runScenario')}
           </Button>
-        </Card>
+        </div>
+      </div>
       )}
 
-      {/* Comparison dashboard */}
+      {/* Comparison dashboard — Designbyte Card */}
       {comparison && (
-        <Card
-          title={t('scenario.comparison.title')}
-          style={{ marginBottom: 16 }}
-        >
+        <div className="db-card" style={{ marginBottom: 16 }}>
+          <div className="db-card-header">
+            <span className="db-card-title">{t('scenario.comparison.title')}</span>
+          </div>
+          <div className="db-card-body">
           <Row gutter={[16, 16]}>
             {/* Total Revenue */}
             <Col xs={24} sm={12} md={8} lg={6}>
@@ -680,7 +677,8 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
               />
             </Col>
           </Row>
-        </Card>
+        </div>
+      </div>
       )}
     </div>
   );

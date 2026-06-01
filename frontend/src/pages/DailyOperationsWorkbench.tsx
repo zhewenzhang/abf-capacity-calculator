@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Card, Row, Col, Table, Typography, Tag, Button, Badge, Space, Collapse, Alert, theme } from 'antd';
+import { Card, Row, Col, Table, Typography, Tag, Button, Badge, Space, Collapse, theme } from 'antd';
 import {
   CheckCircleOutlined,
   WarningOutlined,
@@ -487,21 +487,19 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
 
   // ---- Render ----
   return (
-    <div className="abf-page">
-      {/* Title */}
-      <div style={{ marginBottom: 24 }}>
-        <Title level={3} style={{ margin: 0 }}>{t('workbench.title')}</Title>
-        <Text type="secondary">{t('workbench.subtitle')}</Text>
+    <div className="db-page">
+      {/* Title — Designbyte Page Header */}
+      <div className="db-page-header">
+        <Title level={3} className="db-page-title">{t('workbench.title')}</Title>
+        <Text className="db-page-subtitle">{t('workbench.subtitle')}</Text>
       </div>
 
-      {/* Viewer read-only warning */}
+      {/* Viewer read-only warning — Designbyte Alert */}
       {!writable && (
-        <Alert
-          type="info"
-          showIcon
-          message={t('common.viewerReadOnly')}
-          style={{ marginBottom: 16 }}
-        />
+        <div className="db-alert db-alert--info" style={{ marginBottom: 16 }}>
+          <InfoCircleOutlined />
+          <span>{t('common.viewerReadOnly')}</span>
+        </div>
       )}
 
       {/* SECTION 1: Workflow Stage Stepper */}
