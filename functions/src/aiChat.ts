@@ -8,7 +8,8 @@
  * - 返回结果
  */
 
-import { Request, Response } from 'firebase-functions/v2/https';
+import { Request } from 'firebase-functions/v2/https';
+import { Response } from 'express';
 import { getAuth } from 'firebase-admin/auth';
 import { DeepSeekClient } from './deepseekClient';
 import { rateLimitCheck } from './rateLimit';
