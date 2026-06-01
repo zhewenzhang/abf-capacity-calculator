@@ -15,7 +15,7 @@ function makeContext(overrides?: Partial<AiCopilotContext>): AiCopilotContext {
   return {
     schemaVersion: '1.0',
     generatedAt: '2026-05-27T00:00:00Z',
-    appVersion: '1.40.0-test',
+    appVersion: '1.52.0-test',
     projectSummary: {
       totalRevenueUsd: 5000000,
       totalForecastPcs: 200000,
@@ -66,9 +66,9 @@ function getMockProvider(): AiProviderAdapter {
   return provider;
 }
 
-function getExternalProvider(): AiProviderAdapter {
-  const provider = getProviderById('external-byok');
-  if (!provider) throw new Error('External provider not found');
+function getProxyProvider(): AiProviderAdapter {
+  const provider = getProviderById('deepseek-proxy');
+  if (!provider) throw new Error('Proxy provider not found');
   return provider;
 }
 
@@ -80,7 +80,7 @@ describe('AI Provider Security Tests', () => {
   // -----------------------------------------------------------------------
   // 1. API key not persisted
   // -----------------------------------------------------------------------
-  it('1. MockProvider and ExternalByokPlaceholder do not store API keys', async () => {
+  it('1. MockProvider and ProxyProvider do not store API keys', async () => {
     const configWithKey: ProviderConfig = {
       providerId: 'mock',
       apiKey: 'sk-secret-test-key-12345',
@@ -103,11 +103,9 @@ describe('AI Provider Security Tests', () => {
     const mockRespStr = JSON.stringify(mockResp);
     expect(mockRespStr).not.toContain('sk-secret-test-key-12345');
 
-    // ExternalByokPlaceholder: runCompletion should not leak key
-    const external = getExternalProvider();
-    const extResp = await external.runCompletion(configWithKey, request);
-    const extRespStr = JSON.stringify(extResp);
-    expect(extRespStr).not.toContain('sk-secret-test-key-12345');
+    // ProxyProvider: does not require API key at all
+    const proxy = getProxyProvider();
+    expect(proxy.capabilities.requiresApiKey).toBe(false);
   });
 
   // -----------------------------------------------------------------------
@@ -191,24 +189,17 @@ describe('AI Provider Security Tests', () => {
   });
 
   // -----------------------------------------------------------------------
-  // 8. External provider placeholder does not call fetch
+  // 8. Proxy provider does not require API key
   // -----------------------------------------------------------------------
-  it('8. ExternalByokPlaceholder.runCompletion returns blocked response without network errors', async () => {
-    const external = getExternalProvider();
-    const config: ProviderConfig = { providerId: 'external-byok', apiKey: 'test' };
-    const request: ProviderRequest = {
-      systemPrompt: 'system',
-      userMessage: 'user',
-      context: {},
-      maxTokens: 4000,
-    };
+  it('8. ProxyProvider does not require API key and validates config successfully', () => {
+    const proxy = getProxyProvider();
+    const config: ProviderConfig = { providerId: 'deepseek-proxy' };
 
     // Should not throw
-    const response = await external.runCompletion(config, request);
-    expect(response.providerId).toBe('external-byok');
-    expect(response.confidence).toBe('blocked');
-    expect(response.isFallback).toBe(true);
-    expect(response.tokensUsed).toBe(0);
+    const result = proxy.validateConfig(config);
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
+    expect(proxy.capabilities.requiresApiKey).toBe(false);
   });
 
   // -----------------------------------------------------------------------

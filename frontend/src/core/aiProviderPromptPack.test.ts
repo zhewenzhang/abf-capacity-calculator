@@ -244,17 +244,17 @@ describe('buildProviderPromptPack', () => {
     const ctx = makeContext();
     const localPack = buildProviderPromptPack(ctx, 'q', 'local');
     const mockPack = buildProviderPromptPack(ctx, 'q', 'mock');
-    const byokPack = buildProviderPromptPack(ctx, 'q', 'external-byok');
+    const proxyPack = buildProviderPromptPack(ctx, 'q', 'deepseek-proxy');
 
     expect(localPack.systemPrompt).toContain('Running in local deterministic mode');
     expect(mockPack.systemPrompt).toContain('Running in mock provider mode');
     expect(mockPack.systemPrompt).toContain('deterministic test data');
-    expect(byokPack.systemPrompt).toContain('External provider mode');
-    expect(byokPack.systemPrompt).toContain('extra strictness');
+    expect(proxyPack.systemPrompt).toContain('DeepSeek AI provider mode');
+    expect(proxyPack.systemPrompt).toContain('server-managed');
 
     expect(localPack.systemPrompt).not.toContain('mock provider mode');
     expect(mockPack.systemPrompt).not.toContain('local deterministic mode');
-    expect(byokPack.systemPrompt).not.toContain('local deterministic mode');
+    expect(proxyPack.systemPrompt).not.toContain('local deterministic mode');
   });
 
   it('handles empty question gracefully', () => {

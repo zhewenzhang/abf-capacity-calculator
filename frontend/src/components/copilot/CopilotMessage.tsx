@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Tag, Typography, Space, Alert, Collapse } from 'antd';
-import { WarningOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { WarningOutlined, QuestionCircleOutlined, RobotOutlined } from '@ant-design/icons';
 import { useI18n } from '../../i18n';
 import type { CopilotToolResult } from '../../core/aiCopilotTools';
 
@@ -53,15 +53,26 @@ const CopilotMessage: React.FC<Props> = ({ result, showFixes = true }) => {
   const hasValidationIssues =
     result.validationIssues && result.validationIssues.length > 0;
 
+  const isAiResponse = result.toolName === 'DeepSeek AI';
+
   return (
     <Card
       size="small"
       bordered
-      style={{ marginBottom: 12 }}
+      style={{
+        marginBottom: 12,
+        borderRadius: 12,
+        border: '1px solid #f0f0f0',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+      }}
       title={
         <Space direction="vertical" size={4} style={{ width: '100%' }}>
           <Space>
-            <Tag color="geekblue">{result.toolName}</Tag>
+            {isAiResponse ? (
+              <RobotOutlined style={{ color: '#2563eb', fontSize: 16 }} />
+            ) : (
+              <Tag color="geekblue">{result.toolName}</Tag>
+            )}
             <Text strong>{result.title}</Text>
             <Tag color={CONFIDENCE_COLOR[result.confidence] ?? 'default'}>
               {t(`copilot.confidence.${result.confidence}`)}
