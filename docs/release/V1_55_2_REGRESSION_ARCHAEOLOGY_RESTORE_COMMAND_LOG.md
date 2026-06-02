@@ -55,3 +55,65 @@ v1.55.1 只合并了两个分支：
 ## 修复策略
 
 合并 `origin/xiaomi/v1-54-7-forecast-orphan-system-repair` 到 main，该分支包含 v1.54.2 到 v1.54.7 的所有修复。
+
+## 修复过程
+
+1. 创建修复分支 `xiaomi/v1-55-2-regression-archaeology-restore`
+2. 合并 `origin/xiaomi/v1-54-7-forecast-orphan-system-repair`（包含 v1.54.2-v1.54.7）
+   - 冲突：ScenarioPlanning.tsx — 保留 v1.55 版本（ours）
+   - 冲突：i18n/en.ts, i18n/zhTW.ts — 合并两组 keys
+3. 手动恢复 Pipeline Readiness 样式：
+   - 从 v1.54.7 恢复 DailyOperationsWorkbench.tsx
+   - 应用 v1.54.9 变更：删除 Abnormality Summary、添加 Copilot 深链
+   - 删除未使用变量（severityColor, DOMAIN_ICONS, domainLabelKey, abnormalitiesByDomain, domainKeys）
+4. 更新 APP_VERSION 为 v1.55.2
+5. 新增 `docs/release/RELEASE_BASELINE_GUARDRAILS.md` 防回归检查清单
+
+## test / lint / build
+
+| 检查 | 结果 |
+|------|------|
+| `npm run lint -- --quiet` | ✅ 0 errors |
+| `npm run build` | ✅ 成功 |
+| `npm run test -- --run` | ✅ 61/61 文件，1520/1520 测试通过 |
+
+## 红线检查
+
+| 文件 | 状态 |
+|------|------|
+| firestore.rules | ✅ 未修改 |
+| calculationEngine.ts | ✅ 未修改 |
+
+## Deploy
+
+- 命令: `firebase deploy --only hosting`
+- URL: https://abf-capacity-calculator.web.app
+
+## Post-deploy Canary
+
+| 页面 | HTTP 状态 |
+|------|----------|
+| `/` | ✅ 200 |
+| `/operations` | ✅ 200 |
+| `/bp-targets` | ✅ 200 |
+| `/scenario` | ✅ 200 |
+
+## 线上 Bundle 验证
+
+- `ABF CSS`: ✅ 找到（2 次）
+- `v1.55.2`: ✅ 找到（1 次）
+- `v1.52.0`: ✅ 未找到
+
+## Commit / Push
+
+- 修复分支 commit: `a81e3c5`
+- main merge commit: `f2e254e`
+- Push: ✅ 已推送到 origin/main 和 origin/xiaomi/v1-55-2-regression-archaeology-restore
+
+## 是否需要 AGY 复验
+
+**建议复验。** 涉及多个分支合并和手动修复，建议验证：
+1. BP 目标页面：TWD/USD/CNY/YoY 四行可见
+2. Pipeline Readiness：twk-readiness-grid 样式
+3. Scenario 页面：年度倍率矩阵、KPI 卡片、趋势图表
+4. Copilot 深链：点击按钮后 URL 带 ?tool= 参数
