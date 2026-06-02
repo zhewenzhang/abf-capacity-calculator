@@ -276,7 +276,7 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ scope }) => {
         </Space>
       ),
       children: (
-        <div className="spreadsheet-wrapper">
+        <div className="stable-spreadsheet-shell">
           <DataSheetGrid<CapacitySheetRow>
             value={coreRows}
             onChange={handleCoreRowsChange}
@@ -298,7 +298,7 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ scope }) => {
         </Space>
       ),
       children: (
-        <div className="spreadsheet-wrapper">
+        <div className="stable-spreadsheet-shell">
           <DataSheetGrid<CapacitySheetRow>
             value={buRows}
             onChange={handleBuRowsChange}

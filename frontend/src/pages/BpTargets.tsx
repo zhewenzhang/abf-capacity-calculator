@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Button, message, Alert, Card, Tooltip, Popover, InputNumber, Space, Typography } from 'antd';
+import { Button, message, Alert, Tooltip, Popover, InputNumber, Space, Typography } from 'antd';
 import { SaveOutlined, UndoOutlined, WarningOutlined, CheckOutlined } from '@ant-design/icons';
 import { DataSheetGrid, textColumn, floatColumn, keyColumn } from 'react-datasheet-grid';
 import 'react-datasheet-grid/dist/style.css';
@@ -373,20 +373,18 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
         </Button>
       </ActionBar>
 
-      {/* Grid rendering with spreadsheet-wrapper for horizontal scroll consistency */}
-      <Card className="abf-section">
-        <div className="spreadsheet-wrapper">
-          <DataSheetGrid<BpSheetRow>
-            value={rows}
-            onChange={handleRowsChange}
-            columns={columns}
-            rowHeight={36}
-            height={120}
-            lockRows={true}
-            cellClassName={cellClassName}
-          />
-        </div>
-      </Card>
+      {/* Grid — stable shell handles border/radius/scroll */}
+      <div className="stable-spreadsheet-shell" style={{ marginTop: 16 }}>
+        <DataSheetGrid<BpSheetRow>
+          value={rows}
+          onChange={handleRowsChange}
+          columns={columns}
+          rowHeight={36}
+          height={144}
+          lockRows={true}
+          cellClassName={cellClassName}
+        />
+      </div>
     </div>
   );
 };

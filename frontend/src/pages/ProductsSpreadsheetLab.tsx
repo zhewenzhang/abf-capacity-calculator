@@ -231,6 +231,9 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ scope }
     URL.revokeObjectURL(url);
   }, [rows]);
 
+  // Grid height — memoized to avoid recalculating on every render
+  const gridHeight = useMemo(() => Math.min(600, window.innerHeight - 280), []);
+
   // Columns
   const columns = useMemo(() => {
     const tc = { ...textColumn };
@@ -317,13 +320,13 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ scope }
       </ActionBar>
 
       {/* Grid */}
-      <div className="spreadsheet-wrapper">
+      <div className="stable-spreadsheet-shell">
         <DataSheetGrid<SheetRow>
           value={rows}
           onChange={handleChange}
           columns={columns}
           rowHeight={32}
-          height={Math.min(600, window.innerHeight - 280)}
+          height={gridHeight}
         />
       </div>
     </div>
