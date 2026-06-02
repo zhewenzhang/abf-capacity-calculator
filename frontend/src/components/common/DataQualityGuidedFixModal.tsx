@@ -51,7 +51,7 @@ interface OrphanForecastGuidedFixModalProps {
   issue: DataQualityIssue | null;
   scope: ProjectScope;
   /** All orphan forecasts for the same skuId (may span multiple months) */
-  orphanForecasts?: Array<{ id: string; month: string; skuId: string; forecastPcs?: number }>;
+  orphanForecasts?: Array<{ id: string; month: string; skuId: string; forecastPcs?: number; unitPrice?: number }>;
   /** Available SKUs for rebind target selection */
   availableSkus?: SKU[];
   /** Called after successful cleanup/rebind to refresh data */
@@ -174,13 +174,36 @@ export const OrphanForecastGuidedFixModal: React.FC<OrphanForecastGuidedFixModal
             <Paragraph style={{ marginBottom: 8 }}>
               {t('remediation.orphanForecast.issueDesc', { skuId: orphanSkuId, month: month || '-' })}
             </Paragraph>
-            <Space wrap>
+            <Space wrap style={{ marginBottom: 8 }}>
               <Tag color="red">{orphanSkuId}</Tag>
               {month && <Tag color="orange">{month}</Tag>}
               {orphanForecasts.length > 1 && (
                 <Tag color="volcano">{orphanForecasts.length} months affected</Tag>
               )}
             </Space>
+            {/* Mini table of affected forecasts */}
+            {orphanForecasts.length > 0 && (
+              <div style={{ overflowX: 'auto', marginTop: 8 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                      <th style={{ textAlign: 'left', padding: '3px 6px', fontWeight: 600 }}>{t('forecasts.month')}</th>
+                      <th style={{ textAlign: 'right', padding: '3px 6px', fontWeight: 600 }}>{t('forecasts.quantity')}</th>
+                      <th style={{ textAlign: 'right', padding: '3px 6px', fontWeight: 600 }}>{t('forecasts.price')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orphanForecasts.map(fc => (
+                      <tr key={fc.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                        <td style={{ padding: '3px 6px' }}>{fc.month}</td>
+                        <td style={{ padding: '3px 6px', textAlign: 'right' }}>{fc.forecastPcs?.toLocaleString() ?? '—'}</td>
+                        <td style={{ padding: '3px 6px', textAlign: 'right' }}>{fc.unitPrice?.toFixed(2) ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         }
         style={{ marginBottom: 16 }}

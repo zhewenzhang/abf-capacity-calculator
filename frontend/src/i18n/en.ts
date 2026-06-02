@@ -459,6 +459,8 @@ export const en: Record<string, string> = {
   'forecasts.selectSkuFirst': 'Select SKUs first',
   'forecasts.selectTargetYears': 'Select target years first',
   'forecasts.month': 'Month',
+  'forecasts.quantity': 'Quantity',
+  'forecasts.price': 'Price',
   'forecasts.quarter': 'Quarter',
   'forecasts.year': 'Year',
   'forecasts.edit': 'Edit',

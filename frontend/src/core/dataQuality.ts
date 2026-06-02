@@ -209,7 +209,14 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
         detail: `Forecast for month ${fc.month} references skuId ${fc.skuId} which does not exist.`,
         titleMessage: msg('dq.forecastOrphan.title'),
         detailMessage: msg('dq.forecastOrphan.detail', { month: fc.month, skuId: fc.skuId }),
-        evidence: { skuId: fc.skuId, month: fc.month },
+        evidence: {
+          skuId: fc.skuId,
+          month: fc.month,
+          forecastId: fc.id,
+          forecastPcs: fc.forecastPcs,
+          unitPrice: fc.unitPrice,
+          unitPriceCurrency: fc.unitPriceCurrency ?? 'USD',
+        },
       });
     }
 
