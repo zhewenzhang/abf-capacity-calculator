@@ -59,7 +59,8 @@ export const zhTW: Record<string, string> = {
   'common.readOnlyDesc': '您在此協作空間為檢視者，編輯功能已停用。',
 
   // Dashboard
-  'dashboard.title': '儀表板',
+  'dashboard.title': '營運總覽',
+  'dashboard.executiveKpi': '營運指標',
   'dashboard.totalSkus': '總 SKU 數',
   'dashboard.totalRevenue': '總營收',
   'dashboard.revenueTrend': '營收趨勢',

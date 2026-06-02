@@ -2,7 +2,6 @@ import React, { lazy, Suspense, useState, useEffect, useCallback, useMemo } from
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { ConfigProvider, Spin, Space, Radio, Dropdown, Avatar } from 'antd';
 import {
-  DashboardOutlined,
   InboxOutlined,
   BarChartOutlined,
   SettingOutlined,
@@ -47,12 +46,12 @@ const ScenarioPlanningPage = lazy(() => import('./pages/ScenarioPlanning'));
 const AiCopilotPage = lazy(() => import('./pages/AiCopilot'));
 const DailyOperationsWorkbench = lazy(() => import('./pages/DailyOperationsWorkbench'));
 
-const APP_VERSION = 'v1.55.2';
+const APP_VERSION = 'v1.56.0';
 
 // --- High-frequency nav items (always visible) ---
+// Note: /dashboard redirects to /operations (consolidated in v1.56)
 const PRIMARY_NAV = [
   { key: 'operations', icon: <CalendarOutlined /> },
-  { key: 'dashboard', icon: <DashboardOutlined /> },
   { key: 'products', icon: <InboxOutlined /> },
   { key: 'forecasts', icon: <BarChartOutlined /> },
   { key: 'capacity', icon: <CloudOutlined /> },

@@ -50,7 +50,8 @@ export const en: Record<string, string> = {
   'common.readOnlyDesc': 'You are a viewer in this workspace — editing is disabled.',
 
   // Dashboard
-  'dashboard.title': 'Dashboard',
+  'dashboard.title': 'Operations Dashboard',
+  'dashboard.executiveKpi': 'Executive KPIs',
   'dashboard.totalSkus': 'Total SKUs',
   'dashboard.totalRevenue': 'Total Revenue',
   'dashboard.revenueTrend': 'Revenue Trend',
