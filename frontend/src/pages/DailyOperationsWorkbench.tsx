@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Card, Row, Col, Table, Typography, Tag, Button, Badge, Space, Collapse, theme } from 'antd';
+import { Card, Row, Col, Table, Typography, Tag, Button, Badge, Space, Collapse, Alert, theme } from 'antd';
 import {
   CheckCircleOutlined,
   WarningOutlined,
@@ -29,7 +29,6 @@ import {
   buildWorkbenchViewModel,
   type WorkbenchViewModel,
   type WorkflowStageStatus,
-  type AbnormalityInsight,
   type RevenueBpSummary,
 } from '../core/workbench';
 import { buildDataQualitySummary, type DataQualitySummary } from '../core/dataQuality';
@@ -50,13 +49,13 @@ import {
   exportReportToJson,
   type ManagementReport,
 } from '../core/managementReport';
-import { PageLoading } from '../components/common';
+import { MetricCard, SectionCard, PageLoading } from '../components/common';
 import EmptyState from '../components/common/EmptyState';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
 import type { ProjectScope, SKU, Forecast, CapacityPlan, ProjectParameters } from '../types';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 // ============================================================
 // Props
@@ -87,13 +86,13 @@ const STAGE_ICONS: Record<string, React.ReactNode> = {
 function statusIcon(status: WorkflowStageStatus): React.ReactNode {
   switch (status) {
     case 'ready':
-      return <CheckCircleOutlined style={{ color: '#15803d' }} />;
+      return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
     case 'warning':
-      return <WarningOutlined style={{ color: '#f59e0b' }} />;
+      return <WarningOutlined style={{ color: '#faad14' }} />;
     case 'blocked':
-      return <CloseCircleOutlined style={{ color: '#dc2626' }} />;
+      return <CloseCircleOutlined style={{ color: '#ff4d4f' }} />;
     case 'notStarted':
-      return <InfoCircleOutlined style={{ color: '#a3a3a3' }} />;
+      return <InfoCircleOutlined style={{ color: '#d9d9d9' }} />;
   }
 }
 
@@ -120,50 +119,6 @@ function statusLabelKey(status: WorkflowStageStatus): string {
       return 'workbench.status.blocked';
     case 'notStarted':
       return 'workbench.status.notStarted';
-  }
-}
-
-// ============================================================
-// Severity helpers for abnormality insights
-// ============================================================
-
-function severityColor(severity: 'critical' | 'warning' | 'info'): string {
-  switch (severity) {
-    case 'critical':
-      return 'red';
-    case 'warning':
-      return 'orange';
-    case 'info':
-      return 'blue';
-  }
-}
-
-// ============================================================
-// Domain display info
-// ============================================================
-
-const DOMAIN_ICONS: Record<string, React.ReactNode> = {
-  data: <InboxOutlined />,
-  capacity: <CloudOutlined />,
-  sales: <BarChartOutlined />,
-  bp: <DollarOutlined />,
-  scenario: <ExperimentOutlined />,
-};
-
-function domainLabelKey(domain: string): string {
-  switch (domain) {
-    case 'data':
-      return 'menu.products';
-    case 'capacity':
-      return 'menu.capacity';
-    case 'sales':
-      return 'menu.forecasts';
-    case 'bp':
-      return 'menu.bpTargets';
-    case 'scenario':
-      return 'menu.scenario';
-    default:
-      return domain;
   }
 }
 
@@ -377,16 +332,6 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
     }, 0);
   }, [writable, rawData]);
 
-  const abnormalitiesByDomain = useMemo(() => {
-    if (!vm) return {};
-    const groups: Record<string, AbnormalityInsight[]> = {};
-    for (const insight of vm.abnormalities) {
-      if (!groups[insight.domain]) groups[insight.domain] = [];
-      groups[insight.domain].push(insight);
-    }
-    return groups;
-  }, [vm]);
-
   // ---- Loading state ----
   if (loading) {
     return <PageLoading />;
@@ -395,7 +340,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   // ---- Error state ----
   if (error) {
     return (
-      <div className="twk-page">
+      <div className="abf-page">
         <Card>
           <Text type="danger">{error}</Text>
         </Card>
@@ -406,7 +351,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   // ---- Empty state ----
   if (!vm || !hasData) {
     return (
-      <div className="twk-page">
+      <div className="abf-page">
         <EmptyState
           title={t('workbench.title')}
           description={t('workbench.subtitle')}
@@ -414,8 +359,6 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
       </div>
     );
   }
-
-  const domainKeys = Object.keys(abnormalitiesByDomain);
 
   // ---- Look-ahead columns ----
   const lookAheadColumns = [
@@ -487,30 +430,35 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
 
   // ---- Render ----
   return (
-    <div className="twk-page">
-      {/* Viewer read-only warning — Designbyte Alert */}
+    <div className="abf-page">
+      {/* Title */}
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>{t('workbench.title')}</Title>
+        <Text type="secondary">{t('workbench.subtitle')}</Text>
+      </div>
+
+      {/* Viewer read-only warning */}
       {!writable && (
-        <div className="twk-alert twk-alert--info" style={{ marginBottom: 16 }}>
-          <InfoCircleOutlined />
-          <span>{t('common.viewerReadOnly')}</span>
-        </div>
+        <Alert
+          type="info"
+          showIcon
+          message={t('common.viewerReadOnly')}
+          style={{ marginBottom: 16 }}
+        />
       )}
 
-      {/* SECTION 1: Workflow Stage Stepper — Designbyte db-card */}
-      <div className="twk-card" style={{ marginBottom: 16 }}>
-        <div className="twk-card-header">
-          <span className="twk-card-title"><CalendarOutlined /> Pipeline Readiness</span>
-        </div>
-        <div className="twk-card-body">
-          <div className="twk-readiness-grid">
-            {vm.stages.map((stage) => (
-              <div
-                className="twk-readiness-card"
-                key={stage.id}
+      {/* SECTION 1: Workflow Stage Stepper */}
+      <SectionCard title={<><CalendarOutlined /> Pipeline Readiness</>} style={{ marginBottom: 16 }}>
+        <Row gutter={[12, 12]}>
+          {vm.stages.map((stage, idx) => (
+            <Col xs={12} sm={8} md={6} lg={Math.floor(24 / vm.stages.length)} key={stage.id}>
+              <Card
+                size="small"
+                hoverable
                 style={{
                   borderColor: statusColor(stage.status) === 'default' ? undefined :
-                    statusColor(stage.status) === 'green' ? 'var(--twk-success)' :
-                    statusColor(stage.status) === 'orange' ? 'var(--twk-warning)' : 'var(--twk-error)',
+                    statusColor(stage.status) === 'green' ? '#52c41a' :
+                    statusColor(stage.status) === 'orange' ? '#faad14' : '#ff4d4f',
                   cursor: stage.cta ? 'pointer' : 'default',
                 }}
                 onClick={() => {
@@ -519,18 +467,16 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                   }
                 }}
               >
-                <div className="twk-readiness-card-top">
+                <Space direction="vertical" size={4} style={{ width: '100%' }}>
                   <Space size={8}>
                     {STAGE_ICONS[stage.id] || <InfoCircleOutlined />}
                     {statusIcon(stage.status)}
                   </Space>
+                  <Text strong style={{ fontSize: 12 }}>{t(stage.label)}</Text>
                   <Tag color={statusColor(stage.status)} style={{ fontSize: 11 }}>
                     {t(statusLabelKey(stage.status))}
                   </Tag>
-                </div>
-                <div className="twk-readiness-title">{t(stage.label)}</div>
-                <div className="twk-readiness-footer">
-                  {stage.cta && stage.status !== 'ready' ? (
+                  {stage.cta && stage.status !== 'ready' && (
                     <Button
                       type="link"
                       size="small"
@@ -545,78 +491,32 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                         : t('workbench.cta.view')}{' '}
                       <RightOutlined />
                     </Button>
-                  ) : (
-                    <span />
                   )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+                </Space>
+                {idx < vm.stages.length - 1 && (
+                  <RightOutlined
+                    style={{
+                      position: 'absolute',
+                      right: -10,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: token.colorTextQuaternary,
+                      display: 'none',
+                    }}
+                  />
+                )}
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      </SectionCard>
 
-      {/* SECTION 2: Abnormality Summary — Designbyte db-card */}
-      <div className="twk-card" style={{ marginBottom: 16 }}>
-        <div className="twk-card-header">
-          <span className="twk-card-title"><WarningOutlined /> {t('workbench.abnormality.title')}</span>
-        </div>
-        <div className="twk-card-body">
-          {domainKeys.length === 0 ? (
-            <div className="twk-empty">
-              <CheckCircleOutlined className="twk-empty-icon" style={{ color: 'var(--twk-success)' }} />
-              <div className="twk-empty-title">{t('workbench.status.ready')}</div>
-              <div className="twk-empty-description">{t('workbench.subtitle')}</div>
-            </div>
-          ) : (
-            <Row gutter={[12, 12]}>
-              {domainKeys.map(domain => {
-                const insights = abnormalitiesByDomain[domain];
-                const errorCount = insights.filter(i => i.severity === 'critical').length;
-                const warnCount = insights.filter(i => i.severity === 'warning').length;
-                return (
-                  <Col xs={24} sm={12} key={domain}>
-                    <div className="twk-card" style={{ marginBottom: 0 }}>
-                      <div className="twk-card-body">
-                        <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                          <Space>
-                            {DOMAIN_ICONS[domain] || <InfoCircleOutlined />}
-                            <Text strong>{t(domainLabelKey(domain))}</Text>
-                            {errorCount > 0 && <Badge count={errorCount} style={{ backgroundColor: 'var(--twk-error)' }} />}
-                            {warnCount > 0 && <Badge count={warnCount} style={{ backgroundColor: 'var(--twk-warning)' }} />}
-                          </Space>
-                          {insights.slice(0, 3).map((insight, i) => (
-                            <Space key={i} size={8} style={{ width: '100%' }}>
-                              <Tag color={severityColor(insight.severity)} style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px' }}>
-                                {insight.severity.toUpperCase()}
-                              </Tag>
-                              <Text style={{ fontSize: 12 }} ellipsis={{ tooltip: insight.detail }}>
-                                {insight.title}
-                              </Text>
-                            </Space>
-                          ))}
-                          {insights.length > 3 && (
-                            <Text type="secondary" style={{ fontSize: 11 }}>
-                              +{insights.length - 3} more
-                            </Text>
-                          )}
-                        </Space>
-                      </div>
-                    </div>
-                  </Col>
-                );
-              })}
-            </Row>
-          )}
-        </div>
-      </div>
-
-      {/* SECTION 2B: Abnormality Intelligence Panel (v1.43) — Designbyte db-card */}
+      {/* SECTION 2B: Abnormality Intelligence Panel (v1.43) */}
       {rankedOutput && rankedOutput.ranked.length > 0 && (
-        <div className="twk-card" style={{ marginBottom: 16 }}>
-          <div className="twk-card-header">
-            <span className="twk-card-title"><AlertOutlined /> {t('workbench.abnormalityIntelligence.title')}</span>
-          </div>
-          <div className="twk-card-body">
+        <SectionCard
+          title={<><AlertOutlined /> {t('workbench.abnormalityIntelligence.title')}</>}
+          style={{ marginBottom: 16 }}
+        >
           {/* Must Act Today */}
           {rankedOutput.mustActToday.length > 0 && (
             <div style={{ marginBottom: 16 }}>
@@ -716,49 +616,39 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
               },
             ]}
           />
-          </div>
-        </div>
+        </SectionCard>
       )}
 
-      {/* SECTION 3: Look-Ahead Focus Panel — Designbyte db-card + twk-table-wrapper */}
-      <div className="twk-card" style={{ marginBottom: 16 }}>
-        <div className="twk-card-header">
-          <span className="twk-card-title"><BarChartOutlined /> {t('workbench.lookahead.title')}</span>
-        </div>
-        <div className="twk-card-body">
-          {vm.lookAhead.length === 0 ? (
-            <div className="twk-empty" style={{ padding: '24px 0' }}>
-              <CheckCircleOutlined className="twk-empty-icon" style={{ color: 'var(--twk-success)' }} />
-              <div className="twk-empty-title">{t('workbench.status.ready')}</div>
-            </div>
-          ) : (
-            <div className="twk-table-wrapper">
-              <Table
-                columns={lookAheadColumns}
-                dataSource={vm.lookAhead.map((item, idx) => ({ ...item, key: idx }))}
-                size="small"
-                pagination={false}
-                scroll={{ x: 480 }}
-              />
-            </div>
-          )}
-        </div>
-      </div>
+      {/* SECTION 3: Look-Ahead Focus Panel */}
+      <SectionCard title={<><BarChartOutlined /> {t('workbench.lookahead.title')}</>} style={{ marginBottom: 16 }}>
+        {vm.lookAhead.length === 0 ? (
+          <Text type="secondary">{t('workbench.status.ready')}</Text>
+        ) : (
+          <Table
+            columns={lookAheadColumns}
+            dataSource={vm.lookAhead.map((item, idx) => ({ ...item, key: idx }))}
+            size="small"
+            pagination={false}
+            scroll={{ x: 480 }}
+          />
+        )}
+      </SectionCard>
 
-      {/* SECTION 4: Revenue / BP Summary — Designbyte twk-kpi */}
+      {/* SECTION 4: Revenue / BP Summary */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={12}>
-          <div className="twk-kpi">
-            <div className="twk-kpi-label">{t('workbench.revenue.current')}</div>
-            <div className="twk-kpi-value" style={{ color: revenueBpStatusColor(vm.revenueBp.status) }}>
-              {vm.revenueBp.currentRevenue?.toFixed(1) ?? '-'} <span style={{ fontSize: 14, fontWeight: 400 }}>M TWD</span>
-            </div>
-          </div>
+          <MetricCard
+            title={t('workbench.revenue.current')}
+            value={vm.revenueBp.currentRevenue}
+            precision={1}
+            suffix="M TWD"
+            valueStyle={{ color: revenueBpStatusColor(vm.revenueBp.status) }}
+          />
         </Col>
         <Col xs={24} sm={12}>
-          <div className="twk-kpi">
-            <div className="twk-kpi-label">{t('workbench.revenue.title')}</div>
-            <div style={{ marginTop: 8 }}>
+          <Card className="stat-card dashboard-kpi-card">
+            <Space direction="vertical" size={4} style={{ width: '100%' }}>
+              <Text type="secondary">{t('workbench.revenue.title')}</Text>
               <Space>
                 <Text strong>{t('workbench.revenue.target')}:</Text>
                 <Text>
@@ -767,7 +657,6 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                     : '-'}
                 </Text>
               </Space>
-              <br />
               <Space>
                 <Text strong>{t('workbench.revenue.attainment')}:</Text>
                 <Text
@@ -786,7 +675,6 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                     : '-'}
                 </Text>
               </Space>
-              <br />
               <Space>
                 <Text strong>{t('workbench.revenue.gap')}:</Text>
                 <Text
@@ -803,18 +691,14 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                     : '-'}
                 </Text>
               </Space>
-            </div>
-          </div>
+            </Space>
+          </Card>
         </Col>
       </Row>
 
-      {/* SECTION 5: Scenario Shortcuts — Designbyte db-card + db-toolbar */}
-      <div className="twk-card" style={{ marginBottom: 16 }}>
-        <div className="twk-card-header">
-          <span className="twk-card-title"><ExperimentOutlined /> {t('workbench.scenario.title')}</span>
-        </div>
-        <div className="twk-card-body">
-          <Space wrap>
+      {/* SECTION 5: Scenario Shortcuts */}
+      <SectionCard title={<><ExperimentOutlined /> {t('workbench.scenario.title')}</>} style={{ marginBottom: 16 }}>
+        <Space wrap>
           {vm.scenarioPresets.map(preset => (
             <Button
               key={preset.id}
@@ -833,16 +717,19 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
               {t(preset.label)}
             </Button>
           ))}
-          </Space>
-        </div>
-      </div>
+        </Space>
+        {scenarioDisabled && (
+          <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+            {t('workbench.cta.view')}
+          </Text>
+        )}
+      </SectionCard>
 
-      {/* SECTION 5B: Scenario v2 Shortcuts (v1.44) — Designbyte db-card */}
-      <div className="twk-card" style={{ marginBottom: 16 }}>
-        <div className="twk-card-header">
-          <span className="twk-card-title"><ThunderboltOutlined /> {t('workbench.scenario.v2.title')}</span>
-        </div>
-        <div className="twk-card-body">
+      {/* SECTION 5B: Scenario v2 Shortcuts (v1.44) */}
+      <SectionCard
+        title={<><ThunderboltOutlined /> {t('workbench.scenario.v2.title')}</>}
+        style={{ marginBottom: 16 }}
+      >
         <Space wrap>
           <Button
             icon={<ExperimentOutlined />}
@@ -901,15 +788,13 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
             </Card>
           </div>
         )}
-        </div>
-      </div>
+      </SectionCard>
 
-      {/* SECTION 5C: Management Report (v1.45) — Designbyte db-card */}
-      <div className="twk-card" style={{ marginBottom: 16 }}>
-        <div className="twk-card-header">
-          <span className="twk-card-title"><FileTextOutlined /> {t('workbench.report.title')}</span>
-        </div>
-        <div className="twk-card-body">
+      {/* SECTION 5C: Management Report (v1.45) */}
+      <SectionCard
+        title={<><FileTextOutlined /> {t('workbench.report.title')}</>}
+        style={{ marginBottom: 16 }}
+      >
         <Space wrap style={{ marginBottom: 12 }}>
           <Button
             icon={<FileTextOutlined />}
@@ -990,61 +875,55 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
             {t('workbench.report.noReport')}
           </Text>
         )}
-        </div>
-      </div>
+      </SectionCard>
 
-      {/* SECTION 6: Copilot Quick Actions — Designbyte db-card */}
-      <div className="twk-card">
-        <div className="twk-card-header">
-          <span className="twk-card-title"><RobotOutlined /> {t('workbench.copilot.title')}</span>
-        </div>
-        <div className="twk-card-body">
-          <Space wrap>
+      {/* SECTION 6: Copilot Quick Actions */}
+      <SectionCard title={<><RobotOutlined /> {t('workbench.copilot.title')}</>}>
+        <Space wrap>
           <Button
             icon={<RobotOutlined />}
-            onClick={() => navigate('/copilot')}
+            onClick={() => navigate('/copilot?tool=dataProblems')}
           >
             {t('workbench.copilot.dq')}
           </Button>
           <Button
             icon={<RobotOutlined />}
-            onClick={() => navigate('/copilot')}
+            onClick={() => navigate('/copilot?tool=capacityRisk')}
           >
             {t('workbench.copilot.capacity')}
           </Button>
           <Button
             icon={<RobotOutlined />}
-            onClick={() => navigate('/copilot')}
+            onClick={() => navigate('/copilot?tool=bpGap')}
           >
             {t('workbench.copilot.bp')}
           </Button>
           <Button
             icon={<RobotOutlined />}
-            onClick={() => navigate('/copilot')}
+            onClick={() => navigate('/copilot?tool=lookAhead')}
           >
             {t('workbench.copilot.lookahead')}
           </Button>
           <Button
             icon={<AlertOutlined />}
-            onClick={() => navigate('/copilot')}
+            onClick={() => navigate('/copilot?tool=abnormalityDetail')}
           >
             {t('copilot.quick.abnormalityDetail')}
           </Button>
           <Button
             icon={<ThunderboltOutlined />}
-            onClick={() => navigate('/copilot')}
+            onClick={() => navigate('/copilot?tool=scenarioV2')}
           >
             {t('copilot.quick.scenarioV2')}
           </Button>
           <Button
             icon={<FileTextOutlined />}
-            onClick={() => navigate('/copilot')}
+            onClick={() => navigate('/copilot?tool=reportNarrative')}
           >
             {t('copilot.quick.reportNarrative')}
           </Button>
-          </Space>
-        </div>
-      </div>
+        </Space>
+      </SectionCard>
     </div>
   );
 };

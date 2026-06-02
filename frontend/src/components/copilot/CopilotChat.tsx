@@ -27,9 +27,13 @@ const { TextArea } = Input;
 
 interface Props {
   context: AiCopilotContext;
+  /** Tool ID from deep-link query param to auto-execute once */
+  pendingToolId?: string | null;
+  /** Called after pendingToolId has been consumed */
+  onPendingToolConsumed?: () => void;
 }
 
-const CopilotChat: React.FC<Props> = ({ context }) => {
+const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolConsumed }) => {
   const { t, lang } = useI18n();
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<CopilotToolResult[]>([]);
@@ -91,6 +95,20 @@ const CopilotChat: React.FC<Props> = ({ context }) => {
     },
     []
   );
+
+  // Auto-execute pending tool from deep-link query param
+  useEffect(() => {
+    if (pendingToolId && context) {
+      setProcessing(true);
+      setTimeout(() => {
+        const result = runTool(pendingToolId, context);
+        const validated = applyOutputValidation(result);
+        setHistory((prev) => [...prev, validated]);
+        setProcessing(false);
+        onPendingToolConsumed?.();
+      }, 300);
+    }
+  }, [pendingToolId, context, applyOutputValidation, onPendingToolConsumed]);
 
   const handleModeChange = useCallback((mode: ProviderMode) => {
     setProviderMode(mode);
