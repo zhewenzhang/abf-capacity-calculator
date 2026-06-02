@@ -326,7 +326,7 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ scope }) => {
   }
 
   return (
-    <div className="abf-page">
+    <div className="twk-page">
       {/* Experimental banner */}
       <ExperimentalBanner
         label={t('capacityLab.experiment')}

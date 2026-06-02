@@ -332,7 +332,7 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
   if (error) return <Alert message={error} type="error" showIcon style={{ margin: 16 }} />;
 
   return (
-    <div className="abf-page">
+    <div className="twk-page">
       {/* Viewer read-only warning */}
       {!writable && (
         <Alert

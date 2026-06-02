@@ -680,3 +680,147 @@ describe('sanitizeBlockedContent', () => {
     expect(result).toBe(text);
   });
 });
+
+// ============================================================
+// v1.52.4 — Chinese Source Reference Validation
+// ============================================================
+
+describe('validateSourceReferences — v1.52.4 Chinese', () => {
+  it('passes when recommendation has Chinese source reference "來源"', () => {
+    const text = '[Recommendation] 建議評估 Q2 產能擴充。來源：Capacity Risk Model';
+    const issues = validateSourceReferences(text);
+    expect(issues).toHaveLength(0);
+  });
+
+  it('passes when recommendation has Chinese source reference "依據"', () => {
+    const text = '[Recommendation] 建議增加 BU 產能。依據：BP Analysis';
+    const issues = validateSourceReferences(text);
+    expect(issues).toHaveLength(0);
+  });
+
+  it('passes when recommendation has Chinese source reference "根據"', () => {
+    const text = '[Recommendation] 建議調整排程。根據：Scenario Result';
+    const issues = validateSourceReferences(text);
+    expect(issues).toHaveLength(0);
+  });
+
+  it('warns when recommendation has no source (Chinese)', () => {
+    const text = '[Recommendation] 建議評估 Q2 產能擴充。';
+    const issues = validateSourceReferences(text);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('warning');
+  });
+
+  it('warns with Chinese message when recommendation lacks source', () => {
+    const text = '[Recommendation] 建議評估 Q2 產能擴充。';
+    const issues = validateSourceReferences(text);
+    expect(issues[0].message).toContain('部分建議缺少明確資料來源');
+  });
+});
+
+// ============================================================
+// v1.52.4 — Currency Validation with Chinese Conversion Keywords
+// ============================================================
+
+describe('validateCurrencyBpRules — v1.52.4 Chinese Conversion', () => {
+  it('passes when USD/TWD comparison includes Chinese "換算"', () => {
+    const text = '以下 BP 差距已按 1 USD = 32 TWD 換算，差距為 5M TWD。';
+    const issues = validateCurrencyBpRules(text);
+    const currencyWarnings = issues.filter(i => i.rule === 'CURRENCY_BP_RULES');
+    expect(currencyWarnings).toHaveLength(0);
+  });
+
+  it('passes when USD/TWD comparison includes Chinese "匯率"', () => {
+    const text = 'USD revenue is $5M, TWD target is 160M (匯率 32.0)。';
+    const issues = validateCurrencyBpRules(text);
+    const currencyWarnings = issues.filter(i => i.rule === 'CURRENCY_BP_RULES');
+    expect(currencyWarnings).toHaveLength(0);
+  });
+
+  it('passes when USD/TWD comparison includes Chinese "折算"', () => {
+    const text = 'USD revenue is $5M, 折算為 160M TWD。';
+    const issues = validateCurrencyBpRules(text);
+    const currencyWarnings = issues.filter(i => i.rule === 'CURRENCY_BP_RULES');
+    expect(currencyWarnings).toHaveLength(0);
+  });
+
+  it('warns when USD/TWD comparison has no conversion (Chinese)', () => {
+    const text = 'USD revenue is $5M while TWD target is 160M。';
+    const issues = validateCurrencyBpRules(text);
+    const currencyWarnings = issues.filter(i => i.rule === 'CURRENCY_BP_RULES');
+    expect(currencyWarnings.length).toBeGreaterThan(0);
+  });
+
+  it('warns with Chinese message for currency comparison', () => {
+    const text = 'USD revenue is $5M while TWD target is 160M。';
+    const issues = validateCurrencyBpRules(text);
+    const currencyWarnings = issues.filter(i => i.rule === 'CURRENCY_BP_RULES');
+    expect(currencyWarnings[0].message).toContain('跨幣別比較');
+  });
+});
+
+// ============================================================
+// v1.52.4 — Forbidden Claims: "請確認後執行"
+// ============================================================
+
+describe('validateNoForbiddenClaims — v1.52.4 "請確認後執行"', () => {
+  it('blocks "請確認後執行" (zh-TW)', () => {
+    const issues = validateNoForbiddenClaims('建議評估產能擴充，請確認後執行。');
+    expect(issues.some(i => i.severity === 'blocked')).toBe(true);
+  });
+
+  it('blocks "请确认后执行" (zh-CN)', () => {
+    const issues = validateNoForbiddenClaims('建议评估产能扩充，请确认后执行。');
+    expect(issues.some(i => i.severity === 'blocked')).toBe(true);
+  });
+
+  it('blocks "Please confirm before proceeding" (en)', () => {
+    const issues = validateNoForbiddenClaims(
+      'Recommendation: expand capacity. Please confirm before proceeding.'
+    );
+    expect(issues.some(i => i.severity === 'blocked')).toBe(true);
+  });
+
+  it('passes when using correct phrasing "建議人工確認後再採取行動"', () => {
+    const issues = validateNoForbiddenClaims(
+      '建議評估產能擴充。建議人工確認後再採取行動，此建議不會自動寫入系統。'
+    );
+    expect(issues).toHaveLength(0);
+  });
+});
+
+// ============================================================
+// v1.52.4 — Full Output Validation with Chinese Content
+// ============================================================
+
+describe('validateProviderOutput — v1.52.4 Chinese Content', () => {
+  it('returns pass for well-structured Chinese AI response', () => {
+    const text = `## 重點摘要
+- [Fact] Core 稼動率 95.2%
+- [Inference] Q2 可能出現瓶頸
+- [Recommendation] 建議評估產能擴充
+
+## 主要發現
+[Fact] 2026-03 Core 稼動率為 95.2%，已超過警戒值。
+
+## 建議行動
+[Recommendation] 建議評估 Q2 產能擴充方案。來源：Capacity Risk Model。建議人工確認後再採取行動，此建議不會自動寫入系統。`;
+
+    const result = validateProviderOutput(text, { confidence: 'high' });
+    expect(result.status).toBe('pass');
+    expect(result.sanitizedAnswer).toBe(text);
+  });
+
+  it('blocks Chinese response with "請確認後執行"', () => {
+    const text = '[Recommendation] 建議評估產能擴充，請確認後執行。';
+    const result = validateProviderOutput(text);
+    expect(result.status).toBe('blocked');
+  });
+
+  it('returns warning for Chinese response without source', () => {
+    const text = '[Recommendation] 建議評估 Q2 產能擴充。';
+    const result = validateProviderOutput(text);
+    expect(result.status).toBe('warning');
+    expect(result.issues.some(i => i.message.includes('部分建議缺少明確資料來源'))).toBe(true);
+  });
+});

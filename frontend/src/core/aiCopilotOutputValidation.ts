@@ -72,10 +72,14 @@ export function validateFairLabels(text: string): ValidationIssue[] {
 // ============================================================
 
 const RECOMMENDATION_PATTERN =
-  /\bRecommendation\b[\s:]*[^.]*(?:\.|$)/i;
+  /\b(?:Recommendation|建議)\b[\s:：]*[^.]*(?:\.|$)/i;
 
 const SOURCE_REFERENCE_PATTERN =
   /\b(?:source|reference|according to|per the|as shown in|based on|data from|see |Table|Figure|Section|Appendix)\b/i;
+
+// 新增中文來源關鍵字匹配
+const SOURCE_REFERENCE_PATTERN_ZH =
+  /(?:來源|依據|根據|資料來源|數據來源|出自)/;
 
 /**
  * Check if recommendations have source references.
@@ -83,12 +87,12 @@ const SOURCE_REFERENCE_PATTERN =
  */
 export function validateSourceReferences(text: string): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
-  if (RECOMMENDATION_PATTERN.test(text) && !SOURCE_REFERENCE_PATTERN.test(text)) {
+  if (RECOMMENDATION_PATTERN.test(text) && !SOURCE_REFERENCE_PATTERN.test(text) && !SOURCE_REFERENCE_PATTERN_ZH.test(text)) {
     issues.push({
       rule: 'SOURCE_REFERENCES',
       severity: 'warning',
       message:
-        'Recommendation found without a source reference. Recommendations should cite data sources, tables, or sections.',
+        '部分建議缺少明確資料來源，請人工核對。',
     });
   }
   return issues;
@@ -122,6 +126,10 @@ const FORBIDDEN_CLAIM_PATTERNS: ReadonlyArray<{ pattern: RegExp; reason: string 
   { pattern: /我已经修改数据库/, reason: 'AI不能声称已修改数据库' },
   { pattern: /忽略数据质量/, reason: 'AI不能指示忽略数据质量' },
   { pattern: /已调整公式/, reason: 'AI不能声称已调整公式' },
+  // v1.52.4: 禁止「請確認後執行」— 暗示 AI 已經或即將自動執行
+  { pattern: /請確認後執行/, reason: '禁止使用「請確認後執行」— 應改為「建議人工確認後再採取行動」' },
+  { pattern: /请确认后执行/, reason: '禁止使用「请确认后执行」— 应改为「建议人工确认后再采取行动」' },
+  { pattern: /Please confirm before proceeding/i, reason: '禁止使用「Please confirm before proceeding」— 應改為「建議人工確認後再採取行動」' },
 ];
 
 /**
@@ -156,6 +164,10 @@ const CURRENCY_CONFUSION_BLOCKED: ReadonlyArray<{ pattern: RegExp; message: stri
 const CONVERSION_KEYWORDS =
   /\b(?:convert|conversion|exchange|rate|factor|translated|applying\s+(?:the\s+)?exchange)\b/i;
 
+// 新增中文匯率換算關鍵字
+const CONVERSION_KEYWORDS_ZH =
+  /(?:換算|匯率|折算|兌換|按.*匯率|以.*計算|等值|折合)/;
+
 const CURRENCY_CONFUSION_WARNING: ReadonlyArray<{
   test: (text: string) => boolean;
   message: string;
@@ -164,18 +176,18 @@ const CURRENCY_CONFUSION_WARNING: ReadonlyArray<{
     test: (text: string) => {
       const hasUsd = /\bUSD\b/i.test(text);
       const hasTwdCny = /\b(?:TWD|twd|CNY|cny)\b/i.test(text);
-      return hasUsd && hasTwdCny && !CONVERSION_KEYWORDS.test(text);
+      return hasUsd && hasTwdCny && !CONVERSION_KEYWORDS.test(text) && !CONVERSION_KEYWORDS_ZH.test(text);
     },
     message:
-      'Direct comparison of USD to TWD/CNY without explicit conversion mention. Ensure exchange rate is applied.',
+      '偵測到跨幣別比較，請確認是否已套用匯率。',
   },
   {
     test: (text: string) => {
       const hasRevenueTwd = /\brevenue\b[^.\n]{0,60}\bMillion\s+TWD\b/i.test(text);
-      return hasRevenueTwd && !CONVERSION_KEYWORDS.test(text);
+      return hasRevenueTwd && !CONVERSION_KEYWORDS.test(text) && !CONVERSION_KEYWORDS_ZH.test(text);
     },
     message:
-      'Revenue compared to "Million TWD" BP target without unit conversion. Ensure currency and magnitude are aligned.',
+      '偵測到跨幣別比較，請確認是否已套用匯率。',
   },
 ];
 

@@ -38,6 +38,7 @@ export const en: Record<string, string> = {
   'common.edit': 'Edit',
   'common.delete': 'Delete',
   'common.search': 'Search',
+  'common.more': 'More',
   'common.loading': 'Loading...',
   'common.noData': 'No data available',
   'common.actions': 'Actions',
@@ -1094,6 +1095,14 @@ export const en: Record<string, string> = {
   'copilot.why.validationStatus': 'Validation status:',
   'copilot.why.validationPassed': 'Validation passed',
   'copilot.why.validationWarning': 'Validation warning(s)',
+
+  // v1.52.4 Quality hints and validation noise reduction
+  'copilot.qualityHint.title': 'Quality Notice',
+  'copilot.qualityHint.missingSource': 'Some recommendations lack explicit data sources. Please verify manually.',
+  'copilot.qualityHint.currencyComparison': 'Cross-currency comparison detected. Please confirm exchange rate has been applied.',
+  'copilot.qualityHint.humanConfirm': 'Suggest human confirmation before taking action',
+  'copilot.qualityHint.noAutoWrite': 'This suggestion will not auto-write to the system',
+  'copilot.markdown.rendered': 'Markdown response',
 
   // Scenario Planning
   'menu.scenario': 'Scenario Planning',

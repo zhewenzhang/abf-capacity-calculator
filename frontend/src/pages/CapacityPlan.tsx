@@ -698,7 +698,7 @@ const CapacityPlanPage: React.FC<CapacityPlanPageProps> = ({ scope }) => {
   };
 
   return (
-    <div className="abf-page">
+    <div className="twk-page">
       {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       {!writable && (
         <Alert message={t('common.readOnlyMode')} description={t('common.readOnlyDesc')} type="info" showIcon className="abf-alert-page" />

@@ -54,7 +54,7 @@ import {
 } from '../core/analytics';
 import TimeMatrixTable, { type TimeMatrixRow } from '../components/analytics/TimeMatrixTable';
 import { YearlyHealthMatrix } from '../components/analytics/YearlyHealthMatrix';
-import { MetricCard, PageLoading } from '../components/common';
+import { PageLoading } from '../components/common';
 import { buildBpAnalysis } from '../core/bpTargets';
 import BpAnalysisPanel from '../components/analytics/BpAnalysisPanel';
 import type { SkuCalculationResult, MonthlyCapacitySummary, SKU, Forecast, CapacityPlan, ProjectParameters } from '../types';
@@ -790,56 +790,79 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
   }
 
   return (
-    <div className="abf-page">
-      {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
+    <div className="twk-page">
+      {/* Page Header — Designbyte */}
+      <div className="twk-page-header">
+        <h2 className="twk-page-title">{t('results.title')}</h2>
+        <p className="twk-page-subtitle">{t('results.description')}</p>
+      </div>
+
+      {error && (
+        <div className="twk-alert twk-alert--error" style={{ marginBottom: 16 }}>
+          <WarningOutlined />
+          <span>{error}</span>
+        </div>
+      )}
       {!error && model && (
         <>
-          {/* Summary KPIs */}
+          {/* Summary KPIs — Designbyte KPI Cards */}
           <Row gutter={16} style={{ marginBottom: 16 }}>
             <Col xs={24} sm={12} md={6}>
-              <MetricCard
-                title={t('results.totalRevenue')}
-                value={model.totalRevenue}
-                precision={currencySettings.displayCurrency === 'USD' ? 2 : 0}
-              />
+              <div className="twk-kpi">
+                <div className="twk-kpi-label">{t('results.totalRevenue')}</div>
+                <div className="twk-kpi-value">
+                  {model.totalRevenue?.toFixed(currencySettings.displayCurrency === 'USD' ? 2 : 0) ?? '-'}
+                </div>
+              </div>
             </Col>
             <Col xs={24} sm={12} md={6}>
-              <MetricCard title={t('results.totalForecastPcs')} value={model.totalForecastPcs} precision={0} />
+              <div className="twk-kpi">
+                <div className="twk-kpi-label">{t('results.totalForecastPcs')}</div>
+                <div className="twk-kpi-value">{model.totalForecastPcs?.toLocaleString() ?? '-'}</div>
+              </div>
             </Col>
             <Col xs={24} sm={12} md={6}>
-              <MetricCard title={t('results.calculationRows')} value={model.skuResults.length} />
+              <div className="twk-kpi">
+                <div className="twk-kpi-label">{t('results.calculationRows')}</div>
+                <div className="twk-kpi-value">{model.skuResults.length}</div>
+              </div>
             </Col>
             <Col xs={24} sm={12} md={6}>
-              <MetricCard
-                title={t('results.shortageMonthCount')}
-                value={model.shortageMonthCount}
-                valueStyle={{ color: model.shortageMonthCount > 0 ? '#cf1322' : '#3f8600' }}
-              />
+              <div className="twk-kpi">
+                <div className="twk-kpi-label">{t('results.shortageMonthCount')}</div>
+                <div className="twk-kpi-value" style={{ color: model.shortageMonthCount > 0 ? 'var(--twk-error)' : 'var(--twk-success)' }}>
+                  {model.shortageMonthCount}
+                </div>
+              </div>
             </Col>
           </Row>
 
-          {/* View selector + AI Copilot button */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-            <Segmented
-              value={view}
-              onChange={(v) => setView(v as ResultsView)}
-              options={[
-                { label: t('results.riskBrief') || 'Risk Brief', value: 'risk' },
-                { label: t('results.salesView'), value: 'sales' },
-                { label: t('results.productView'), value: 'product' },
-                { label: t('results.capacityView'), value: 'capacity' },
-                { label: t('bp.analysis'), value: 'bp' },
-                { label: t('results.rawDetail'), value: 'raw' },
-              ]}
-            />
-            {copilotContext && (
-              <Button
-                icon={<RobotOutlined />}
-                onClick={() => setCopilotDrawerOpen(true)}
-              >
-                {t('copilot.title')}
-              </Button>
-            )}
+          {/* View selector + AI Copilot button — Designbyte Toolbar */}
+          <div className="twk-toolbar" style={{ marginBottom: 16 }}>
+            <div className="twk-toolbar-group">
+              <Segmented
+                value={view}
+                onChange={(v) => setView(v as ResultsView)}
+                options={[
+                  { label: t('results.riskBrief') || 'Risk Brief', value: 'risk' },
+                  { label: t('results.salesView'), value: 'sales' },
+                  { label: t('results.productView'), value: 'product' },
+                  { label: t('results.capacityView'), value: 'capacity' },
+                  { label: t('bp.analysis'), value: 'bp' },
+                  { label: t('results.rawDetail'), value: 'raw' },
+                ]}
+              />
+            </div>
+            <div className="twk-toolbar-group">
+              {copilotContext && (
+                <Button
+                  icon={<RobotOutlined />}
+                  onClick={() => setCopilotDrawerOpen(true)}
+                >
+                  {t('copilot.title')}
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* AI Copilot Drawer */}
@@ -858,20 +881,25 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
             {copilotContext && <CopilotChat context={copilotContext} />}
           </Drawer>
 
-          {/* Risk Brief View */}
+          {/* Risk Brief View — Designbyte Cards */}
           {view === 'risk' && riskBrief && analysisPayload && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Executive Summary */}
-              <Card title={t('results.riskBrief.executiveSummaryTitle')} bordered={false} size="small">
-                <List
-                  dataSource={riskBrief.executiveSummaryMessages}
-                  renderItem={(item) => (
-                    <List.Item style={{ border: 'none', padding: '4px 0' }}>
-                      <Text style={{ fontSize: 14 }}>{t(item)}</Text>
-                    </List.Item>
-                  )}
-                />
-              </Card>
+              {/* Executive Summary — Designbyte Card */}
+              <div className="twk-card">
+                <div className="twk-card-header">
+                  <span className="twk-card-title">{t('results.riskBrief.executiveSummaryTitle')}</span>
+                </div>
+                <div className="twk-card-body">
+                  <List
+                    dataSource={riskBrief.executiveSummaryMessages}
+                    renderItem={(item) => (
+                      <List.Item style={{ border: 'none', padding: '4px 0' }}>
+                        <Text style={{ fontSize: 14 }}>{t(item)}</Text>
+                      </List.Item>
+                    )}
+                  />
+                </div>
+              </div>
 
               {/* Phase 5.4 — AI Brief Export */}
               <Card
