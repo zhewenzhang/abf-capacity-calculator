@@ -38,6 +38,7 @@ export const en: Record<string, string> = {
   'common.edit': 'Edit',
   'common.delete': 'Delete',
   'common.search': 'Search',
+  'common.more': 'More',
   'common.loading': 'Loading...',
   'common.noData': 'No data available',
   'common.actions': 'Actions',

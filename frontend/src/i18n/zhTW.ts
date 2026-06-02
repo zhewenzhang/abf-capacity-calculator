@@ -47,6 +47,7 @@ export const zhTW: Record<string, string> = {
   'common.edit': '編輯',
   'common.delete': '刪除',
   'common.search': '搜尋',
+  'common.more': '更多',
   'common.loading': '載入中...',
   'common.noData': '無可用資料',
   'common.actions': '操作',

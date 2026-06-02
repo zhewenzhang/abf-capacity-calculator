@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useState, useEffect, useCallback, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { ConfigProvider, Spin, Button, Space, Radio, Dropdown } from 'antd';
+import { ConfigProvider, Spin, Space, Radio, Dropdown, Avatar } from 'antd';
 import {
   DashboardOutlined,
   InboxOutlined,
@@ -10,11 +10,13 @@ import {
   CloudOutlined,
   CalculatorOutlined,
   ExperimentOutlined,
-  GlobalOutlined,
   DollarOutlined,
   RobotOutlined,
   CalendarOutlined,
-  MenuOutlined,
+  MoreOutlined,
+  UserOutlined,
+  CopyOutlined,
+  CheckOutlined,
 } from '@ant-design/icons';
 import type { User } from 'firebase/auth';
 import { isConfigured } from './firebase/config';
@@ -47,18 +49,25 @@ const DailyOperationsWorkbench = lazy(() => import('./pages/DailyOperationsWorkb
 
 const APP_VERSION = 'v1.54.0';
 
-// --- Navigation items ---
-const NAV_ITEMS = [
+// --- High-frequency nav items (always visible) ---
+const PRIMARY_NAV = [
   { key: 'operations', icon: <CalendarOutlined /> },
   { key: 'dashboard', icon: <DashboardOutlined /> },
   { key: 'products', icon: <InboxOutlined /> },
   { key: 'forecasts', icon: <BarChartOutlined /> },
   { key: 'capacity', icon: <CloudOutlined /> },
+  { key: 'results', icon: <CalculatorOutlined /> },
+  { key: 'copilot', icon: <RobotOutlined /> },
+];
+
+// --- Low-frequency nav items (in "More" dropdown) ---
+const MORE_NAV = [
   { key: 'parameters', icon: <SettingOutlined /> },
   { key: 'bp-targets', icon: <DollarOutlined /> },
-  { key: 'results', icon: <CalculatorOutlined /> },
   { key: 'scenario', icon: <ExperimentOutlined /> },
-  { key: 'copilot', icon: <RobotOutlined /> },
+  { key: 'products-sheet-lab', icon: <ExperimentOutlined /> },
+  { key: 'forecasts-lab', icon: <ExperimentOutlined /> },
+  { key: 'capacity-lab', icon: <ExperimentOutlined /> },
 ];
 
 // --- Top Navigation Bar ---
@@ -70,6 +79,8 @@ const TopNav: React.FC<{
 }> = ({ current, onNavClick, user, onLogout }) => {
   const { t, lang, setLang } = useI18n();
   const { prefs, setCurrency } = useAppPrefs();
+  const scope = useActiveScope();
+  const [copied, setCopied] = useState(false);
 
   const pageTitles: Record<string, string> = useMemo(() => ({
     operations: t('menu.operations'),
@@ -87,25 +98,88 @@ const TopNav: React.FC<{
     copilot: t('menu.copilot'),
   }), [t]);
 
-  // Mobile menu items for dropdown
-  const mobileMenuItems = NAV_ITEMS.map(item => ({
+  // "More" dropdown items
+  const moreMenuItems = MORE_NAV.map(item => ({
     key: item.key,
     icon: item.icon,
     label: pageTitles[item.key] || item.key,
     onClick: () => onNavClick(item.key),
   }));
 
+  // Copy UID to clipboard
+  const handleCopyUid = useCallback(() => {
+    navigator.clipboard.writeText(user.uid).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }).catch(() => {});
+  }, [user.uid]);
+
+  // Check if a "More" item is currently active
+  const moreActive = MORE_NAV.some(item => item.key === current);
+
+  // User menu items
+  const userMenuItems = [
+    {
+      key: 'email',
+      label: <span style={{ fontSize: 12, color: '#6b6b6b' }}>{user.email}</span>,
+      disabled: true,
+    },
+    {
+      key: 'workspace',
+      label: <WorkspaceSwitcher />,
+    },
+    {
+      key: 'role',
+      label: (
+        <Space size={8}>
+          <span style={{ fontSize: 12, color: '#6b6b6b' }}>Role</span>
+          <span style={{
+            fontSize: 11,
+            fontWeight: 600,
+            padding: '1px 8px',
+            borderRadius: 999,
+            background: scope.role === 'owner' ? '#f0fdf4' : scope.role === 'editor' ? '#eff6ff' : '#f7f7f7',
+            color: scope.role === 'owner' ? '#15803d' : scope.role === 'editor' ? '#1d4ed8' : '#6b6b6b',
+          }}>
+            {scope.role}
+          </span>
+        </Space>
+      ),
+      disabled: true,
+    },
+    {
+      key: 'uid',
+      label: (
+        <Space size={8} style={{ cursor: 'pointer' }} onClick={handleCopyUid}>
+          <span style={{ fontSize: 12, color: '#6b6b6b' }}>UID</span>
+          <span style={{ fontSize: 11, fontFamily: 'IBM Plex Mono, monospace', color: '#a3a3a3' }}>
+            {user.uid.slice(0, 8)}…
+          </span>
+          {copied ? <CheckOutlined style={{ fontSize: 11, color: '#4ade80' }} /> : <CopyOutlined style={{ fontSize: 11, color: '#a3a3a3' }} />}
+        </Space>
+      ),
+    },
+    { type: 'divider' as const },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined style={{ fontSize: 12 }} />,
+      label: t('header.logout'),
+      danger: true,
+      onClick: onLogout,
+    },
+  ];
+
   return (
     <div className="twk-topbar">
       {/* Brand */}
       <div className="twk-brand">
-        <span className="twk-brand-logo">{t('app.abbrev')}</span>
+        <span className="twk-brand-logo">ABF CSS</span>
         <span className="twk-brand-tag">{APP_VERSION}</span>
       </div>
 
       {/* Desktop Nav Tabs */}
       <nav className="twk-nav-tabs">
-        {NAV_ITEMS.map(item => (
+        {PRIMARY_NAV.map(item => (
           <button
             key={item.key}
             className={`twk-nav-item ${current === item.key ? 'twk-nav-item-active' : ''}`}
@@ -115,48 +189,67 @@ const TopNav: React.FC<{
             <span>{pageTitles[item.key] || item.key}</span>
           </button>
         ))}
+        {/* "More" dropdown for low-frequency items */}
+        <Dropdown menu={{ items: moreMenuItems }} trigger={['click']}>
+          <button className={`twk-nav-item ${moreActive ? 'twk-nav-item-active' : ''}`}>
+            <MoreOutlined />
+            <span>{t('common.more') || 'More'}</span>
+          </button>
+        </Dropdown>
       </nav>
 
-      {/* Mobile hamburger */}
-      <div className="twk-mobile-menu" style={{ display: 'none' }}>
-        <Dropdown menu={{ items: mobileMenuItems }} trigger={['click']}>
-          <Button type="text" icon={<MenuOutlined />} />
-        </Dropdown>
-      </div>
-
-      {/* User bar */}
+      {/* Right side: compact controls + user menu */}
       <div className="twk-userbar">
-        <WorkspaceSwitcher />
-        <Space size={4}>
-          <GlobalOutlined style={{ fontSize: 12, color: '#71717a' }} />
-          <Radio.Group
-            value={lang}
-            onChange={(e) => setLang(e.target.value as Language)}
-            size="small"
-            buttonStyle="solid"
-          >
-            <Radio.Button value="en" style={{ fontSize: 11 }}>EN</Radio.Button>
-            <Radio.Button value="zh-TW" style={{ fontSize: 11 }}>繁中</Radio.Button>
-          </Radio.Group>
-        </Space>
-        <Space size={4}>
-          <DollarOutlined style={{ fontSize: 12, color: '#71717a' }} />
-          <Radio.Group
-            value={prefs.displayCurrency}
-            onChange={(e) => setCurrency(e.target.value as DisplayCurrency)}
-            size="small"
-            buttonStyle="solid"
-          >
-            <Radio.Button value="USD" style={{ fontSize: 11 }}>USD</Radio.Button>
-            <Radio.Button value="TWD" style={{ fontSize: 11 }}>TWD</Radio.Button>
-            <Radio.Button value="CNY" style={{ fontSize: 11 }}>CNY</Radio.Button>
-          </Radio.Group>
-        </Space>
-        <span className="twk-userbar-email">{user.email}</span>
-        <button className="twk-userbar-logout" onClick={onLogout}>
-          <LogoutOutlined style={{ fontSize: 11 }} />
-          {t('header.logout')}
-        </button>
+        {/* Language — compact */}
+        <Radio.Group
+          value={lang}
+          onChange={(e) => setLang(e.target.value as Language)}
+          size="small"
+          buttonStyle="solid"
+        >
+          <Radio.Button value="en" style={{ fontSize: 10, padding: '0 6px' }}>EN</Radio.Button>
+          <Radio.Button value="zh-TW" style={{ fontSize: 10, padding: '0 6px' }}>繁</Radio.Button>
+        </Radio.Group>
+
+        {/* Currency — compact */}
+        <Radio.Group
+          value={prefs.displayCurrency}
+          onChange={(e) => setCurrency(e.target.value as DisplayCurrency)}
+          size="small"
+          buttonStyle="solid"
+        >
+          <Radio.Button value="USD" style={{ fontSize: 10, padding: '0 6px' }}>$</Radio.Button>
+          <Radio.Button value="TWD" style={{ fontSize: 10, padding: '0 6px' }}>NT</Radio.Button>
+          <Radio.Button value="CNY" style={{ fontSize: 10, padding: '0 6px' }}>¥</Radio.Button>
+        </Radio.Group>
+
+        {/* User Menu */}
+        <Dropdown menu={{ items: userMenuItems }} trigger={['click']} placement="bottomRight">
+          <button style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '4px 8px',
+            borderRadius: 999,
+            border: '1px solid var(--twk-border)',
+            background: 'transparent',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+            fontFamily: 'var(--font-sans)',
+          }}>
+            <Avatar size={22} icon={<UserOutlined />} style={{ background: '#f0fdf4', color: '#15803d' }} />
+            <span style={{
+              fontSize: 11,
+              color: '#6b6b6b',
+              maxWidth: 100,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>
+              {user.email?.split('@')[0]}
+            </span>
+          </button>
+        </Dropdown>
       </div>
     </div>
   );
@@ -166,7 +259,6 @@ const TopNav: React.FC<{
 const AppContent: React.FC<{ user: User }> = ({ user }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { t } = useI18n();
   const scope = useActiveScope();
 
   const current = useMemo(() => {
@@ -216,12 +308,12 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
       <footer style={{
         textAlign: 'center',
         padding: '12px 16px',
-        color: '#a1a1aa',
+        color: '#a3a3a3',
         fontSize: 11,
-        borderTop: '1px solid #eeeeee',
-        background: '#ffffff',
+        borderTop: '1px solid var(--twk-border)',
+        background: 'var(--twk-card)',
       }}>
-        {t('app.title')} · {APP_VERSION}
+        ABF CSS · {APP_VERSION}
       </footer>
     </div>
   );
@@ -241,7 +333,7 @@ const AuthRouter: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#fafafa' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#fcfcfc' }}>
         <Spin size="large" />
       </div>
     );
