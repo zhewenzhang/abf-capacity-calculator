@@ -185,3 +185,181 @@ function computeBpGap(bpModel: BpAnalysisModel): number | null {
   return null;
 }
 
+// ============================================================
+// v1.55 — Annual multiplier support
+// ============================================================
+
+export type AnnualMultipliers = Record<string, ScenarioMultipliers>;
+
+/** Extract YYYY from a YYYY-MM month key */
+function yearOf(month: string): string {
+  return month.substring(0, 4);
+}
+
+/**
+ * Apply per-year multipliers to input data.
+ * For each data point, extracts the year from its month field and
+ * looks up the per-year multiplier. Falls back to identity (1.0) if
+ * no multiplier is defined for that year.
+ */
+export function applyAnnualMultipliers(
+  skus: SKU[],
+  forecasts: Forecast[],
+  capacityPlans: CapacityPlan[],
+  annual: AnnualMultipliers
+): { skus: SKU[]; forecasts: Forecast[]; capacityPlans: CapacityPlan[] } {
+  const getM = (year: string): ScenarioMultipliers => {
+    return annual[year] ?? defaultMultipliers();
+  };
+
+  // SKU unitPrice: use the first available year's multiplier (or identity)
+  const firstYear = Object.keys(annual).sort()[0];
+  const skuM = firstYear ? getM(firstYear) : defaultMultipliers();
+
+  const scenarioSkus = skus.map((s) => ({
+    ...s,
+    unitPrice: s.unitPrice > 0 ? s.unitPrice * skuM.unitPrice : s.unitPrice,
+  }));
+
+  const scenarioForecasts = forecasts.map((f) => {
+    const m = getM(yearOf(f.month));
+    return {
+      ...f,
+      forecastPcs: f.forecastPcs * m.forecastVolume,
+      unitPrice: f.unitPrice * m.unitPrice,
+    };
+  });
+
+  const scenarioCapacityPlans = capacityPlans.map((cp) => {
+    const m = getM(yearOf(cp.month));
+    return {
+      ...cp,
+      corePanelPerDay: cp.corePanelPerDay * m.coreCapacity,
+      buPanelPerDay: cp.buPanelPerDay * m.buCapacity,
+    };
+  });
+
+  return { skus: scenarioSkus, forecasts: scenarioForecasts, capacityPlans: scenarioCapacityPlans };
+}
+
+/** Per-year aggregated result row for the annual impact table */
+export interface YearlyResult {
+  year: string;
+  totalRevenueUsd: number;
+  totalForecastPcs: number;
+  maxCoreUtilization: number | null;
+  maxBuUtilization: number | null;
+  shortageMonthCount: number;
+  bpAttainmentPct: number | null;
+  bpGapMillionTwd: number | null;
+}
+
+/** Aggregate a CalculationResult + BpAnalysisModel into per-year rows */
+export function aggregateByYear(
+  calcResult: CalculationResult,
+  bpModel: BpAnalysisModel
+): YearlyResult[] {
+  const yearMap = new Map<string, {
+    revenue: number;
+    forecastPcs: number;
+    coreUtils: number[];
+    buUtils: number[];
+    shortageCount: number;
+  }>();
+
+  for (const sr of calcResult.skuResults) {
+    const y = yearOf(sr.month);
+    if (!yearMap.has(y)) yearMap.set(y, { revenue: 0, forecastPcs: 0, coreUtils: [], buUtils: [], shortageCount: 0 });
+    const entry = yearMap.get(y)!;
+    entry.revenue += sr.revenue;
+    entry.forecastPcs += sr.forecastPcs;
+  }
+
+  for (const ms of calcResult.monthlySummaries) {
+    const y = yearOf(ms.month);
+    if (!yearMap.has(y)) yearMap.set(y, { revenue: 0, forecastPcs: 0, coreUtils: [], buUtils: [], shortageCount: 0 });
+    const entry = yearMap.get(y)!;
+    if (ms.coreUtilization !== null) entry.coreUtils.push(ms.coreUtilization);
+    if (ms.buUtilization !== null) entry.buUtils.push(ms.buUtilization);
+    if (ms.coreShortage > 0 || ms.buShortage > 0) entry.shortageCount++;
+  }
+
+  const bpByYear = new Map<string, { attainment: number | null; gap: number | null }>();
+  for (const rec of bpModel.yearly) {
+    bpByYear.set(rec.period, {
+      attainment: rec.attainment !== null ? rec.attainment * 100 : null,
+      gap: rec.gapMillionTwd,
+    });
+  }
+
+  const years = Array.from(yearMap.keys()).sort();
+  return years.map((year) => {
+    const e = yearMap.get(year)!;
+    const bp = bpByYear.get(year);
+    return {
+      year,
+      totalRevenueUsd: e.revenue,
+      totalForecastPcs: e.forecastPcs,
+      maxCoreUtilization: e.coreUtils.length > 0 ? Math.max(...e.coreUtils) * 100 : null,
+      maxBuUtilization: e.buUtils.length > 0 ? Math.max(...e.buUtils) * 100 : null,
+      shortageMonthCount: e.shortageCount,
+      bpAttainmentPct: bp?.attainment ?? null,
+      bpGapMillionTwd: bp?.gap ?? null,
+    };
+  });
+}
+
+/** Full annual comparison result */
+export interface AnnualScenarioComparison {
+  annualMultipliers: AnnualMultipliers;
+  baseline: {
+    yearly: YearlyResult[];
+    overall: CalculationResult;
+    bpModel: BpAnalysisModel;
+  };
+  scenario: {
+    yearly: YearlyResult[];
+    overall: CalculationResult;
+    bpModel: BpAnalysisModel;
+  };
+}
+
+/**
+ * Compute annual scenario comparison: runs calculation with per-year multipliers,
+ * then aggregates both baseline and scenario into per-year rows.
+ */
+export function computeAnnualScenarioComparison(
+  skus: SKU[],
+  forecasts: Forecast[],
+  capacityPlans: CapacityPlan[],
+  params: ProjectParameters,
+  annual: AnnualMultipliers
+): AnnualScenarioComparison {
+  const scenarioData = applyAnnualMultipliers(skus, forecasts, capacityPlans, annual);
+
+  const baseCalc = runCalculation(skus, forecasts, capacityPlans, params);
+  const scenarioCalc = runCalculation(
+    scenarioData.skus, scenarioData.forecasts, scenarioData.capacityPlans, params
+  );
+
+  const currencySettings = normalizeCurrencySettings(params.currencySettings);
+  const bpTargets = params.bpTargets?.yearlyRevenueTargetsMillionTwd ?? {};
+
+  const baseBp = buildBpAnalysis(baseCalc.skuResults, skus, baseCalc.monthlySummaries, bpTargets, currencySettings);
+  const scenarioBp = buildBpAnalysis(scenarioCalc.skuResults, scenarioData.skus, scenarioCalc.monthlySummaries, bpTargets, currencySettings);
+
+  return {
+    annualMultipliers: annual,
+    baseline: {
+      yearly: aggregateByYear(baseCalc, baseBp),
+      overall: baseCalc,
+      bpModel: baseBp,
+    },
+    scenario: {
+      yearly: aggregateByYear(scenarioCalc, scenarioBp),
+      overall: scenarioCalc,
+      bpModel: scenarioBp,
+    },
+  };
+}
+
