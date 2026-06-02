@@ -336,6 +336,18 @@ export const zhTW: Record<string, string> = {
   'dq.currencyRateMissing.title': '匯率設定問題',
   'dq.currencyRateMissing.tooltip': '匯率設定有問題，可能影響營收計算。',
 
+  // DataQualityAlert UI
+  'dqAlert.countFound': '發現 {count} 個資料品質提醒',
+  'dqAlert.countCompact': '{count} 個提醒',
+  'dqAlert.more': '還有 {count} 項',
+  'dqAlert.errorCount': '{count} 個錯誤',
+  'dqAlert.warningCount': '{count} 個警告',
+
+  // Invalid forecast month
+  'dq.forecastInvalidMonth.title': '預測月份格式無效',
+  'dq.forecastInvalidMonth.detail': '有 {count} 筆預測資料的月份不是 YYYY-MM 格式，系統無法判斷年度與月份，因此不會將它們納入 BP 與產能分析。請到「預測」頁修正月份欄位。',
+  'dq.forecastInvalidMonth.samples': '無效月份範例：{samples}',
+
   // SKU Health classification labels
   'health.strategicGrowth': '策略成長',
   'health.cashCow': '現金牛',

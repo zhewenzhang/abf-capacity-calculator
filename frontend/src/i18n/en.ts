@@ -327,6 +327,18 @@ export const en: Record<string, string> = {
   'dq.currencyRateMissing.title': 'Currency Exchange Rate Issue',
   'dq.currencyRateMissing.tooltip': 'Currency exchange rate configuration has issues that may affect revenue calculations.',
 
+  // DataQualityAlert UI
+  'dqAlert.countFound': '{count} data quality issue(s) found',
+  'dqAlert.countCompact': '{count} issue(s)',
+  'dqAlert.more': '+{count} more',
+  'dqAlert.errorCount': '{count} error(s)',
+  'dqAlert.warningCount': '{count} warning(s)',
+
+  // Invalid forecast month
+  'dq.forecastInvalidMonth.title': 'Invalid Forecast Month Format',
+  'dq.forecastInvalidMonth.detail': '{count} forecast record(s) have month values that are not in YYYY-MM format. The system cannot determine the year or month, so they are excluded from BP and capacity analysis. Please fix the month field in the Forecasts page.',
+  'dq.forecastInvalidMonth.samples': 'Invalid month samples: {samples}',
+
   // SKU Health classification labels
   'health.strategicGrowth': 'Strategic Growth',
   'health.cashCow': 'Cash Cow',
