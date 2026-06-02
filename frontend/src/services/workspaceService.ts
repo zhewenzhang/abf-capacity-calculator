@@ -206,6 +206,15 @@ export async function createWorkspaceFromPersonalProject(
     getParameters(personal),
   ]);
 
+  // Filter orphan forecasts: only copy forecasts whose skuId exists in the skus set.
+  // This prevents propagating orphan data into the new workspace.
+  const skuIdSet = new Set(skus.map(s => s.id));
+  const validForecasts = forecasts.filter(f => skuIdSet.has(f.skuId));
+  const orphanCount = forecasts.length - validForecasts.length;
+  if (orphanCount > 0) {
+    console.warn(`[workspace copy] Filtered ${orphanCount} orphan forecast(s) from source workspace.`);
+  }
+
   // Create workspace shell + owner membership entry (two sequential writes;
   // see createWorkspace docstring for why this can't be a single batch).
   const workspaceId = await createWorkspace(ownerId, ownerEmail, workspaceName, projectId);
@@ -213,7 +222,7 @@ export async function createWorkspaceFromPersonalProject(
 
   // Copy collections. Use batch chunks of ≤ 400 to stay under Firestore's 500-op limit.
   await copyDocuments(skus, wsScope, 'skus');
-  await copyDocuments(forecasts, wsScope, 'forecasts');
+  await copyDocuments(validForecasts, wsScope, 'forecasts');
   await copyDocuments(capacityPlans, wsScope, 'capacityPlans');
 
   // Single parameters doc.

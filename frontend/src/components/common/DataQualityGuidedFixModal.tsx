@@ -1,19 +1,20 @@
 /**
  * Data Quality Guided Fix Modal for Forecasts (Orphan SKU)
  *
- * v1.36.0 MVP - Guided Fix Entry Point for Forecasts page
+ * v1.54.7 — Enhanced with actual cleanup and rebind functionality.
  *
  * This modal provides guided remediation options for orphan forecast issues,
  * where a forecast references a SKU that doesn't exist in the products table.
  *
  * Features:
  * - Shows clear explanation of the issue
- * - Provides multiple remediation paths (create SKU, edit forecast)
+ * - Provides multiple remediation paths (create SKU, clean orphans, rebind)
+ * - Clean Orphans: deletes all orphan forecasts for the missing SKU
+ * - Rebind: transfers orphan forecasts to an existing SKU
  * - Blocks Viewer role from taking action
- * - No automatic deletion or modification
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Modal,
   Alert,
@@ -23,44 +24,39 @@ import {
   Divider,
   Card,
   Tag,
+  Select,
+  Popconfirm,
+  message,
 } from 'antd';
 import {
   ExclamationCircleOutlined,
   PlusOutlined,
   EditOutlined,
-  ArrowRightOutlined,
+  DeleteOutlined,
+  SwapOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { canEdit } from '../../services/projectScope';
+import { deleteForecastsByIds, rebindForecastsToSku } from '../../services/forecastService';
 import { useI18n } from '../../i18n';
 import { buildRemediationUrl } from '../../core/dataQualityRemediation';
 import type { DataQualityIssue } from '../../core/dataQuality';
-import type { ProjectScope } from '../../types';
+import type { ProjectScope, SKU } from '../../types';
 
 const { Text, Paragraph } = Typography;
 
 interface OrphanForecastGuidedFixModalProps {
-  /** Whether the modal is open */
   open: boolean;
-  /** Callback when modal is closed */
   onClose: () => void;
-  /** The DQ issue */
   issue: DataQualityIssue | null;
-  /** Project scope */
   scope: ProjectScope;
-  /** Callback when user chooses to edit forecast */
+  /** All orphan forecasts for the same skuId (may span multiple months) */
+  orphanForecasts?: Array<{ id: string; month: string; skuId: string; forecastPcs?: number }>;
+  /** Available SKUs for rebind target selection */
+  availableSkus?: SKU[];
+  /** Called after successful cleanup/rebind to refresh data */
+  onSuccess?: () => void;
   onEditForecast?: () => void;
-}
-
-interface GuidedFixOption {
-  id: string;
-  icon: React.ReactNode;
-  titleKey: string;
-  descKey: string;
-  action: 'navigate' | 'focus';
-  targetUrl?: string;
-  urlParams?: Record<string, string>;
-  buttonType: 'primary' | 'default';
 }
 
 export const OrphanForecastGuidedFixModal: React.FC<OrphanForecastGuidedFixModalProps> = ({
@@ -68,6 +64,9 @@ export const OrphanForecastGuidedFixModal: React.FC<OrphanForecastGuidedFixModal
   onClose,
   issue,
   scope,
+  orphanForecasts = [],
+  availableSkus = [],
+  onSuccess,
   onEditForecast,
 }) => {
   const { t } = useI18n();
@@ -87,43 +86,56 @@ export const OrphanForecastGuidedFixModal: React.FC<OrphanForecastGuidedFixModal
     return issue.evidence?.month as string ?? null;
   }, [issue]);
 
-  const options: GuidedFixOption[] = useMemo(() => {
-    if (!orphanSkuId) return [];
+  // All orphan forecast IDs for this skuId
+  const orphanForecastIds = useMemo(() => {
+    return orphanForecasts.map(f => f.id);
+  }, [orphanForecasts]);
 
-    return [
-      {
-        id: 'create-sku',
-        icon: <PlusOutlined />,
-        titleKey: 'remediation.orphanForecast.createSku',
-        descKey: 'remediation.orphanForecast.createSkuDesc',
-        action: 'navigate',
-        targetUrl: '/products',
-        urlParams: { createSku: orphanSkuId },
-        buttonType: 'primary',
-      },
-      {
-        id: 'edit-forecast',
-        icon: <EditOutlined />,
-        titleKey: 'remediation.orphanForecast.editForecast',
-        descKey: 'remediation.orphanForecast.editForecastDesc',
-        action: 'focus',
-        buttonType: 'default',
-      },
-    ];
-  }, [orphanSkuId]);
+  // Rebind state
+  const [rebindTargetSkuId, setRebindTargetSkuId] = useState<string | null>(null);
+  const [rebindLoading, setRebindLoading] = useState(false);
+  const [cleanLoading, setCleanLoading] = useState(false);
 
-  const handleOptionClick = (option: GuidedFixOption) => {
-    if (!writable) return;
-
-    if (option.action === 'navigate' && option.targetUrl) {
-      const url = buildRemediationUrl(option.targetUrl, option.urlParams || {});
-      navigate(url);
+  // Handle clean orphan forecasts
+  const handleCleanOrphans = async () => {
+    if (!writable || orphanForecastIds.length === 0) return;
+    setCleanLoading(true);
+    try {
+      const count = await deleteForecastsByIds(scope, orphanForecastIds);
+      message.success(t('remediation.orphanForecast.cleanOrphansSuccess', { count }));
+      onSuccess?.();
       onClose();
-    } else if (option.action === 'focus' && onEditForecast) {
-      onEditForecast();
-      onClose();
+    } catch (e: unknown) {
+      message.error(e instanceof Error ? e.message : 'Failed to clean orphan forecasts');
+    } finally {
+      setCleanLoading(false);
     }
   };
+
+  // Handle rebind to existing SKU
+  const handleRebind = async () => {
+    if (!writable || !rebindTargetSkuId || orphanForecastIds.length === 0) return;
+    setRebindLoading(true);
+    try {
+      const targetSku = availableSkus.find(s => s.id === rebindTargetSkuId);
+      const count = await rebindForecastsToSku(scope, orphanForecastIds, rebindTargetSkuId);
+      message.success(t('remediation.orphanForecast.rebindSuccess', {
+        count,
+        skuCode: targetSku?.skuCode || rebindTargetSkuId,
+      }));
+      onSuccess?.();
+      onClose();
+    } catch (e: unknown) {
+      message.error(e instanceof Error ? e.message : 'Failed to rebind forecasts');
+    } finally {
+      setRebindLoading(false);
+    }
+  };
+
+  // Reset state when issue changes
+  React.useEffect(() => {
+    setRebindTargetSkuId(null);
+  }, [issue]);
 
   if (!issue || !orphanSkuId) return null;
 
@@ -138,7 +150,7 @@ export const OrphanForecastGuidedFixModal: React.FC<OrphanForecastGuidedFixModal
       open={open}
       onCancel={onClose}
       footer={null}
-      width={520}
+      width={560}
       maskClosable
     >
       {/* Viewer warning */}
@@ -165,6 +177,9 @@ export const OrphanForecastGuidedFixModal: React.FC<OrphanForecastGuidedFixModal
             <Space wrap>
               <Tag color="red">{orphanSkuId}</Tag>
               {month && <Tag color="orange">{month}</Tag>}
+              {orphanForecasts.length > 1 && (
+                <Tag color="volcano">{orphanForecasts.length} months affected</Tag>
+              )}
             </Space>
           </div>
         }
@@ -183,49 +198,123 @@ export const OrphanForecastGuidedFixModal: React.FC<OrphanForecastGuidedFixModal
 
       <Divider>{t('remediation.orphanForecast.optionsTitle')}</Divider>
 
-      {/* Remediation options */}
-      <Space direction="vertical" style={{ width: '100%' }} size="middle">
-        {options.map(option => (
-          <Card
-            key={option.id}
-            size="small"
-            hoverable={writable}
-            onClick={() => handleOptionClick(option)}
-            style={{
-              cursor: writable ? 'pointer' : 'not-allowed',
-              opacity: writable ? 1 : 0.7,
-              border: option.buttonType === 'primary' ? '1px solid #1890ff' : undefined,
-            }}
-          >
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Space>
-                {option.icon}
-                <Text strong>{t(option.titleKey)}</Text>
-                {option.buttonType === 'primary' && (
-                  <Tag color="blue">{t('remediation.recommended')}</Tag>
-                )}
-              </Space>
-              <Text type="secondary">{t(option.descKey)}</Text>
-              {writable && (
-                <Button
-                  type={option.buttonType}
-                  size="small"
-                  icon={<ArrowRightOutlined />}
-                  style={{ marginTop: 8 }}
-                >
-                  {t('remediation.goToFix')}
-                </Button>
-              )}
+      {/* Option 1: Create SKU */}
+      {writable && (
+        <Card
+          size="small"
+          hoverable
+          onClick={() => {
+            navigate(buildRemediationUrl('/products', { createSku: orphanSkuId }));
+            onClose();
+          }}
+          style={{ marginBottom: 12, cursor: 'pointer', border: '1px solid #1890ff' }}
+        >
+          <Space>
+            <PlusOutlined />
+            <Text strong>{t('remediation.orphanForecast.createSku')}</Text>
+            <Tag color="blue">{t('remediation.recommended')}</Tag>
+          </Space>
+          <br />
+          <Text type="secondary">{t('remediation.orphanForecast.createSkuDesc')}</Text>
+        </Card>
+      )}
+
+      {/* Option 2: Clean Orphan Forecasts */}
+      {writable && (
+        <Card size="small" style={{ marginBottom: 12 }}>
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Space>
+              <DeleteOutlined style={{ color: '#ff4d4f' }} />
+              <Text strong>{t('remediation.orphanForecast.cleanOrphans')}</Text>
             </Space>
-          </Card>
-        ))}
-      </Space>
+            <Text type="secondary">{t('remediation.orphanForecast.cleanOrphansDesc')}</Text>
+            <Popconfirm
+              title={t('remediation.orphanForecast.cleanOrphansConfirm', {
+                count: orphanForecastIds.length,
+                skuId: orphanSkuId,
+              })}
+              onConfirm={handleCleanOrphans}
+              okText={t('products.delete')}
+              okButtonProps={{ danger: true }}
+              cancelText={t('products.cancel')}
+            >
+              <Button
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+                loading={cleanLoading}
+              >
+                {t('remediation.orphanForecast.cleanOrphans')} ({orphanForecastIds.length})
+              </Button>
+            </Popconfirm>
+          </Space>
+        </Card>
+      )}
 
-      <Divider />
+      {/* Option 3: Rebind to Existing SKU */}
+      {writable && availableSkus.length > 0 && (
+        <Card size="small" style={{ marginBottom: 12 }}>
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Space>
+              <SwapOutlined style={{ color: '#fa8c16' }} />
+              <Text strong>{t('remediation.orphanForecast.rebindToSku')}</Text>
+            </Space>
+            <Text type="secondary">{t('remediation.orphanForecast.rebindToSkuDesc')}</Text>
+            <div style={{ marginTop: 8 }}>
+              <Text style={{ marginRight: 8 }}>{t('remediation.orphanForecast.rebindSelectSku')}</Text>
+              <Select
+                showSearch
+                placeholder="Select SKU..."
+                style={{ width: 280 }}
+                optionFilterProp="label"
+                value={rebindTargetSkuId}
+                onChange={setRebindTargetSkuId}
+                options={availableSkus.map(s => ({
+                  label: `${s.skuCode} — ${s.customer}`,
+                  value: s.id,
+                }))}
+              />
+            </div>
+            {rebindTargetSkuId && (
+              <Popconfirm
+                title={t('remediation.orphanForecast.rebindConfirm', {
+                  count: orphanForecastIds.length,
+                  skuCode: availableSkus.find(s => s.id === rebindTargetSkuId)?.skuCode || '',
+                })}
+                onConfirm={handleRebind}
+                okText={t('remediation.orphanForecast.rebindToSku')}
+                cancelText={t('products.cancel')}
+              >
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<SwapOutlined />}
+                  loading={rebindLoading}
+                >
+                  {t('remediation.orphanForecast.rebindToSku')}
+                </Button>
+              </Popconfirm>
+            )}
+          </Space>
+        </Card>
+      )}
 
-      <Text type="secondary" style={{ fontSize: 12 }}>
-        {t('remediation.orphanForecast.note')}
-      </Text>
+      {/* Option 4: Edit Forecast Reference (hint) */}
+      {writable && (
+        <Card
+          size="small"
+          hoverable
+          onClick={() => { onEditForecast?.(); onClose(); }}
+          style={{ marginBottom: 12, cursor: 'pointer' }}
+        >
+          <Space>
+            <EditOutlined />
+            <Text strong>{t('remediation.orphanForecast.editForecast')}</Text>
+          </Space>
+          <br />
+          <Text type="secondary">{t('remediation.orphanForecast.editForecastDesc')}</Text>
+        </Card>
+      )}
     </Modal>
   );
 };

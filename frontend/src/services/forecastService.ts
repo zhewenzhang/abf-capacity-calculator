@@ -101,3 +101,65 @@ export async function deleteForecast(scope: ProjectScope, forecastId: string): P
   const ref = doc(db!, forecastPath(scope), forecastId);
   await deleteDoc(ref);
 }
+
+/**
+ * Delete specific forecasts by their IDs.
+ * Used for orphan forecast cleanup and rebind operations.
+ */
+export async function deleteForecastsByIds(scope: ProjectScope, forecastIds: string[]): Promise<number> {
+  assertCanWrite(scope);
+  if (forecastIds.length === 0) return 0;
+
+  const BATCH_SIZE = 400;
+  for (let i = 0; i < forecastIds.length; i += BATCH_SIZE) {
+    const batch = writeBatch(db!);
+    for (const id of forecastIds.slice(i, i + BATCH_SIZE)) {
+      batch.delete(doc(db!, forecastPath(scope), id));
+    }
+    await batch.commit();
+  }
+  return forecastIds.length;
+}
+
+/**
+ * Rebind orphan forecasts to a different SKU.
+ * Updates the skuId field on each forecast document.
+ */
+export async function rebindForecastsToSku(
+  scope: ProjectScope,
+  forecastIds: string[],
+  newSkuId: string
+): Promise<number> {
+  assertCanWrite(scope);
+  if (forecastIds.length === 0) return 0;
+
+  const BATCH_SIZE = 400;
+  for (let i = 0; i < forecastIds.length; i += BATCH_SIZE) {
+    const batch = writeBatch(db!);
+    for (const id of forecastIds.slice(i, i + BATCH_SIZE)) {
+      batch.update(doc(db!, forecastPath(scope), id), { skuId: newSkuId, updatedAt: new Date() });
+    }
+    await batch.commit();
+  }
+  return forecastIds.length;
+}
+
+/**
+ * Delete all forecasts associated with a specific SKU.
+ * Used for cascade cleanup when deleting a product.
+ */
+export async function deleteForecastsBySku(scope: ProjectScope, skuId: string): Promise<number> {
+  assertCanWrite(scope);
+  const forecasts = await getForecastsBySku(scope, skuId);
+  if (forecasts.length === 0) return 0;
+
+  const BATCH_SIZE = 400;
+  for (let i = 0; i < forecasts.length; i += BATCH_SIZE) {
+    const batch = writeBatch(db!);
+    for (const fc of forecasts.slice(i, i + BATCH_SIZE)) {
+      batch.delete(doc(db!, forecastPath(scope), fc.id));
+    }
+    await batch.commit();
+  }
+  return forecasts.length;
+}

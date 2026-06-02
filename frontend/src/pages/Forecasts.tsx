@@ -27,10 +27,11 @@ import {
   SyncOutlined,
   SaveOutlined,
   UndoOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import * as XLSX from 'xlsx';
-import { getForecasts, batchSaveForecasts, deleteForecast } from '../services/forecastService';
+import { getForecasts, batchSaveForecasts, deleteForecast, deleteForecastsByIds } from '../services/forecastService';
 import { getSKUs } from '../services/skuService';
 import { getParameters } from '../services/parameterService';
 import { getCapacityPlans } from '../services/capacityService';
@@ -215,9 +216,38 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
   };
 
   const handleGuidedFixEditForecast = () => {
-    // Focus on the row with the orphan forecast - but since orphan SKU doesn't exist in SKU list,
-    // we need to show a message or handle differently
     message.info(t('remediation.orphanForecast.editForecastHint'));
+  };
+
+  // Get orphan forecasts for the current guided fix issue's skuId
+  const orphanForecastsForIssue = useMemo(() => {
+    if (!guidedFixIssue) return [];
+    const skuId = guidedFixIssue.evidence?.skuId as string;
+    if (!skuId) return [];
+    return forecasts.filter(f => f.skuId === skuId);
+  }, [guidedFixIssue, forecasts]);
+
+  // All orphan forecasts (forecasts referencing non-existent SKUs)
+  const allOrphanForecasts = useMemo(() => {
+    const skuIds = new Set(skus.map(s => s.id));
+    return forecasts.filter(f => !skuIds.has(f.skuId));
+  }, [forecasts, skus]);
+
+  // Bulk clean all orphan forecasts
+  const [bulkCleanLoading, setBulkCleanLoading] = useState(false);
+  const handleBulkCleanOrphans = async () => {
+    if (!writable || allOrphanForecasts.length === 0) return;
+    setBulkCleanLoading(true);
+    try {
+      const ids = allOrphanForecasts.map(f => f.id);
+      const count = await deleteForecastsByIds(scope, ids);
+      message.success(t('remediation.orphanForecast.bulkCleanOrphansSuccess', { count }));
+      await loadData();
+    } catch (e: unknown) {
+      message.error(e instanceof Error ? e.message : 'Failed to clean orphan forecasts');
+    } finally {
+      setBulkCleanLoading(false);
+    }
   };
 
   // Build a map of SKU ID -> DQ issues for row-level indicators
@@ -909,6 +939,21 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
               {orphanForecastIssues.length > 3 && (
                 <Text type="secondary">+{orphanForecastIssues.length - 3} more</Text>
               )}
+              {writable && (
+                <div style={{ marginTop: 12 }}>
+                  <Popconfirm
+                    title={t('remediation.orphanForecast.bulkCleanOrphansConfirm', { count: allOrphanForecasts.length })}
+                    onConfirm={handleBulkCleanOrphans}
+                    okText={t('products.delete')}
+                    okButtonProps={{ danger: true }}
+                    cancelText={t('products.cancel')}
+                  >
+                    <Button danger size="small" icon={<DeleteOutlined />} loading={bulkCleanLoading}>
+                      {t('remediation.orphanForecast.bulkCleanOrphans')} ({allOrphanForecasts.length})
+                    </Button>
+                  </Popconfirm>
+                </div>
+              )}
             </div>
           }
           style={{ marginBottom: 16 }}
@@ -1214,6 +1259,9 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
         onClose={() => setGuidedFixOpen(false)}
         issue={guidedFixIssue}
         scope={scope}
+        orphanForecasts={orphanForecastsForIssue}
+        availableSkus={skus}
+        onSuccess={loadData}
         onEditForecast={handleGuidedFixEditForecast}
       />
     </div>
