@@ -427,7 +427,7 @@ const ForecastsSpreadsheetLab: React.FC<ForecastsSpreadsheetLabProps> = ({ scope
       )}
 
       {/* Data grid */}
-      <div className="spreadsheet-wrapper">
+      <div className="stable-spreadsheet-shell">
         <DataSheetGrid<ForecastSheetRow>
           value={rows}
           onChange={handleRowsChange}

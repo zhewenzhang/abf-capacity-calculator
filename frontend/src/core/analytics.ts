@@ -13,6 +13,7 @@ import type {
   MonthlyCapacitySummary,
 } from '../types';
 import { runCalculation } from './calculationEngine';
+import { filterValidForecasts } from './forecastMonthValidator';
 
 // --- Time helpers ---
 
@@ -126,7 +127,9 @@ export function buildAnalyticsModel(
   capacityPlans: CapacityPlan[],
   params: ProjectParameters
 ): AnalyticsModel {
-  const calc = runCalculation(skus, forecasts, capacityPlans, params);
+  // Filter out invalid months to prevent corrupt data from entering calculations
+  const validForecasts = filterValidForecasts(forecasts);
+  const calc = runCalculation(skus, validForecasts, capacityPlans, params);
 
   const {
     skuResults,

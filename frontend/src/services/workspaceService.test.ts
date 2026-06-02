@@ -12,6 +12,7 @@ const firestoreMock = vi.hoisted(() => ({
   getDocs: vi.fn(),
   getDoc: vi.fn(),
   setDoc: vi.fn(),
+  updateDoc: vi.fn(),
   deleteDoc: vi.fn(),
   query: vi.fn(),
   orderBy: vi.fn(),
@@ -35,6 +36,7 @@ vi.mock('firebase/firestore', () => ({
   getDocs: firestoreMock.getDocs,
   getDoc: firestoreMock.getDoc,
   setDoc: firestoreMock.setDoc,
+  updateDoc: firestoreMock.updateDoc,
   deleteDoc: firestoreMock.deleteDoc,
   query: firestoreMock.query,
   orderBy: firestoreMock.orderBy,
@@ -71,6 +73,7 @@ describe('workspaceService', () => {
     });
     firestoreMock.batchCommit.mockResolvedValue(undefined);
     firestoreMock.setDoc.mockResolvedValue(undefined);
+    firestoreMock.updateDoc.mockResolvedValue(undefined);
     firestoreMock.deleteDoc.mockResolvedValue(undefined);
   });
 
@@ -171,6 +174,35 @@ describe('workspaceService', () => {
     await expect(addWorkspaceMember('ws-1', 'new-user', 'owner')).rejects.toThrow(/owner/);
   });
 
+  it('addWorkspaceMember uses sequential writes: updateDoc BEFORE setDoc (not batched) to avoid same-batch rule races', async () => {
+    firestoreMock.getDoc.mockResolvedValue(makeWorkspaceDoc({
+      id: 'ws-1', name: 'Alpha', ownerId: 'owner', members: { 'owner': 'owner' },
+    }));
+    firestoreMock.updateDoc.mockResolvedValue(undefined);
+    firestoreMock.setDoc.mockResolvedValue(undefined);
+    const { addWorkspaceMember } = await import('./workspaceService');
+    await addWorkspaceMember('ws-1', 'colleague-uid', 'editor');
+
+    // updateDoc must be called before setDoc (sequential, not batched)
+    expect(firestoreMock.updateDoc).toHaveBeenCalled();
+    expect(firestoreMock.setDoc).toHaveBeenCalled();
+    // Verify ordering: updateDoc resolves before setDoc is called
+    const updateCallOrder = firestoreMock.updateDoc.mock.invocationCallOrder[0];
+    const setCallOrder = firestoreMock.setDoc.mock.invocationCallOrder[0];
+    expect(updateCallOrder).toBeLessThan(setCallOrder);
+  });
+
+  it('addWorkspaceMember surfaces a structured error if the index write fails', async () => {
+    firestoreMock.getDoc.mockResolvedValue(makeWorkspaceDoc({
+      id: 'ws-1', name: 'Alpha', ownerId: 'owner', members: { 'owner': 'owner' },
+    }));
+    firestoreMock.updateDoc.mockResolvedValue(undefined); // workspace update succeeds
+    firestoreMock.setDoc.mockRejectedValueOnce(new Error('PERMISSION_DENIED')); // index fails
+    const { addWorkspaceMember } = await import('./workspaceService');
+    await expect(addWorkspaceMember('ws-1', 'colleague-uid', 'editor'))
+      .rejects.toThrow(/members updated but the index/);
+  });
+
   it('addWorkspaceMember writes members map + index entry when role is editor', async () => {
     firestoreMock.getDoc.mockResolvedValue(makeWorkspaceDoc({
       id: 'ws-1', name: 'Alpha', ownerId: 'owner', members: { 'owner': 'owner' },
@@ -178,22 +210,26 @@ describe('workspaceService', () => {
     const { addWorkspaceMember } = await import('./workspaceService');
     await addWorkspaceMember('ws-1', 'colleague-uid', 'editor');
 
-    expect(firestoreMock.batchUpdate).toHaveBeenCalledWith(
+    // Step 1: updateDoc on workspace (NOT batch)
+    expect(firestoreMock.updateDoc).toHaveBeenCalledWith(
       expect.objectContaining({ path: 'workspaces/ws-1' }),
       expect.objectContaining({
         members: { 'owner': 'owner', 'colleague-uid': 'editor' },
       })
     );
-    expect(firestoreMock.batchSet).toHaveBeenCalledWith(
+    // Step 2: setDoc on invitee index (NOT batch), uses merge:true
+    expect(firestoreMock.setDoc).toHaveBeenCalledWith(
       expect.objectContaining({ path: 'userWorkspaces/colleague-uid/workspaces/ws-1' }),
       expect.objectContaining({
         workspaceId: 'ws-1',
         workspaceName: 'Alpha',
         role: 'editor',
         ownerId: 'owner',
-      })
+      }),
+      { merge: true }
     );
-    expect(firestoreMock.batchCommit).toHaveBeenCalledTimes(1);
+    // No batch used for invite flow
+    expect(firestoreMock.writeBatch).not.toHaveBeenCalled();
   });
 
   it('updateWorkspaceMemberRole refuses to demote/promote the owner', async () => {
@@ -202,6 +238,28 @@ describe('workspaceService', () => {
     }));
     const { updateWorkspaceMemberRole } = await import('./workspaceService');
     await expect(updateWorkspaceMemberRole('ws-1', 'owner', 'editor')).rejects.toThrow(/owner/);
+  });
+
+  it('updateWorkspaceMemberRole uses sequential writes: updateDoc BEFORE setDoc', async () => {
+    firestoreMock.getDoc.mockResolvedValue(makeWorkspaceDoc({
+      id: 'ws-1', name: 'Alpha', ownerId: 'owner', members: { 'owner': 'owner', 'mem': 'editor' },
+    }));
+    firestoreMock.updateDoc.mockResolvedValue(undefined);
+    firestoreMock.setDoc.mockResolvedValue(undefined);
+    const { updateWorkspaceMemberRole } = await import('./workspaceService');
+    await updateWorkspaceMemberRole('ws-1', 'mem', 'viewer');
+
+    expect(firestoreMock.updateDoc).toHaveBeenCalled();
+    expect(firestoreMock.setDoc).toHaveBeenCalled();
+    const updateCallOrder = firestoreMock.updateDoc.mock.invocationCallOrder[0];
+    const setCallOrder = firestoreMock.setDoc.mock.invocationCallOrder[0];
+    expect(updateCallOrder).toBeLessThan(setCallOrder);
+    // setDoc uses merge:true
+    expect(firestoreMock.setDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'userWorkspaces/mem/workspaces/ws-1' }),
+      expect.objectContaining({ role: 'viewer' }),
+      { merge: true }
+    );
   });
 
   it('removeWorkspaceMember refuses to remove the owner', async () => {

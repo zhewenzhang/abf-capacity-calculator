@@ -247,72 +247,114 @@ body {
 
 /* react-datasheet-grid dirty cell highlight */
 .rdg-cell.dirty-cell {
-  background-color: #fff7e6 !important;
-  border-color: #ffa940 !important;
+  background-color: #fffbe6 !important;
+  border-color: #faad14 !important;
 }
 
 .rdg-cell.dirty-cell:hover {
-  background-color: #ffe7ba !important;
+  background-color: #fff1b8 !important;
 }
 
 /* =====================================================
-   react-datasheet-grid Visual Consistency (v1.27.0)
-   Align with Ant Design visual language
+   react-datasheet-grid Visual Consistency (v1.54.3)
+   Aligned with tweakcn theme tokens
    ===================================================== */
+
+/* Stable spreadsheet shell — eliminates nested horizontal scroll.
+   Outer shell owns border/radius/background only.
+   Grid owns its own internal scroll. */
+.stable-spreadsheet-shell {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--twk-border, #f1f5f9);
+  border-radius: 16px;
+  background: var(--twk-card, #fcfcfc);
+  contain: layout paint;
+}
+
+.stable-spreadsheet-shell .dsg-container {
+  border: none;
+  border-radius: 0;
+  width: 100%;
+  min-width: 100%;
+  overflow: auto;
+}
+
+/* Legacy wrapper — keep for backward compat, but shell is preferred */
+.spreadsheet-wrapper {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.spreadsheet-wrapper .dsg-container {
+  width: 100%;
+  min-width: 100%;
+  overflow: auto;
+}
 
 /* Base grid container */
 .dsg-container {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 13px;
-  border: 1px solid #f0f0f0;
-  border-radius: 6px;
+  border: 1px solid var(--twk-border, #f1f5f9);
+  border-radius: 16px;
   overflow: hidden;
 }
 
-/* Header row - match Ant Design Table header (#fafafa background) */
+/* Header row */
 .dsg-header-row {
-  background: #fafafa !important;
+  background: var(--twk-muted, #f7f7f7) !important;
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--twk-text, #000);
 }
 
 .dsg-header-row .dsg-cell {
-  background: #fafafa !important;
-  border-bottom: 1px solid #f0f0f0;
+  background: var(--twk-muted, #f7f7f7) !important;
+  border-bottom: 1px solid var(--twk-border, #f1f5f9);
 }
 
 /* Cell styling */
 .dsg-cell {
   padding: 6px 8px !important;
-  border-right: 1px solid #f0f0f0;
-  border-bottom: 1px solid #f0f0f0;
+  border-right: 1px solid var(--twk-border, #f1f5f9);
+  border-bottom: 1px solid var(--twk-border, #f1f5f9);
 }
 
-/* Active cell selection - use Ant Design primary blue */
+/* Active cell selection — mint accent */
 .dsg-cell-active {
-  box-shadow: inset 0 0 0 2px #1677ff !important;
+  box-shadow: inset 0 0 0 2px var(--twk-primary, #4ade80) !important;
   outline: none;
 }
 
 /* Selection highlight */
 .dsg-cell-selected {
-  background-color: #e6f4ff !important;
+  background-color: var(--twk-accent, #f0fdf4) !important;
 }
 
-/* Disabled / Read-only cells - subtle gray background */
+/* Disabled / Read-only cells */
 .dsg-cell-disabled,
 .dsg-cell[disabled] {
-  background-color: #fafafa !important;
-  color: rgba(0, 0, 0, 0.45) !important;
+  background-color: var(--twk-muted, #f7f7f7) !important;
+  color: var(--twk-muted-fg, #6b6b6b) !important;
   cursor: not-allowed;
+}
+
+/* Read-only derived rows (CNY/USD/YoY) — lighter, clearly not editable */
+.read-only-row {
+  background-color: var(--twk-muted, #f7f7f7) !important;
+  color: var(--twk-muted-fg, #6b6b6b) !important;
+  font-style: italic;
 }
 
 /* Row hover */
 .dsg-row:hover .dsg-cell:not(.dsg-cell-active) {
-  background-color: #fafafa;
+  background-color: var(--twk-muted, #f7f7f7);
 }
 
-/* Dirty cell - Ant Design warning color (#faad14) */
+/* Dirty cell — warning highlight */
 .dsg-cell.dirty-cell {
   background-color: #fffbe6 !important;
   border-color: #faad14 !important;
@@ -322,34 +364,23 @@ body {
   background-color: #fff1b8 !important;
 }
 
-/* Scrollbar styling for grid containers */
+/* Scrollbar styling */
 .dsg-container::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 .dsg-container::-webkit-scrollbar-track {
-  background: #fafafa;
+  background: transparent;
 }
 
 .dsg-container::-webkit-scrollbar-thumb {
-  background: #d9d9d9;
-  border-radius: 4px;
+  background: var(--twk-border, #e5e5e5);
+  border-radius: 3px;
 }
 
 .dsg-container::-webkit-scrollbar-thumb:hover {
-  background: #bfbfbf;
-}
-
-/* Spreadsheet grid wrapper for horizontal scroll */
-.spreadsheet-wrapper {
-  width: 100%;
-  overflow-x: auto;
-  border-radius: 6px;
-}
-
-.spreadsheet-wrapper .dsg-container {
-  min-width: max-content;
+  background: #a3a3a3;
 }
 
 /* =====================================================

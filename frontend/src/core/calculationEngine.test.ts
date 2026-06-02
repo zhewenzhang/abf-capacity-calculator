@@ -223,10 +223,25 @@ describe('runCalculation', () => {
     const sku = makeSku();
     const fc = makeForecast({ forecastPcs: 0 });
     const cp = makeCapacityPlan();
-    
+
     const result = runCalculation([sku], [fc], [cp], defaultParams);
-    
+
     expect(result.skuResults.length).toBe(0);
+  });
+
+  it('silently skips orphan forecasts (no matching SKU)', () => {
+    const sku = makeSku({ id: 'sku-1' });
+    const validFc = makeForecast({ id: 'fc-valid', skuId: 'sku-1', forecastPcs: 10000 });
+    const orphanFc = makeForecast({ id: 'fc-orphan', skuId: 'non-existent-sku', forecastPcs: 5000, month: '2026-02' });
+    const cp = makeCapacityPlan();
+
+    const result = runCalculation([sku], [validFc, orphanFc], [cp], defaultParams);
+
+    // Only the valid forecast should produce a result; orphan is silently skipped
+    expect(result.skuResults.length).toBe(1);
+    expect(result.skuResults[0].skuId).toBe('sku-1');
+    expect(result.totalForecastPcs).toBe(10000);
+    expect(result.totalRevenue).toBe(50000);
   });
 
   it('aggregates multiple SKUs correctly', () => {

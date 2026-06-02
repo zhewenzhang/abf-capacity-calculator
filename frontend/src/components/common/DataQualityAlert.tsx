@@ -47,13 +47,13 @@ export const DataQualityAlert: React.FC<DataQualityAlertProps> = ({
     <span>
       {visibleIssues.length === 1
         ? t(visibleIssues[0].titleMessage.key, visibleIssues[0].titleMessage.params as Record<string, string | number>)
-        : `${filteredIssues.length} data quality issue(s)`}
+        : t('dqAlert.countCompact', { count: filteredIssues.length })}
     </span>
   ) : (
     <span>
       {filteredIssues.length === 1
         ? t(visibleIssues[0].titleMessage.key, visibleIssues[0].titleMessage.params as Record<string, string | number>)
-        : `${filteredIssues.length} data quality issue(s) found`}
+        : t('dqAlert.countFound', { count: filteredIssues.length })}
     </span>
   );
 
@@ -65,7 +65,7 @@ export const DataQualityAlert: React.FC<DataQualityAlertProps> = ({
         </li>
       ))}
       {remaining > 0 && (
-        <li style={{ color: '#999' }}>+{remaining} more issue(s)</li>
+        <li style={{ color: '#999' }}>{t('dqAlert.more', { count: remaining })}</li>
       )}
     </ul>
   );
@@ -89,6 +89,8 @@ export const DataQualityIndicator: React.FC<{
   issues: DataQualityIssue[];
   label?: string;
 }> = ({ issues, label }) => {
+  const { t } = useI18n();
+
   if (issues.length === 0) return null;
 
   const errorCount = issues.filter((i) => i.severity === 'error').length;
@@ -96,8 +98,8 @@ export const DataQualityIndicator: React.FC<{
 
   const tooltipContent = (
     <div>
-      {errorCount > 0 && <div style={{ color: '#ff4d4f' }}>{errorCount} error(s)</div>}
-      {warningCount > 0 && <div style={{ color: '#faad14' }}>{warningCount} warning(s)</div>}
+      {errorCount > 0 && <div style={{ color: '#ff4d4f' }}>{t('dqAlert.errorCount', { count: errorCount })}</div>}
+      {warningCount > 0 && <div style={{ color: '#faad14' }}>{t('dqAlert.warningCount', { count: warningCount })}</div>}
     </div>
   );
 
@@ -106,7 +108,7 @@ export const DataQualityIndicator: React.FC<{
   return (
     <Tooltip title={tooltipContent}>
       <span style={{ marginLeft: 8, color, fontSize: 13 }}>
-        {label ?? `${issues.length} issue(s)`}
+        {label ?? t('dqAlert.countCompact', { count: issues.length })}
       </span>
     </Tooltip>
   );

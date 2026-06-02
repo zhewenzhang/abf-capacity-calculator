@@ -5,6 +5,7 @@ import { normalizeCurrencySettings } from './currency';
 import { runCalculation } from './calculationEngine';
 import { buildBpAnalysis } from './bpTargets';
 import { buildDataQualitySummary } from './dataQuality';
+import { filterValidForecasts } from './forecastMonthValidator';
 
 export interface ScenarioMultipliers {
   forecastVolume: number;
@@ -95,9 +96,11 @@ export function computeScenarioComparison(
   multipliers: ScenarioMultipliers,
   baselineDqSummary: DataQualitySummary
 ): ScenarioComparison {
-  const scenarioData = applyScenarioMultipliers(skus, forecasts, capacityPlans, multipliers);
+  // Filter invalid months before any calculation
+  const validForecasts = filterValidForecasts(forecasts);
+  const scenarioData = applyScenarioMultipliers(skus, validForecasts, capacityPlans, multipliers);
 
-  const baseCalcResult = runCalculation(skus, forecasts, capacityPlans, params);
+  const baseCalcResult = runCalculation(skus, validForecasts, capacityPlans, params);
   const scenarioCalcResult = runCalculation(
     scenarioData.skus,
     scenarioData.forecasts,
