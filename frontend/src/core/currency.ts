@@ -160,6 +160,36 @@ export function formatCurrencyShort(amountUsd: number, settings: CurrencySetting
   return `${sign}${display}${unit}`;
 }
 
+/**
+ * Format currency amount as plain text without $/NT$/¥ symbols.
+ * Example: "3,500.4M TWD", "128.6M USD", "912.0M CNY"
+ */
+export function formatPlainMoney(amountUsd: number, settings: CurrencySettings, year?: string): string {
+  const normalized = normalizeCurrencySettings(settings);
+  const converted = convertCurrency(amountUsd, normalized, year);
+  const abs = Math.abs(converted);
+  const sign = converted < 0 ? '-' : '';
+  const currency = normalized.displayCurrency;
+
+  let display: string;
+  let unit: string;
+  if (abs >= 1e9) {
+    display = (abs / 1e9).toFixed(1);
+    unit = 'B';
+  } else if (abs >= 1e6) {
+    display = (abs / 1e6).toFixed(1);
+    unit = 'M';
+  } else if (abs >= 1e3) {
+    display = (abs / 1e3).toFixed(1);
+    unit = 'K';
+  } else {
+    display = abs.toFixed(currency === 'USD' ? 2 : 0);
+    unit = '';
+  }
+
+  return `${sign}${display}${unit} ${currency}`;
+}
+
 export function currencySymbol(settings: CurrencySettings): string {
   const displayCurrency = normalizeCurrencySettings(settings).displayCurrency;
   if (displayCurrency === 'USD') return '$';

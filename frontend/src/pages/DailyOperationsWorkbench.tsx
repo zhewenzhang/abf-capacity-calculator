@@ -238,12 +238,6 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
     return vm.stages.some(s => s.status !== 'notStarted');
   }, [vm]);
 
-  const scenarioDisabled = useMemo(() => {
-    if (!vm) return true;
-    const analysisStage = vm.stages.find(s => s.id === 'analysis');
-    return !analysisStage || analysisStage.status === 'notStarted' || analysisStage.status === 'blocked';
-  }, [vm]);
-
   // ---- Generate management report ----
   const handleGenerateReport = useCallback((reportType: 'daily' | 'weekly') => {
     if (!writable) return;
@@ -498,6 +492,76 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
         </div>
       </div>
 
+      {/* SECTION 1B: Executive KPI Strip — from Dashboard consolidation */}
+      {analyticsModel && (
+        <div className="twk-card" style={{ marginBottom: 16 }}>
+          <div className="twk-card-header">
+            <span className="twk-card-title"><DollarOutlined /> {t('dashboard.executiveKpi') || 'Executive KPIs'}</span>
+          </div>
+          <div className="twk-card-body">
+            <Row gutter={[12, 12]}>
+              <Col xs={12} sm={8} md={4}>
+                <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                  <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.totalRevenue')}</Text>
+                  <Text strong style={{ fontSize: 18 }}>
+                    {analyticsModel.totalRevenue >= 1e6
+                      ? `${(analyticsModel.totalRevenue / 1e6).toFixed(1)}M`
+                      : analyticsModel.totalRevenue.toLocaleString()} TWD
+                  </Text>
+                </div>
+              </Col>
+              <Col xs={12} sm={8} md={4}>
+                <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                  <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.maxCoreUtil')}</Text>
+                  <Text strong style={{ fontSize: 18, color: (analyticsModel.maxCoreUtil === null || (analyticsModel.maxCoreUtil ?? 0) > 1) ? token.colorError : token.colorSuccess }}>
+                    {analyticsModel.maxCoreUtil === null ? '—' : `${((analyticsModel.maxCoreUtil ?? 0) * 100).toFixed(1)}%`}
+                  </Text>
+                </div>
+              </Col>
+              <Col xs={12} sm={8} md={4}>
+                <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                  <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.maxBuUtil') || 'Max BU Util'}</Text>
+                  <Text strong style={{ fontSize: 18, color: (analyticsModel.maxBuUtil === null || (analyticsModel.maxBuUtil ?? 0) > 1) ? token.colorError : token.colorSuccess }}>
+                    {analyticsModel.maxBuUtil === null ? '—' : `${((analyticsModel.maxBuUtil ?? 0) * 100).toFixed(1)}%`}
+                  </Text>
+                </div>
+              </Col>
+              <Col xs={12} sm={8} md={4}>
+                <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                  <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.shortageMonths')}</Text>
+                  <Text strong style={{ fontSize: 18, color: (analyticsModel.shortageMonthCount ?? 0) > 0 ? token.colorError : token.colorSuccess }}>
+                    {analyticsModel.shortageMonthCount ?? 0}
+                  </Text>
+                </div>
+              </Col>
+              {bpModel && bpModel.yearly.length > 0 && (() => {
+                const firstTarget = bpModel.yearly.find(r => r.status !== 'no-target');
+                return firstTarget ? (
+                  <Col xs={12} sm={8} md={4}>
+                    <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                      <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('bp.kpi.overallAttainment')}</Text>
+                      <Text strong style={{ fontSize: 18, color: (firstTarget.attainment ?? 0) >= 1 ? token.colorSuccess : (firstTarget.attainment ?? 0) >= 0.8 ? token.colorWarning : token.colorError }}>
+                        {firstTarget.attainment !== null ? `${(firstTarget.attainment * 100).toFixed(1)}%` : '—'}
+                      </Text>
+                    </div>
+                  </Col>
+                ) : null;
+              })()}
+              {dqSummary && (
+                <Col xs={12} sm={8} md={4}>
+                  <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                    <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.dataConfidence')}</Text>
+                    <Tag color={dqSummary.confidence === 'high' ? 'green' : dqSummary.confidence === 'medium' ? 'orange' : 'red'} style={{ fontSize: 14, padding: '2px 12px' }}>
+                      {dqSummary.confidence.toUpperCase()}
+                    </Tag>
+                  </div>
+                </Col>
+              )}
+            </Row>
+          </div>
+        </div>
+      )}
+
       {/* SECTION 2B: Abnormality Intelligence Panel (v1.43) — Designbyte db-card */}
       {rankedOutput && rankedOutput.ranked.length > 0 && (
         <div className="twk-card" style={{ marginBottom: 16 }}>
@@ -695,35 +759,6 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
           </div>
         </Col>
       </Row>
-
-      {/* SECTION 5: Scenario Shortcuts — Designbyte db-card + db-toolbar */}
-      <div className="twk-card" style={{ marginBottom: 16 }}>
-        <div className="twk-card-header">
-          <span className="twk-card-title"><ExperimentOutlined /> {t('workbench.scenario.title')}</span>
-        </div>
-        <div className="twk-card-body">
-          <Space wrap>
-          {vm.scenarioPresets.map(preset => (
-            <Button
-              key={preset.id}
-              icon={<ExperimentOutlined />}
-              disabled={scenarioDisabled}
-              onClick={() => {
-                const params = new URLSearchParams({
-                  fv: String(preset.params.forecastVolume),
-                  up: String(preset.params.unitPrice),
-                  cc: String(preset.params.coreCapacity),
-                  bc: String(preset.params.buCapacity),
-                });
-                navigate(`/scenario?${params.toString()}`);
-              }}
-            >
-              {t(preset.label)}
-            </Button>
-          ))}
-          </Space>
-        </div>
-      </div>
 
       {/* SECTION 5B: Scenario v2 Shortcuts (v1.44) — Designbyte db-card */}
       <div className="twk-card" style={{ marginBottom: 16 }}>
