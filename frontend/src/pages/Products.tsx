@@ -18,6 +18,7 @@ import {
   Typography,
   Tooltip,
   Tag,
+  Modal,
 } from 'antd';
 import {
   PlusOutlined,
@@ -33,7 +34,7 @@ import type { ColumnsType } from 'antd/es/table';
 import * as XLSX from 'xlsx';
 import { getSKUs, saveSKU, deleteSKU, batchSaveSKUs } from '../services/skuService';
 import { saveVersion, getVersions, restoreVersion, deleteVersion } from '../services/skuVersionService';
-import { getForecasts } from '../services/forecastService';
+import { getForecasts, deleteForecastsBySku, getForecastsBySku } from '../services/forecastService';
 import { getCapacityPlans } from '../services/capacityService';
 import { getParameters } from '../services/parameterService';
 import type { CurrencyCode, SKU, SizeCategory, ProjectScope, Forecast, CapacityPlan, ProjectParameters } from '../types';
@@ -379,14 +380,39 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; forecastCount: number } | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const handleDeleteClick = async (id: string) => {
+    if (!writable) return;
     try {
-      await deleteSKU(scope, id);
-      message.success('SKU deleted');
+      const associatedForecasts = await getForecastsBySku(scope, id);
+      setDeleteTarget({ id, forecastCount: associatedForecasts.length });
+    } catch {
+      // If we can't check, proceed with count 0
+      setDeleteTarget({ id, forecastCount: 0 });
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      if (deleteTarget.forecastCount > 0) {
+        const deletedCount = await deleteForecastsBySku(scope, deleteTarget.id);
+        await deleteSKU(scope, deleteTarget.id);
+        message.success(t('products.deleteSuccessWithForecasts', { count: deletedCount }));
+      } else {
+        await deleteSKU(scope, deleteTarget.id);
+        message.success(t('products.deleteSuccess'));
+      }
       loadSKUs();
       loadVersions();
-    } catch (e: any) {
-      message.error(e.message || 'Failed to delete SKU');
+    } catch (e: unknown) {
+      message.error(e instanceof Error ? e.message : 'Failed to delete SKU');
+    } finally {
+      setDeleteLoading(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -617,9 +643,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
         ) : (
           <Space>
             <Button size="small" type="link" onClick={() => handleEditStart(record)} disabled={!writable}><EditOutlined /></Button>
-            <Popconfirm title={t('products.deleteConfirm')} onConfirm={() => handleDelete(record.id)} disabled={!writable}>
-              <Button size="small" type="link" danger disabled={!writable}><DeleteOutlined /></Button>
-            </Popconfirm>
+            <Button size="small" type="link" danger disabled={!writable} onClick={() => handleDeleteClick(record.id)}><DeleteOutlined /></Button>
           </Space>
         );
       },
@@ -810,6 +834,27 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
           </div>
         </Space>
       </Card>
+
+      {/* Delete Confirmation Modal with forecast cascade warning */}
+      <Modal
+        title={t('products.deleteConfirm')}
+        open={deleteTarget !== null}
+        onCancel={() => setDeleteTarget(null)}
+        onOk={handleDeleteConfirm}
+        okText={deleteTarget?.forecastCount ? t('products.confirmDeleteWithForecastsBtn') : t('products.delete')}
+        okButtonProps={{ danger: true, loading: deleteLoading }}
+        cancelText={t('products.cancel')}
+      >
+        {deleteTarget && deleteTarget.forecastCount > 0 ? (
+          <Alert
+            type="warning"
+            showIcon
+            message={t('products.confirmDeleteWithForecasts', { count: deleteTarget.forecastCount })}
+          />
+        ) : (
+          <p>{t('products.deleteConfirm')}</p>
+        )}
+      </Modal>
 
       {/* v1.36.0 - Quick Fix Drawer */}
       <SkuQuickFixDrawer

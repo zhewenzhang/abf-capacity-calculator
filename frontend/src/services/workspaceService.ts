@@ -17,6 +17,7 @@ import {
   getDoc,
   getDocs,
   setDoc,
+  updateDoc,
   deleteDoc,
   query,
   orderBy,
@@ -205,6 +206,15 @@ export async function createWorkspaceFromPersonalProject(
     getParameters(personal),
   ]);
 
+  // Filter orphan forecasts: only copy forecasts whose skuId exists in the skus set.
+  // This prevents propagating orphan data into the new workspace.
+  const skuIdSet = new Set(skus.map(s => s.id));
+  const validForecasts = forecasts.filter(f => skuIdSet.has(f.skuId));
+  const orphanCount = forecasts.length - validForecasts.length;
+  if (orphanCount > 0) {
+    console.warn(`[workspace copy] Filtered ${orphanCount} orphan forecast(s) from source workspace.`);
+  }
+
   // Create workspace shell + owner membership entry (two sequential writes;
   // see createWorkspace docstring for why this can't be a single batch).
   const workspaceId = await createWorkspace(ownerId, ownerEmail, workspaceName, projectId);
@@ -212,7 +222,7 @@ export async function createWorkspaceFromPersonalProject(
 
   // Copy collections. Use batch chunks of ≤ 400 to stay under Firestore's 500-op limit.
   await copyDocuments(skus, wsScope, 'skus');
-  await copyDocuments(forecasts, wsScope, 'forecasts');
+  await copyDocuments(validForecasts, wsScope, 'forecasts');
   await copyDocuments(capacityPlans, wsScope, 'capacityPlans');
 
   // Single parameters doc.
@@ -260,17 +270,34 @@ export async function addWorkspaceMember(
   const ws = wsSnap.data() as Record<string, unknown>;
   const members = { ...((ws.members as Record<string, WorkspaceRole>) ?? {}), [memberUid]: role };
 
-  const batch = writeBatch(db!);
-  batch.update(wsRef, { members, updatedAt: serverTimestamp() });
-  batch.set(doc(db!, userWorkspaceDocPath(memberUid, workspaceId)), {
-    workspaceId,
-    workspaceName: ws.name as string,
-    role,
-    ownerId: ws.ownerId as string,
-    defaultProjectId: 'default',
-    updatedAt: serverTimestamp(),
-  });
-  await batch.commit();
+  // Step 1: update workspace members FIRST and wait for commit.
+  // The Firestore rule for userWorkspaces index create does
+  //   `get(workspaces/{wid}).members[uid]` — same-batch writes are NOT
+  //   visible during rule evaluation, so the index write MUST happen
+  //   after the workspace doc is committed.
+  await updateDoc(wsRef, { members, updatedAt: serverTimestamp() });
+
+  // Step 2: write invitee index entry. Uses setDoc with merge:true so it
+  // can also repair a missing index (e.g. workspace.members already has
+  // the UID but the index doc was lost).
+  try {
+    await setDoc(doc(db!, userWorkspaceDocPath(memberUid, workspaceId)), {
+      workspaceId,
+      workspaceName: ws.name as string,
+      role,
+      ownerId: ws.ownerId as string,
+      defaultProjectId: 'default',
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  } catch (err) {
+    // Workspace members was updated but the index write failed.
+    // Surface a structured error so the UI can display a friendly message.
+    const cause = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Workspace ${workspaceId} members updated but the index for ${memberUid} could not be written: ${cause}`,
+      { cause: err }
+    );
+  }
 }
 
 export async function updateWorkspaceMemberRole(
@@ -290,13 +317,25 @@ export async function updateWorkspaceMemberRole(
   if (members[memberUid] === 'owner') throw new Error('Cannot change the owner role through this method.');
   members[memberUid] = role;
 
-  const batch = writeBatch(db!);
-  batch.update(wsRef, { members, updatedAt: serverTimestamp() });
-  batch.update(doc(db!, userWorkspaceDocPath(memberUid, workspaceId)), {
-    role,
-    updatedAt: serverTimestamp(),
-  });
-  await batch.commit();
+  // Step 1: update workspace members role FIRST and wait for commit.
+  // Same-batch visibility issue as addWorkspaceMember — the index update
+  // rule checks `get(workspaces/{wid}).members[uid]` which must see the
+  // committed role change.
+  await updateDoc(wsRef, { members, updatedAt: serverTimestamp() });
+
+  // Step 2: update invitee index entry with new role.
+  try {
+    await setDoc(doc(db!, userWorkspaceDocPath(memberUid, workspaceId)), {
+      role,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  } catch (err) {
+    const cause = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Workspace ${workspaceId} member role updated but the index for ${memberUid} could not be updated: ${cause}`,
+      { cause: err }
+    );
+  }
 }
 
 export async function removeWorkspaceMember(

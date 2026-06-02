@@ -142,6 +142,30 @@ describe('dataQuality', () => {
     expect(summary.issues.some(i => i.id.startsWith('forecast-orphan-sku'))).toBe(true);
   });
 
+  it('detects multiple orphan forecasts for the same missing SKU', () => {
+    const sku = makeSku();
+    const orphanSkuId = 'afc9a5ff-cfe8-41f6-adb0-16bdf361302e';
+    const orphanFcs = [
+      makeForecast({ id: 'fc-o1', skuId: orphanSkuId, month: '2026-01' }),
+      makeForecast({ id: 'fc-o2', skuId: orphanSkuId, month: '2026-02' }),
+      makeForecast({ id: 'fc-o3', skuId: orphanSkuId, month: '2026-03' }),
+    ];
+    const cp = makeCapacityPlan();
+    const summary = buildDataQualitySummary({
+      skus: [sku],
+      forecasts: orphanFcs,
+      capacityPlans: [cp],
+      params: defaultParams,
+    });
+    const orphanIssues = summary.issues.filter(i => i.id.startsWith('forecast-orphan-sku'));
+    expect(orphanIssues.length).toBe(3);
+    expect(summary.status).toBe('error');
+    // Each orphan should have decisionImpact 'high'
+    for (const issue of orphanIssues) {
+      expect(issue.decisionImpact).toBe('high');
+    }
+  });
+
   it('returns low confidence when forecast month has no capacity plan', () => {
     const sku = makeSku();
     const fc = makeForecast({ month: '2026-02' });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Button, message, Alert, Card, Tooltip, Popover, InputNumber, Space, Typography } from 'antd';
-import { SaveOutlined, UndoOutlined, WarningOutlined, CheckOutlined } from '@ant-design/icons';
+import { Button, message, Alert, Space, InputNumber, Typography } from 'antd';
+import { SaveOutlined, UndoOutlined, PlusOutlined, MinusOutlined } from '@ant-design/icons';
 import { DataSheetGrid, textColumn, floatColumn, keyColumn } from 'react-datasheet-grid';
 import 'react-datasheet-grid/dist/style.css';
 import { getParameters, saveParameters } from '../services/parameterService';
@@ -9,16 +9,19 @@ import { getSKUs } from '../services/skuService';
 import type { ProjectScope, Forecast, SKU, ProjectParameters } from '../types';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
-import { PageLoading, ActionBar, UnitText, DataQualityAlert } from '../components/common';
+import { PageLoading, ActionBar, DataQualityAlert } from '../components/common';
 import { buildDataQualitySummary } from '../core/dataQuality';
-import { filterIssuesByDomain, findIssueByYear } from '../core/dataQualityVisibility';
+import { filterIssuesByDomain } from '../core/dataQualityVisibility';
+import { normalizeCurrencySettings } from '../core/currency';
 import {
-  recordToRows,
-  rowsToRecord,
-  START_YEAR,
-  END_YEAR,
+  buildVisibleYears,
+  buildBpSheetRows,
+  rowsToBpTargetRecord,
+  validateYearInput,
   type BpSheetRow,
 } from '../core/bpTargetsHelpers';
+
+const { Text } = Typography;
 
 interface BpTargetsProps {
   scope: ProjectScope;
@@ -26,24 +29,34 @@ interface BpTargetsProps {
 
 const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
   const { t } = useI18n();
-  const { Text } = Typography;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<BpSheetRow[]>([]);
-  const [savedSnapshot, setSavedSnapshot] = useState<BpSheetRow[]>([]);
+  const [savedRecord, setSavedRecord] = useState<Record<string, number>>({});
+  const [visibleYears, setVisibleYears] = useState<string[]>([]);
 
-  // DQ visibility - additional data
+  // DQ visibility
   const [forecasts, setForecasts] = useState<Forecast[]>([]);
   const [skus, setSkus] = useState<SKU[]>([]);
   const [params, setParams] = useState<ProjectParameters | null>(null);
 
+  // Insert year input
+  const [insertYearValue, setInsertYearValue] = useState<number | null>(null);
+
   const writable = canEdit(scope.role);
 
-  // v1.36.0 - BP Target Quick Fix state
-  const [quickFixYear, setQuickFixYear] = useState<string | null>(null);
-  const [quickFixValue, setQuickFixValue] = useState<number | null>(null);
-  const [quickFixSaving, setQuickFixSaving] = useState(false);
+  // ---------- Rebuild rows from record + years ----------
+  const rebuildRows = useCallback((record: Record<string, number>, years: string[], paramsData: ProjectParameters) => {
+    const currencySettings = normalizeCurrencySettings(paramsData.currencySettings);
+    const sheetRows = buildBpSheetRows(record, {
+      targetTwd: t('bpTargets.targetTwd'),
+      targetCny: t('bpTargets.targetCny'),
+      targetUsd: t('bpTargets.targetUsd'),
+      yoyGrowth: t('bpTargets.yoyGrowth'),
+    }, currencySettings, years);
+    return sheetRows;
+  }, [t]);
 
   // ---------- Load parameters ----------
   const loadData = useCallback(async () => {
@@ -60,16 +73,19 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
       setSkus(skuData);
 
       const bpRecord = paramData.bpTargets?.yearlyRevenueTargetsMillionTwd || {};
-      const sheetRows = recordToRows(bpRecord, t('bpTargets.targetCol'));
+      const years = buildVisibleYears(bpRecord);
+      setVisibleYears(years);
 
-      setRows(JSON.parse(JSON.stringify(sheetRows)));
-      setSavedSnapshot(JSON.parse(JSON.stringify(sheetRows)));
-    } catch (e: any) {
-      setError(e.message || 'Failed to load BP targets');
+      const sheetRows = rebuildRows(bpRecord, years, paramData);
+      setRows(sheetRows);
+      setSavedRecord({ ...bpRecord });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to load BP targets';
+      setError(msg);
     } finally {
       setLoading(false);
     }
-  }, [scope, t]);
+  }, [scope, rebuildRows]);
 
   useEffect(() => {
     loadData();
@@ -78,12 +94,7 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
   // ---------- DQ Visibility ----------
   const dqSummary = useMemo(() => {
     if (!params || skus.length === 0) return null;
-    return buildDataQualitySummary({
-      skus,
-      forecasts,
-      capacityPlans: [],
-      params,
-    });
+    return buildDataQualitySummary({ skus, forecasts, capacityPlans: [], params });
   }, [skus, forecasts, params]);
 
   const bpDqIssues = useMemo(() => {
@@ -91,201 +102,131 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
     return filterIssuesByDomain(dqSummary, 'bp');
   }, [dqSummary]);
 
-  // Build a map of year -> DQ issue for cell-level indicators
-  const yearDqIssueMap = useMemo(() => {
-    const map = new Map<string, { type: 'zero-forecast' | 'missing-target'; issue: NonNullable<ReturnType<typeof findIssueByYear>> }>();
-    for (let y = START_YEAR; y <= END_YEAR; y++) {
-      const zeroFcIssue = findIssueByYear(bpDqIssues, String(y), 'bp-target-zero-forecast');
-      if (zeroFcIssue) {
-        map.set(String(y), { type: 'zero-forecast', issue: zeroFcIssue });
-        continue;
-      }
-      const missingTargetIssue = findIssueByYear(bpDqIssues, String(y), 'forecast-missing-bp-target');
-      if (missingTargetIssue) {
-        map.set(String(y), { type: 'missing-target', issue: missingTargetIssue });
-      }
-    }
-    return map;
-  }, [bpDqIssues]);
-
   // ---------- Dirty check ----------
   const isDirty = useMemo(() => {
-    if (rows.length === 0 || savedSnapshot.length === 0) return false;
-    const r = rows[0];
-    const s = savedSnapshot[0];
-    for (let y = START_YEAR; y <= END_YEAR; y++) {
-      const key = String(y);
-      if (r[key] !== s[key]) {
-        return true;
-      }
+    const twdRow = rows.find((r) => r.metricType === 'targetTwd');
+    if (!twdRow) return false;
+    for (const year of visibleYears) {
+      const current = twdRow[year];
+      const saved = savedRecord[year];
+      const currentNum = current === null || current === undefined || String(current).trim() === '' ? null : Number(current);
+      const savedNum = saved === undefined || saved === null ? null : saved;
+      if (currentNum !== savedNum) return true;
     }
     return false;
-  }, [rows, savedSnapshot]);
+  }, [rows, savedRecord, visibleYears]);
 
   // ---------- Cell styling for dirty highlight ----------
-  const cellClassName = useCallback(({ rowData, columnId }: any) => {
-    if (columnId === 'metric') return '';
-    const y = columnId;
-    if (savedSnapshot.length > 0) {
-      const savedVal = savedSnapshot[0][y];
-      const currentVal = rowData[y];
-      if (savedVal !== currentVal) {
-        return 'dirty-cell';
+  const cellClassName = useCallback(({ rowData, columnId }: { rowData: unknown; columnId?: string }) => {
+    if (!columnId || columnId === 'metric') return '';
+    const row = rowData as BpSheetRow;
+    // Only highlight dirty on TWD row
+    if (row.metricType !== 'targetTwd') return 'read-only-row';
+    const savedVal = savedRecord[columnId];
+    const currentVal = row[columnId];
+    const savedNum = savedVal === undefined || savedVal === null ? null : savedVal;
+    const currentNum = currentVal === null || currentVal === undefined || String(currentVal).trim() === '' ? null : Number(currentVal);
+    if (savedNum !== currentNum) return 'dirty-cell';
+    return '';
+  }, [savedRecord]);
+
+  // ---------- onChange: only allow edits on TWD row ----------
+  const handleRowsChange = useCallback((newRows: BpSheetRow[]) => {
+    if (!writable) return;
+
+    // Find which row changed
+    const oldTwd = rows.find((r) => r.metricType === 'targetTwd');
+    const newTwd = newRows.find((r) => r.metricType === 'targetTwd');
+    if (!oldTwd || !newTwd) return;
+
+    // Check if TWD row actually changed
+    let twdChanged = false;
+    for (const year of visibleYears) {
+      if (oldTwd[year] !== newTwd[year]) {
+        twdChanged = true;
+        break;
       }
     }
-    return '';
-  }, [savedSnapshot]);
 
-  // v1.36.0 - BP Target Quick Fix handlers (defined before columns to avoid hoisting issue)
-  const handleQuickFixOpen = useCallback((year: string) => {
-    if (!writable) return;
-    setQuickFixYear(year);
-    setQuickFixValue(null);
-  }, [writable]);
+    if (!twdChanged) return; // Ignore changes to derived rows
 
-  const handleQuickFixClose = useCallback(() => {
-    setQuickFixYear(null);
-    setQuickFixValue(null);
-  }, []);
+    // Rebuild derived rows from the new TWD values
+    const updatedRecord: Record<string, number> = {};
+    for (const year of visibleYears) {
+      const val = newTwd[year];
+      if (val !== null && val !== undefined && String(val).trim() !== '') {
+        updatedRecord[year] = Number(val);
+      }
+    }
 
-  const handleQuickFixSave = useCallback(async () => {
-    if (!quickFixYear || quickFixValue === null || !writable) return;
+    if (!params) return;
+    const newRows2 = rebuildRows(updatedRecord, visibleYears, params);
+    setRows(newRows2);
+  }, [writable, rows, visibleYears, params, rebuildRows]);
 
-    // Validate: must be >= 0
-    if (quickFixValue < 0) {
-      message.error(t('remediation.validation.bpTargetMin'));
+  // ---------- Year controls ----------
+  const handleAddPrevYear = useCallback(() => {
+    if (!writable || visibleYears.length === 0) return;
+    const minYear = Math.min(...visibleYears.map(Number));
+    const newYear = String(minYear - 1);
+    if (newYear < '2000') {
+      message.error(t('bpTargets.invalidYearError'));
       return;
     }
-
-    setQuickFixSaving(true);
-    try {
-      const latestParams = await getParameters(scope);
-      const currentTargets = latestParams.bpTargets?.yearlyRevenueTargetsMillionTwd || {};
-      const updatedTargets = {
-        ...currentTargets,
-        [quickFixYear]: quickFixValue,
-      };
-
-      await saveParameters(scope, {
-        ...latestParams,
-        bpTargets: {
-          mode: 'yearly' as const,
-          yearlyRevenueTargetsMillionTwd: updatedTargets,
-        },
-      });
-
-      message.success(t('remediation.bpTarget.saved'));
-      handleQuickFixClose();
-      loadData();
-    } catch (e: any) {
-      message.error(e.message || 'Failed to save');
-    } finally {
-      setQuickFixSaving(false);
+    const newYears = [newYear, ...visibleYears];
+    setVisibleYears(newYears);
+    if (params) {
+      const bpRecord = params.bpTargets?.yearlyRevenueTargetsMillionTwd || {};
+      setRows(rebuildRows(bpRecord, newYears, params));
     }
-  }, [quickFixYear, quickFixValue, writable, scope, t, handleQuickFixClose]);
+  }, [writable, visibleYears, params, rebuildRows, t]);
 
-  // ---------- Columns definition ----------
-  const columns = useMemo(() => {
-    const yearCols = [];
-    for (let year = START_YEAR; year <= END_YEAR; year++) {
-      const yearStr = String(year);
-      const dqInfo = yearDqIssueMap.get(yearStr);
-
-      // v1.36.0 - Quick Fix Popover for missing BP target
-      const quickFixPopover = dqInfo?.type === 'missing-target' && writable ? (
-        <Popover
-          open={quickFixYear === yearStr}
-          onOpenChange={(open) => open ? handleQuickFixOpen(yearStr) : handleQuickFixClose()}
-          trigger="click"
-          placement="bottom"
-          content={
-            <div style={{ width: 200 }}>
-              <div style={{ marginBottom: 8 }}>
-                <Text>{t('remediation.bpTarget.enterValue')}</Text>
-              </div>
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <InputNumber
-                  min={0}
-                  step={1}
-                  precision={0}
-                  value={quickFixValue}
-                  onChange={(v) => setQuickFixValue(v)}
-                  placeholder="Million TWD"
-                  style={{ width: '100%' }}
-                  addonAfter="M TWD"
-                />
-                <Space>
-                  <Button
-                    size="small"
-                    type="primary"
-                    icon={<CheckOutlined />}
-                    onClick={handleQuickFixSave}
-                    loading={quickFixSaving}
-                    disabled={quickFixValue === null || quickFixValue < 0}
-                  >
-                    {t('remediation.confirmFix')}
-                  </Button>
-                  <Button size="small" onClick={handleQuickFixClose}>
-                    {t('common.cancel')}
-                  </Button>
-                </Space>
-              </Space>
-            </div>
-          }
-        >
-          <WarningOutlined
-            style={{ color: '#faad14', marginLeft: 4, fontSize: 12, cursor: 'pointer' }}
-            onClick={(e) => e.stopPropagation()}
-          />
-        </Popover>
-      ) : dqInfo ? (
-        <Tooltip title={t(dqInfo.issue.detailMessage.key, dqInfo.issue.detailMessage.params as Record<string, string | number>)}>
-          <WarningOutlined style={{ color: writable ? '#faad14' : '#faad14', marginLeft: 4, fontSize: 12, cursor: writable ? 'pointer' : 'not-allowed' }} />
-        </Tooltip>
-      ) : null;
-
-      yearCols.push(
-        keyColumn<BpSheetRow, any>(yearStr, {
-          ...floatColumn,
-          title: (
-            <span>
-              {yearStr}
-              {quickFixPopover}
-            </span>
-          ),
-          basis: 110,
-          grow: 0,
-          shrink: 0,
-          disabled: !writable,
-        } as any)
-      );
+  const handleAddNextYear = useCallback(() => {
+    if (!writable || visibleYears.length === 0) return;
+    const maxYear = Math.max(...visibleYears.map(Number));
+    const newYear = String(maxYear + 1);
+    if (newYear > '2100') {
+      message.error(t('bpTargets.invalidYearError'));
+      return;
     }
+    const newYears = [...visibleYears, newYear];
+    setVisibleYears(newYears);
+    if (params) {
+      const bpRecord = params.bpTargets?.yearlyRevenueTargetsMillionTwd || {};
+      setRows(rebuildRows(bpRecord, newYears, params));
+    }
+  }, [writable, visibleYears, params, rebuildRows, t]);
 
-    return [
-      keyColumn<BpSheetRow, 'metric'>('metric', {
-        ...textColumn,
-        title: t('bpTargets.metric'),
-        basis: 220,
-        grow: 0,
-        shrink: 0,
-        disabled: true,
-      } as any),
-      ...yearCols,
-    ];
-  }, [t, writable, yearDqIssueMap, quickFixYear, quickFixValue, quickFixSaving]);
+  const handleInsertYear = useCallback(() => {
+    if (!writable || insertYearValue === null) return;
+    const yearStr = String(insertYearValue);
+    const validationError = validateYearInput(yearStr);
+    if (validationError) {
+      message.error(t('bpTargets.invalidYearError'));
+      return;
+    }
+    if (visibleYears.includes(yearStr)) {
+      message.error(t('bpTargets.yearExistsError', { year: yearStr }));
+      return;
+    }
+    const newYears = [...visibleYears, yearStr].sort();
+    setVisibleYears(newYears);
+    if (params) {
+      const bpRecord = params.bpTargets?.yearlyRevenueTargetsMillionTwd || {};
+      setRows(rebuildRows(bpRecord, newYears, params));
+    }
+    setInsertYearValue(null);
+  }, [writable, insertYearValue, visibleYears, params, rebuildRows, t]);
 
-  // ---------- Save & Discard handlers ----------
+  // ---------- Save & Discard ----------
   const handleSave = async () => {
     if (!isDirty) {
       message.info(t('bpTargets.noChanges'));
       return;
     }
-
     setSaving(true);
     try {
-      const record = rowsToRecord(rows);
-      
-      // 先获取最新的 parameters 文档，防止意外覆盖其他配置
+      const record = rowsToBpTargetRecord(rows, visibleYears);
       const latestParams = await getParameters(scope);
       const nextParams = {
         ...latestParams,
@@ -294,14 +235,11 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
           yearlyRevenueTargetsMillionTwd: record,
         },
       };
-
       await saveParameters(scope, nextParams);
       message.success(t('bpTargets.saveSuccess'));
-      
-      // 更新备份快照
-      setSavedSnapshot(JSON.parse(JSON.stringify(rows)));
-    } catch (e: any) {
-      const msg = e.message || '';
+      setSavedRecord({ ...record });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : '';
       if (msg.startsWith('NEGATIVE_VALUE:')) {
         const year = msg.split(':')[1];
         message.error(t('bpTargets.negativeValueError', { year }));
@@ -317,15 +255,37 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
   };
 
   const handleDiscard = () => {
-    setRows(JSON.parse(JSON.stringify(savedSnapshot)));
+    if (!params) return;
+    const years = buildVisibleYears(savedRecord);
+    setVisibleYears(years);
+    setRows(rebuildRows(savedRecord, years, params));
     message.info(t('bpTargets.discardSuccess'));
   };
 
-  const handleRowsChange = (newRows: BpSheetRow[]) => {
-    // Viewer True Read-only: 如果是只读用户，直接拦截变更
-    if (!writable) return;
-    setRows(newRows);
-  };
+  // ---------- Columns definition ----------
+  const columns = useMemo(() => {
+    const yearCols = visibleYears.map((yearStr) =>
+      keyColumn<BpSheetRow, any>(yearStr, {
+        ...floatColumn,
+        title: yearStr,
+        basis: 100,
+        grow: 0,
+        shrink: 0,
+      } as any)
+    );
+
+    return [
+      keyColumn<BpSheetRow, 'metric'>('metric', {
+        ...textColumn,
+        title: t('bpTargets.metric'),
+        basis: 200,
+        grow: 0,
+        shrink: 0,
+        disabled: true,
+      } as any),
+      ...yearCols,
+    ];
+  }, [t, visibleYears]);
 
   // ---------- Render ----------
   if (loading) return <PageLoading />;
@@ -344,17 +304,52 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
         />
       )}
 
-      {/* DQ Alert for BP-domain issues */}
+      {/* DQ Alert */}
       {bpDqIssues.length > 0 && (
-        <DataQualityAlert
-          issues={bpDqIssues}
-          severityFilter={['warning']}
-          maxIssues={3}
-        />
+        <DataQualityAlert issues={bpDqIssues} severityFilter={['warning']} maxIssues={3} />
       )}
 
-      {/* Toolbar / Actions */}
-      <ActionBar info={<><UnitText parentheses={false}>Million TWD</UnitText> • {t('parameters.bpTargetsNote')}</>}>
+      {/* Hint */}
+      <Alert
+        message={t('bpTargets.hint')}
+        type="info"
+        showIcon
+        style={{ marginBottom: 12 }}
+      />
+
+      {/* Year controls */}
+      {writable && (
+        <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <Button size="small" icon={<MinusOutlined />} onClick={handleAddPrevYear}>
+            {t('bpTargets.addPrevYear')}
+          </Button>
+          <Button size="small" icon={<PlusOutlined />} onClick={handleAddNextYear}>
+            {t('bpTargets.addNextYear')}
+          </Button>
+          <Space size={4}>
+            <InputNumber
+              size="small"
+              min={2000}
+              max={2100}
+              precision={0}
+              value={insertYearValue}
+              onChange={(v) => setInsertYearValue(v)}
+              placeholder={t('bpTargets.insertYearPlaceholder')}
+              style={{ width: 140 }}
+            />
+            <Button
+              size="small"
+              onClick={handleInsertYear}
+              disabled={insertYearValue === null}
+            >
+              {t('bpTargets.insertYear')}
+            </Button>
+          </Space>
+        </div>
+      )}
+
+      {/* Toolbar */}
+      <ActionBar info={<Text type="secondary" style={{ fontSize: 12 }}>{t('bpTargets.hint')}</Text>}>
         <Button
           type="primary"
           icon={<SaveOutlined />}
@@ -373,20 +368,18 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
         </Button>
       </ActionBar>
 
-      {/* Grid rendering with spreadsheet-wrapper for horizontal scroll consistency */}
-      <Card className="abf-section">
-        <div className="spreadsheet-wrapper">
-          <DataSheetGrid<BpSheetRow>
-            value={rows}
-            onChange={handleRowsChange}
-            columns={columns}
-            rowHeight={36}
-            height={120}
-            lockRows={true}
-            cellClassName={cellClassName}
-          />
-        </div>
-      </Card>
+      {/* Grid */}
+      <div className="stable-spreadsheet-shell" style={{ marginTop: 16 }}>
+        <DataSheetGrid<BpSheetRow>
+          value={rows}
+          onChange={handleRowsChange}
+          columns={columns}
+          rowHeight={36}
+          height={36 * 4 + 36} // 4 rows + header
+          lockRows={true}
+          cellClassName={cellClassName}
+        />
+      </div>
     </div>
   );
 };

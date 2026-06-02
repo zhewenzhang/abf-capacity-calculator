@@ -510,6 +510,106 @@ describe('firestore.rules — verification harness', () => {
     it('stranger cannot delete someone else\'s index entry', () => {
       expect(userWorkspaceIndex({ auth: { uid: STRANGER }, world: buildWorld(), uid: EDITOR, wid: 'ws-1', op: 'delete' })).toBe(false);
     });
+
+    // -------------------------------------------------------
+    // v1.54.2: Sequential invite vs same-batch invite proofs
+    // -------------------------------------------------------
+    describe('v1.54.2 — sequential invite vs same-batch rule races', () => {
+      it('same-batch invite is DENIED: rule reads old members map (invitee not yet present)', () => {
+        // Simulate same-batch scenario: the world represents what the rule
+        // sees via get() during evaluation. In a same-batch write, the
+        // workspace update hasn't been committed yet, so members map does
+        // NOT contain the new invitee.
+        const worldBeforeInvite: World = {
+          workspaces: {
+            'ws-1': {
+              ownerId: OWNER,
+              members: {
+                [OWNER]: 'owner',
+                // STRANGER is NOT yet in members — batch hasn't committed
+              },
+            },
+          },
+        };
+        const payload: IndexEntry = { workspaceId: 'ws-1', ownerId: OWNER, role: 'editor' };
+        // Rule checks: workspaceMembers(workspaceId)[uid] → undefined → fails
+        expect(userWorkspaceIndex({ auth: { uid: OWNER }, world: worldBeforeInvite, uid: STRANGER, wid: 'ws-1', op: 'create', payload })).toBe(false);
+      });
+
+      it('sequential invite PASSES: rule reads committed members map (invitee IS present)', () => {
+        // After the workspace update has committed, the world reflects the
+        // new members map with the invitee included.
+        const worldAfterInvite: World = {
+          workspaces: {
+            'ws-1': {
+              ownerId: OWNER,
+              members: {
+                [OWNER]: 'owner',
+                [STRANGER]: 'editor', // now present after committed update
+              },
+            },
+          },
+        };
+        const payload: IndexEntry = { workspaceId: 'ws-1', ownerId: OWNER, role: 'editor' };
+        expect(userWorkspaceIndex({ auth: { uid: OWNER }, world: worldAfterInvite, uid: STRANGER, wid: 'ws-1', op: 'create', payload })).toBe(true);
+      });
+
+      it('sequential invite with viewer role passes', () => {
+        const world: World = {
+          workspaces: {
+            'ws-1': {
+              ownerId: OWNER,
+              members: { [OWNER]: 'owner', [STRANGER]: 'viewer' },
+            },
+          },
+        };
+        const payload: IndexEntry = { workspaceId: 'ws-1', ownerId: OWNER, role: 'viewer' };
+        expect(userWorkspaceIndex({ auth: { uid: OWNER }, world, uid: STRANGER, wid: 'ws-1', op: 'create', payload })).toBe(true);
+      });
+
+      it('editor CANNOT invite new members (even with sequential writes)', () => {
+        const world: World = {
+          workspaces: {
+            'ws-1': {
+              ownerId: OWNER,
+              members: { [OWNER]: 'owner', [EDITOR]: 'editor', [STRANGER]: 'editor' },
+            },
+          },
+        };
+        const payload: IndexEntry = { workspaceId: 'ws-1', ownerId: OWNER, role: 'editor' };
+        expect(userWorkspaceIndex({ auth: { uid: EDITOR }, world, uid: STRANGER, wid: 'ws-1', op: 'create', payload })).toBe(false);
+      });
+
+      it('viewer CANNOT invite new members', () => {
+        const world: World = {
+          workspaces: {
+            'ws-1': {
+              ownerId: OWNER,
+              members: { [OWNER]: 'owner', [VIEWER]: 'viewer', [STRANGER]: 'viewer' },
+            },
+          },
+        };
+        const payload: IndexEntry = { workspaceId: 'ws-1', ownerId: OWNER, role: 'viewer' };
+        expect(userWorkspaceIndex({ auth: { uid: VIEWER }, world, uid: STRANGER, wid: 'ws-1', op: 'create', payload })).toBe(false);
+      });
+
+      it('invitee CANNOT self-escalate role through index write', () => {
+        const world: World = {
+          workspaces: {
+            'ws-1': {
+              ownerId: OWNER,
+              members: { [OWNER]: 'owner', [STRANGER]: 'viewer' },
+            },
+          },
+        };
+        // Stranger tries to write themselves as owner
+        const escalateOwner: IndexEntry = { workspaceId: 'ws-1', ownerId: OWNER, role: 'owner' };
+        expect(userWorkspaceIndex({ auth: { uid: STRANGER }, world, uid: STRANGER, wid: 'ws-1', op: 'create', payload: escalateOwner })).toBe(false);
+        // Stranger tries to write themselves as editor (escalation from viewer)
+        const escalateEditor: IndexEntry = { workspaceId: 'ws-1', ownerId: OWNER, role: 'editor' };
+        expect(userWorkspaceIndex({ auth: { uid: STRANGER }, world, uid: STRANGER, wid: 'ws-1', op: 'create', payload: escalateEditor })).toBe(false);
+      });
+    });
   });
 
   // --------------------------------------------------------

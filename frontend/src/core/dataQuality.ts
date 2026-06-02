@@ -6,6 +6,25 @@ function msg(key: string, params?: Record<string, string | number>): LocalizedMe
   return params ? { key, params } : { key };
 }
 
+/**
+ * Validates that a value is a proper YYYY-MM month key.
+ * Accepts: "2026-01", "2030-12"
+ * Rejects: "66ea", "c5a3", "2026", "2026-13", "2026-00", "", null, undefined
+ */
+export function isValidMonthKey(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+}
+
+/**
+ * Extracts the 4-digit year from a valid YYYY-MM month key.
+ * Returns null if the key is invalid.
+ */
+export function extractYearFromMonthKey(value: string): string | null {
+  if (!isValidMonthKey(value)) return null;
+  return value.substring(0, 4);
+}
+
 export type DataQualitySeverity = 'error' | 'warning' | 'info';
 export type DataQualityDomain =
   | 'products'
@@ -140,12 +159,39 @@ export function buildDataQualitySummary(input: DataQualityInput): DataQualitySum
   }
 
   // --- 2. Forecast Checks ---
+  // First pass: separate valid and invalid month entries
+  const invalidMonthForecasts: Forecast[] = [];
+  const validForecasts: Forecast[] = [];
+  for (const fc of forecasts) {
+    if (isValidMonthKey(fc.month)) {
+      validForecasts.push(fc);
+    } else {
+      invalidMonthForecasts.push(fc);
+    }
+  }
+
+  // Report invalid month entries as a DQ issue
+  if (invalidMonthForecasts.length > 0) {
+    const samples = [...new Set(invalidMonthForecasts.map((f) => f.month))].slice(0, 5).join(', ');
+    issues.push({
+      id: 'forecast-invalid-month',
+      severity: 'error',
+      domain: 'forecast',
+      title: 'Invalid Forecast Month Format',
+      detail: `${invalidMonthForecasts.length} forecast record(s) have invalid month format.`,
+      titleMessage: msg('dq.forecastInvalidMonth.title'),
+      detailMessage: msg('dq.forecastInvalidMonth.detail', { count: invalidMonthForecasts.length }),
+      evidence: { count: invalidMonthForecasts.length, samples },
+    });
+  }
+
+  // Only process valid forecasts for year/month aggregation and downstream checks
   const forecastYears = new Set<string>();
   const forecastMonths = new Set<string>();
   const forecastsBySkuYear = new Map<string, Set<string>>(); // "skuId::year" -> Set of months
 
-  for (const fc of forecasts) {
-    const year = fc.month.substring(0, 4);
+  for (const fc of validForecasts) {
+    const year = extractYearFromMonthKey(fc.month)!;
     forecastYears.add(year);
     forecastMonths.add(fc.month);
 
@@ -459,6 +505,7 @@ export function enrichWithImpact(issue: DataQualityIssue): DataQualityIssue {
   if (
     id.startsWith('forecast-orphan-sku-') ||
     id === 'forecast-missing-capacity' ||
+    id === 'forecast-invalid-month' ||
     id === 'bu-demand-zero-capacity' ||
     id === 'missing-constant-twd-rate' ||
     id === 'missing-yearly-twd-rate' ||
