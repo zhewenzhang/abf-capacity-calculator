@@ -206,7 +206,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ scope }) => {
       : colorNeutral;
 
   return (
-    <div className="abf-page">
+    <div className="twk-page">
       {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       {qualitySummary && (
         <Alert

@@ -72,11 +72,54 @@ const FORBIDDEN_OPERATIONS: readonly string[] = [
 ] as const;
 
 const FAIR_OUTPUT_FORMAT = `F-A-I-R Output Format Instructions:
-- [Fact]: Directly calculated from provided data, verifiable. Example: "2026-03 Core utilization is 95.2%"
-- [Assumption]: Based on configuration parameters or default conditions. Example: "Assuming exchange rate USD/TWD = 32.0"
-- [Inference]: Trends or possibilities derived from data patterns. Example: "If demand grows 10%, bottleneck month may shift to Q2"
-- [Recommendation]: Suggested action plans. Example: "Consider evaluating 5% Core capacity expansion"
-All conclusions must be labeled with one of the four F-A-I-R categories. Every recommendation must cite source references.`;
+
+## 強制輸出結構
+
+你的回答必須嚴格按照以下結構輸出，不可省略任何段落：
+
+### 1. 重點摘要（開頭）
+- 最多 3 條 bullet points
+- 每條不超過 20 字
+- 概括最重要的發現
+
+### 2. 主要發現
+- 使用 Markdown bullet list
+- 每條結論標註 F-A-I-R 標籤
+- 標籤格式：[Fact]、[Assumption]、[Inference]、[Recommendation]
+- 禁止拼錯：不可寫 [Interence]，必須是 [Inference]
+
+### 3. 數據品質問題
+- 列出資料品質相關問題
+- 若資料品質分數低，必須先說明：「由於資料品質不足，以下結論僅作為初步診斷。」
+
+### 4. 產能與稼動率風險
+- 分析產能瓶頸、稼動率超標月份
+- 使用 bullet list 呈現
+
+### 5. BP 營收差距
+- 分析 BP 達成率、差距金額
+- 涉及 USD、TWD、CNY 比較時，必須明確寫出匯率換算
+- 範例：「以下 BP 差距已按 1 USD = 32 TWD 換算」
+
+### 6. 建議行動
+- 每一條 [Recommendation] 必須包含來源引用
+- 來源格式：「來源：Data Quality Summary」、「來源：Capacity Risk Model」、「來源：BP Analysis」、「來源：Scenario Result」
+- 禁止說「請確認後執行」
+- 必須說「建議人工確認後再採取行動」或「此建議不會自動寫入系統」
+
+### 7. 需人工確認的事項
+- 列出需要人工進一步確認的項目
+
+## F-A-I-R 標籤定義
+- [Fact]: 直接從提供資料計算得出，可驗證。範例：「2026-03 Core 稼動率為 95.2%」
+- [Assumption]: 基於設定參數或預設條件。範例：「假設匯率 USD/TWD = 32.0」
+- [Inference]: 從資料模式推導的趨勢或可能性。範例：「若需求成長 10%，瓶頸月份可能移至 Q2」
+- [Recommendation]: 建議的行動方案。範例：「建議評估 5% Core 產能擴充」
+
+## 格式要求
+- 使用 Markdown 格式：## 標題、**粗體**、- 列表、1. 編號列表
+- 每個段落內使用 bullet list，不要輸出一整段長文
+- 行距適當，易於閱讀`;
 
 // ============================================================
 // Language Rules
@@ -256,7 +299,14 @@ export function buildProviderSystemPrompt(
     'Proportional patterns are NOT causation. BP Gap Attribution uses revenue-share weights to allocate gaps across SKUs. This is an analytical decomposition, not a causal claim. Never state or imply that a SKU "caused" a BP gap.',
     '',
     '## No-Write Requirement',
-    'All output is for human review only. Do not produce code that writes, updates, deletes, or merges data. Do not suggest automated write flows without human approval. All recommendations must end with: "Please confirm before proceeding."',
+    'All output is for human review only. Do not produce code that writes, updates, deletes, or merges data. Do not suggest automated write flows without human approval.',
+    '',
+    '## 重要禁止用語',
+    '- 禁止說「請確認後執行」— 這暗示 AI 已經或即將自動執行',
+    '- 禁止說「Please confirm before proceeding」',
+    '- 必須說「建議人工確認後再採取行動」',
+    '- 必須說「此建議不會自動寫入系統」',
+    '- 範例：「[Recommendation] 建議評估 Q2 產能擴充方案。來源：Capacity Risk Model。建議人工確認後再採取行動，此建議不會自動寫入系統。」',
   ];
 
   return sections.join('\n');

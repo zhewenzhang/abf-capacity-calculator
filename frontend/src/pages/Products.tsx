@@ -627,7 +627,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
   ];
 
   return (
-    <div className="abf-page">
+    <div className="twk-page">
       {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       {!writable && (
         <Alert

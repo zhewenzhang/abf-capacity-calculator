@@ -29,7 +29,6 @@ import {
   buildWorkbenchViewModel,
   type WorkbenchViewModel,
   type WorkflowStageStatus,
-  type AbnormalityInsight,
   type RevenueBpSummary,
 } from '../core/workbench';
 import { buildDataQualitySummary, type DataQualitySummary } from '../core/dataQuality';
@@ -120,50 +119,6 @@ function statusLabelKey(status: WorkflowStageStatus): string {
       return 'workbench.status.blocked';
     case 'notStarted':
       return 'workbench.status.notStarted';
-  }
-}
-
-// ============================================================
-// Severity helpers for abnormality insights
-// ============================================================
-
-function severityColor(severity: 'critical' | 'warning' | 'info'): string {
-  switch (severity) {
-    case 'critical':
-      return 'red';
-    case 'warning':
-      return 'orange';
-    case 'info':
-      return 'blue';
-  }
-}
-
-// ============================================================
-// Domain display info
-// ============================================================
-
-const DOMAIN_ICONS: Record<string, React.ReactNode> = {
-  data: <InboxOutlined />,
-  capacity: <CloudOutlined />,
-  sales: <BarChartOutlined />,
-  bp: <DollarOutlined />,
-  scenario: <ExperimentOutlined />,
-};
-
-function domainLabelKey(domain: string): string {
-  switch (domain) {
-    case 'data':
-      return 'menu.products';
-    case 'capacity':
-      return 'menu.capacity';
-    case 'sales':
-      return 'menu.forecasts';
-    case 'bp':
-      return 'menu.bpTargets';
-    case 'scenario':
-      return 'menu.scenario';
-    default:
-      return domain;
   }
 }
 
@@ -377,16 +332,6 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
     }, 0);
   }, [writable, rawData]);
 
-  const abnormalitiesByDomain = useMemo(() => {
-    if (!vm) return {};
-    const groups: Record<string, AbnormalityInsight[]> = {};
-    for (const insight of vm.abnormalities) {
-      if (!groups[insight.domain]) groups[insight.domain] = [];
-      groups[insight.domain].push(insight);
-    }
-    return groups;
-  }, [vm]);
-
   // ---- Loading state ----
   if (loading) {
     return <PageLoading />;
@@ -414,8 +359,6 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
       </div>
     );
   }
-
-  const domainKeys = Object.keys(abnormalitiesByDomain);
 
   // ---- Look-ahead columns ----
   const lookAheadColumns = [
@@ -566,53 +509,6 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
             </Col>
           ))}
         </Row>
-      </SectionCard>
-
-      {/* SECTION 2: Abnormality Summary */}
-      <SectionCard title={<><WarningOutlined /> {t('workbench.abnormality.title')}</>} style={{ marginBottom: 16 }}>
-        {domainKeys.length === 0 ? (
-          <EmptyState
-            title={t('workbench.status.ready')}
-            description={t('workbench.subtitle')}
-          />
-        ) : (
-          <Row gutter={[12, 12]}>
-            {domainKeys.map(domain => {
-              const insights = abnormalitiesByDomain[domain];
-              const errorCount = insights.filter(i => i.severity === 'critical').length;
-              const warnCount = insights.filter(i => i.severity === 'warning').length;
-              return (
-                <Col xs={24} sm={12} key={domain}>
-                  <Card size="small">
-                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                      <Space>
-                        {DOMAIN_ICONS[domain] || <InfoCircleOutlined />}
-                        <Text strong>{t(domainLabelKey(domain))}</Text>
-                        {errorCount > 0 && <Badge count={errorCount} style={{ backgroundColor: '#ff4d4f' }} />}
-                        {warnCount > 0 && <Badge count={warnCount} style={{ backgroundColor: '#faad14' }} />}
-                      </Space>
-                      {insights.slice(0, 3).map((insight, i) => (
-                        <Space key={i} size={8} style={{ width: '100%' }}>
-                          <Tag color={severityColor(insight.severity)} style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px' }}>
-                            {insight.severity.toUpperCase()}
-                          </Tag>
-                          <Text style={{ fontSize: 12 }} ellipsis={{ tooltip: insight.detail }}>
-                            {insight.title}
-                          </Text>
-                        </Space>
-                      ))}
-                      {insights.length > 3 && (
-                        <Text type="secondary" style={{ fontSize: 11 }}>
-                          +{insights.length - 3} more
-                        </Text>
-                      )}
-                    </Space>
-                  </Card>
-                </Col>
-              );
-            })}
-          </Row>
-        )}
       </SectionCard>
 
       {/* SECTION 2B: Abnormality Intelligence Panel (v1.43) */}
@@ -986,43 +882,43 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
         <Space wrap>
           <Button
             icon={<RobotOutlined />}
-            onClick={() => navigate('/copilot')}
+            onClick={() => navigate('/copilot?tool=dataProblems')}
           >
             {t('workbench.copilot.dq')}
           </Button>
           <Button
             icon={<RobotOutlined />}
-            onClick={() => navigate('/copilot')}
+            onClick={() => navigate('/copilot?tool=capacityRisk')}
           >
             {t('workbench.copilot.capacity')}
           </Button>
           <Button
             icon={<RobotOutlined />}
-            onClick={() => navigate('/copilot')}
+            onClick={() => navigate('/copilot?tool=bpGap')}
           >
             {t('workbench.copilot.bp')}
           </Button>
           <Button
             icon={<RobotOutlined />}
-            onClick={() => navigate('/copilot')}
+            onClick={() => navigate('/copilot?tool=lookAhead')}
           >
             {t('workbench.copilot.lookahead')}
           </Button>
           <Button
             icon={<AlertOutlined />}
-            onClick={() => navigate('/copilot')}
+            onClick={() => navigate('/copilot?tool=abnormalityDetail')}
           >
             {t('copilot.quick.abnormalityDetail')}
           </Button>
           <Button
             icon={<ThunderboltOutlined />}
-            onClick={() => navigate('/copilot')}
+            onClick={() => navigate('/copilot?tool=scenarioV2')}
           >
             {t('copilot.quick.scenarioV2')}
           </Button>
           <Button
             icon={<FileTextOutlined />}
-            onClick={() => navigate('/copilot')}
+            onClick={() => navigate('/copilot?tool=reportNarrative')}
           >
             {t('copilot.quick.reportNarrative')}
           </Button>

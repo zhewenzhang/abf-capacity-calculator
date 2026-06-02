@@ -277,7 +277,7 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ scope }
   }).length;
 
   return (
-    <div className="abf-page">
+    <div className="twk-page">
       <ExperimentalBanner
         label={t('productsLab.title')}
         description={t('productsLab.description')}
