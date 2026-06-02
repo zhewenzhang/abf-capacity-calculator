@@ -468,6 +468,8 @@ export const zhTW: Record<string, string> = {
   'forecasts.selectSkuFirst': '請先選擇 SKU',
   'forecasts.selectTargetYears': '請先選擇目標年度',
   'forecasts.month': '月',
+  'forecasts.quantity': '數量',
+  'forecasts.price': '單價',
   'forecasts.quarter': '季',
   'forecasts.year': '年',
   'forecasts.edit': '編輯',

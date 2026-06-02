@@ -910,55 +910,88 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
         />
       )}
 
-      {/* v1.36.0 - Orphan Forecast Alert with Guided Fix */}
-      {orphanForecastIssues.length > 0 && (
-        <Alert
-          type="error"
-          showIcon
-          message={t('remediation.orphanForecast.alertTitle', { count: orphanForecastIssues.length })}
-          description={
-            <div>
-              <ul style={{ margin: '8px 0 0 0', paddingLeft: 20 }}>
-                {orphanForecastIssues.slice(0, 3).map(issue => (
-                  <li key={issue.id}>
-                    <Space>
-                      <span>{t(issue.detailMessage.key, issue.detailMessage.params as Record<string, string | number>)}</span>
-                      {writable && (
-                        <Button
-                          size="small"
-                          type="link"
-                          onClick={() => handleOrphanFixClick(issue)}
-                        >
-                          {t('remediation.fixNow')}
-                        </Button>
-                      )}
-                    </Space>
-                  </li>
-                ))}
-              </ul>
-              {orphanForecastIssues.length > 3 && (
-                <Text type="secondary">+{orphanForecastIssues.length - 3} more</Text>
-              )}
-              {writable && (
-                <div style={{ marginTop: 12 }}>
-                  <Popconfirm
-                    title={t('remediation.orphanForecast.bulkCleanOrphansConfirm', { count: allOrphanForecasts.length })}
-                    onConfirm={handleBulkCleanOrphans}
-                    okText={t('products.delete')}
-                    okButtonProps={{ danger: true }}
-                    cancelText={t('products.cancel')}
-                  >
-                    <Button danger size="small" icon={<DeleteOutlined />} loading={bulkCleanLoading}>
-                      {t('remediation.orphanForecast.bulkCleanOrphans')} ({allOrphanForecasts.length})
-                    </Button>
-                  </Popconfirm>
+      {/* v1.55.x - Orphan Forecast Alert with Rich Details */}
+      {orphanForecastIssues.length > 0 && (() => {
+        // Group orphan forecasts by skuId for summary display
+        const orphanBySku = new Map<string, typeof allOrphanForecasts>();
+        for (const f of allOrphanForecasts) {
+          if (!orphanBySku.has(f.skuId)) orphanBySku.set(f.skuId, []);
+          orphanBySku.get(f.skuId)!.push(f);
+        }
+
+        return (
+          <Alert
+            type="error"
+            showIcon
+            message={t('remediation.orphanForecast.alertTitle', { count: allOrphanForecasts.length })}
+            description={
+              <div>
+                {/* Mini table showing orphan forecast details */}
+                <div style={{ overflowX: 'auto', marginBottom: 12 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                        <th style={{ textAlign: 'left', padding: '4px 8px', fontWeight: 600 }}>{t('forecast.repair.skuCode')}</th>
+                        <th style={{ textAlign: 'left', padding: '4px 8px', fontWeight: 600 }}>{t('forecasts.month')}</th>
+                        <th style={{ textAlign: 'right', padding: '4px 8px', fontWeight: 600 }}>{t('forecasts.quantity')}</th>
+                        <th style={{ textAlign: 'right', padding: '4px 8px', fontWeight: 600 }}>{t('forecasts.price')}</th>
+                        {writable && <th style={{ padding: '4px 8px', fontWeight: 600 }}>{t('remediation.fixNow')}</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allOrphanForecasts.slice(0, 6).map(fc => (
+                        <tr key={fc.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                          <td style={{ padding: '4px 8px' }}>
+                            <Tag color="red" style={{ fontSize: 11 }}>{fc.skuId.substring(0, 8)}…</Tag>
+                          </td>
+                          <td style={{ padding: '4px 8px' }}>{fc.month}</td>
+                          <td style={{ padding: '4px 8px', textAlign: 'right' }}>{fc.forecastPcs?.toLocaleString() ?? '—'}</td>
+                          <td style={{ padding: '4px 8px', textAlign: 'right' }}>{fc.unitPrice?.toFixed(2) ?? '—'} {fc.unitPriceCurrency ?? 'USD'}</td>
+                          {writable && (
+                            <td style={{ padding: '4px 8px', textAlign: 'center' }}>
+                              <Button size="small" type="link" style={{ padding: 0 }}
+                                onClick={() => {
+                                  const issue = orphanForecastIssues.find(i => i.evidence?.skuId === fc.skuId);
+                                  if (issue) handleOrphanFixClick(issue);
+                                }}
+                              >
+                                {t('remediation.fixNow')}
+                              </Button>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {allOrphanForecasts.length > 6 && (
+                    <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>
+                      +{allOrphanForecasts.length - 6} more
+                    </Text>
+                  )}
                 </div>
-              )}
-            </div>
-          }
-          style={{ marginBottom: 16 }}
-        />
-      )}
+
+                {/* Action buttons */}
+                {writable && (
+                  <Space>
+                    <Popconfirm
+                      title={t('remediation.orphanForecast.bulkCleanOrphansConfirm', { count: allOrphanForecasts.length })}
+                      onConfirm={handleBulkCleanOrphans}
+                      okText={t('products.delete')}
+                      okButtonProps={{ danger: true }}
+                      cancelText={t('products.cancel')}
+                    >
+                      <Button danger size="small" icon={<DeleteOutlined />} loading={bulkCleanLoading}>
+                        {t('remediation.orphanForecast.bulkCleanOrphans')} ({allOrphanForecasts.length})
+                      </Button>
+                    </Popconfirm>
+                  </Space>
+                )}
+              </div>
+            }
+            style={{ marginBottom: 16 }}
+          />
+        );
+      })()}
 
       {/* Invalid Forecast Repair Tool */}
       {(() => {
