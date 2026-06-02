@@ -335,9 +335,25 @@ export const en: Record<string, string> = {
   'dqAlert.warningCount': '{count} warning(s)',
 
   // Invalid forecast month
-  'dq.forecastInvalidMonth.title': 'Invalid Forecast Month Format',
-  'dq.forecastInvalidMonth.detail': '{count} forecast record(s) have month values that are not in YYYY-MM format. The system cannot determine the year or month, so they are excluded from BP and capacity analysis. Please fix the month field in the Forecasts page.',
+  'dq.forecastInvalidMonth.title': 'Abnormal Forecast Data Detected',
+  'dq.forecastInvalidMonth.detail': 'The system detected {count} forecast record(s) with abnormal month values, possibly from legacy data or import/copy flows. These records have been excluded to prevent corruption of BP and capacity analysis. Please use the repair tool below to review and fix.',
   'dq.forecastInvalidMonth.samples': 'Invalid month samples: {samples}',
+
+  // Forecast invalid month repair UI
+  'forecast.repair.title': 'Abnormal Forecast Repair Tool',
+  'forecast.repair.subtitle': 'The following forecast records have abnormal month values and have been excluded. Please review and delete or fix them.',
+  'forecast.repair.docId': 'Document ID',
+  'forecast.repair.skuCode': 'SKU Code',
+  'forecast.repair.invalidMonth': 'Invalid Month',
+  'forecast.repair.forecastPcs': 'Forecast PCS',
+  'forecast.repair.action': 'Action',
+  'forecast.repair.delete': 'Delete',
+  'forecast.repair.deleteConfirm': 'Are you sure you want to delete this abnormal forecast? This cannot be undone.',
+  'forecast.repair.deleteSuccess': 'Abnormal forecast deleted.',
+  'forecast.repair.deleteAll': 'Delete All',
+  'forecast.repair.deleteAllConfirm': 'Are you sure you want to delete all {count} abnormal forecasts? This cannot be undone.',
+  'forecast.repair.export': 'Export Abnormal Data',
+  'forecast.repair.noIssues': 'No abnormal forecast records found.',
 
   // SKU Health classification labels
   'health.strategicGrowth': 'Strategic Growth',

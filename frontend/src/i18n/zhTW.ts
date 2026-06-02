@@ -344,9 +344,25 @@ export const zhTW: Record<string, string> = {
   'dqAlert.warningCount': '{count} 個警告',
 
   // Invalid forecast month
-  'dq.forecastInvalidMonth.title': '預測月份格式無效',
-  'dq.forecastInvalidMonth.detail': '有 {count} 筆預測資料的月份不是 YYYY-MM 格式，系統無法判斷年度與月份，因此不會將它們納入 BP 與產能分析。請到「預測」頁修正月份欄位。',
+  'dq.forecastInvalidMonth.title': '系統偵測到異常預測資料',
+  'dq.forecastInvalidMonth.detail': '系統偵測到 {count} 筆預測資料的月份欄位異常，可能來自舊版資料或匯入/複製流程。系統已暫時排除這些資料，避免影響 BP 與產能分析。請使用下方修復工具檢查並修復。',
   'dq.forecastInvalidMonth.samples': '無效月份範例：{samples}',
+
+  // Forecast invalid month repair UI
+  'forecast.repair.title': '異常預測資料修復工具',
+  'forecast.repair.subtitle': '以下預測資料的月份欄位異常，系統已排除它們。請檢查並刪除或修正。',
+  'forecast.repair.docId': '文件 ID',
+  'forecast.repair.skuCode': 'SKU 代碼',
+  'forecast.repair.invalidMonth': '異常月份',
+  'forecast.repair.forecastPcs': '預測數量',
+  'forecast.repair.action': '操作',
+  'forecast.repair.delete': '刪除',
+  'forecast.repair.deleteConfirm': '確定要刪除這筆異常預測嗎？此操作無法復原。',
+  'forecast.repair.deleteSuccess': '已刪除異常預測資料。',
+  'forecast.repair.deleteAll': '全部刪除',
+  'forecast.repair.deleteAllConfirm': '確定要刪除全部 {count} 筆異常預測嗎？此操作無法復原。',
+  'forecast.repair.export': '匯出異常資料',
+  'forecast.repair.noIssues': '目前沒有異常預測資料。',
 
   // SKU Health classification labels
   'health.strategicGrowth': '策略成長',

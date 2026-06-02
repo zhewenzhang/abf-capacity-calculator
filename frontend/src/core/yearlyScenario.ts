@@ -13,6 +13,7 @@ import type { BpAnalysisModel } from './bpTargets';
 import { normalizeCurrencySettings } from './currency';
 import { runCalculation } from './calculationEngine';
 import { buildBpAnalysis } from './bpTargets';
+import { isValidForecastMonth, filterValidForecasts } from './forecastMonthValidator';
 
 // ============================================================
 // Types
@@ -110,12 +111,12 @@ export function extractDataYears(
 ): string[] {
   const yearSet = new Set<string>();
   for (const f of forecasts) {
-    if (f.month && f.month.length >= 4) {
+    if (isValidForecastMonth(f.month)) {
       yearSet.add(f.month.substring(0, 4));
     }
   }
   for (const cp of capacityPlans) {
-    if (cp.month && cp.month.length >= 4) {
+    if (cp.month && /^\d{4}-(0[1-9]|1[0-2])$/.test(cp.month)) {
       yearSet.add(cp.month.substring(0, 4));
     }
   }
@@ -151,7 +152,10 @@ function applyYearlyMultipliers(
 ): { skus: SKU[]; forecasts: Forecast[]; capacityPlans: CapacityPlan[] } {
   const a = clampAssumption(assumption);
 
-  const yearForecasts = forecasts
+  // Only process valid forecasts
+  const validForecasts = filterValidForecasts(forecasts);
+
+  const yearForecasts = validForecasts
     .filter((f) => f.month.startsWith(year))
     .map((f) => ({
       ...f,
@@ -160,7 +164,7 @@ function applyYearlyMultipliers(
     }));
 
   const yearCapacity = capacityPlans
-    .filter((cp) => cp.month.startsWith(year))
+    .filter((cp) => isValidForecastMonth(cp.month) && cp.month.startsWith(year))
     .map((cp) => ({
       ...cp,
       corePanelPerDay: cp.corePanelPerDay * a.coreCapacityMultiplier,
@@ -292,16 +296,15 @@ export function runYearlyScenario(
   const bpTargets = params.bpTargets?.yearlyRevenueTargetsMillionTwd ?? {};
   const results: YearlyResultRow[] = [];
 
+  // Filter invalid months before any calculation
+  const validForecasts = filterValidForecasts(forecasts);
+  const validCapacity = capacityPlans.filter((cp) => isValidForecastMonth(cp.month));
+
   for (const year of visibleYears) {
     const assumption = assumptions[year] ?? defaultAssumption();
 
-    // Baseline: run calculation with ALL data (not filtered by year) to get
-    // the full baseline picture, then extract year-specific BP from it.
-    // But for per-year comparison, we need year-scoped metrics.
-    // Approach: run full calculation for baseline, run year-adjusted for scenario.
-
-    // For baseline, use original data
-    const baseCalcResult = runCalculation(skus, forecasts, capacityPlans, params);
+    // Baseline: run calculation with valid data only
+    const baseCalcResult = runCalculation(skus, validForecasts, validCapacity, params);
     const baseBpModel = buildBpAnalysis(
       baseCalcResult.skuResults,
       skus,
@@ -311,15 +314,15 @@ export function runYearlyScenario(
     );
 
     // For scenario, apply multipliers to year-specific data
-    const yearData = applyYearlyMultipliers(skus, forecasts, capacityPlans, year, assumption);
+    const yearData = applyYearlyMultipliers(skus, validForecasts, validCapacity, year, assumption);
 
     // Build full scenario data: replace that year's data with modified data
     const scenarioForecasts = [
-      ...forecasts.filter((f) => !f.month.startsWith(year)),
+      ...validForecasts.filter((f) => !f.month.startsWith(year)),
       ...yearData.forecasts,
     ];
     const scenarioCapacity = [
-      ...capacityPlans.filter((cp) => !cp.month.startsWith(year)),
+      ...validCapacity.filter((cp) => !cp.month.startsWith(year)),
       ...yearData.capacityPlans,
     ];
 

@@ -12,6 +12,7 @@ import {
 import { db } from '../firebase/config';
 import type { Forecast, ProjectScope } from '../types';
 import { currencyOrUsd } from '../core/currency';
+import { assertValidForecastMonth } from '../core/forecastMonthValidator';
 import { collectionPath, assertCanWrite } from './projectScope';
 
 if (!db) {
@@ -44,6 +45,7 @@ export async function getForecastsBySku(scope: ProjectScope, skuId: string): Pro
 
 export async function saveForecast(scope: ProjectScope, forecast: Omit<Forecast, 'id'> & { id?: string }): Promise<string> {
   assertCanWrite(scope);
+  assertValidForecastMonth(forecast.month, 'saveForecast');
   const id = forecast.id || crypto.randomUUID();
   const ref = doc(db!, forecastPath(scope), id);
   const now = new Date();
@@ -62,6 +64,23 @@ export async function batchSaveForecasts(
   forecasts: Array<Omit<Forecast, 'id'> & { id?: string }>
 ): Promise<void> {
   assertCanWrite(scope);
+
+  // Validate all months before writing any
+  const invalidSamples: string[] = [];
+  for (const fc of forecasts) {
+    if (typeof fc.month !== 'string' || !/^(?:20[0-9]{2})-(0[1-9]|1[0-2])$/.test(fc.month)) {
+      if (invalidSamples.length < 5) {
+        invalidSamples.push(`"${fc.month}" (skuId: ${fc.skuId})`);
+      }
+    }
+  }
+  if (invalidSamples.length > 0) {
+    throw new Error(
+      `INVALID_FORECAST_MONTH (batchSaveForecasts): ${invalidSamples.length}+ invalid month(s) detected. ` +
+      `Samples: ${invalidSamples.join(', ')}. None were saved.`
+    );
+  }
+
   const batch = writeBatch(db!);
   const now = new Date();
   for (const fc of forecasts) {

@@ -43,6 +43,7 @@ import { filterIssuesByDomain, findAllIssuesAffectingSku } from '../core/dataQua
 import { DataQualityAlert, DataQualityBadge, OrphanForecastGuidedFixModal } from '../components/common';
 import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_WORKING_DAYS } from '../core/defaults';
 import { DEFAULT_CURRENCY_SETTINGS } from '../core/currency';
+import { findInvalidForecasts } from '../core/forecastMonthValidator';
 import { Segmented } from 'antd';
 
 const { Text } = Typography;
@@ -913,6 +914,89 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
           style={{ marginBottom: 16 }}
         />
       )}
+
+      {/* Invalid Forecast Repair Tool */}
+      {(() => {
+        const invalidFcs = findInvalidForecasts(forecasts);
+        if (invalidFcs.length === 0) return null;
+        return (
+          <Alert
+            type="warning"
+            showIcon
+            message={t('forecast.repair.title')}
+            description={
+              <div>
+                <p style={{ marginBottom: 8 }}>{t('forecast.repair.subtitle')}</p>
+                <div style={{ overflowX: 'auto', marginBottom: 8 }}>
+                  <Table
+                    dataSource={invalidFcs.map((f) => ({ ...f, key: f.id }))}
+                    size="small"
+                    pagination={false}
+                    columns={[
+                      { title: t('forecast.repair.docId'), dataIndex: 'id', key: 'id', width: 120, render: (v: string) => <Text code style={{ fontSize: 11 }}>{v.substring(0, 12)}…</Text> },
+                      { title: t('forecast.repair.skuCode'), dataIndex: 'skuId', key: 'skuId', width: 120, render: (v: string) => {
+                        const sku = skus.find((s) => s.id === v);
+                        return sku ? sku.skuCode : <Text type="secondary">{v.substring(0, 8)}…</Text>;
+                      }},
+                      { title: t('forecast.repair.invalidMonth'), dataIndex: 'month', key: 'month', width: 120, render: (v: string) => <Tag color="red">{v || '(empty)'}</Tag> },
+                      { title: t('forecast.repair.forecastPcs'), dataIndex: 'forecastPcs', key: 'forecastPcs', width: 100, render: (v: number) => v?.toLocaleString() ?? '-' },
+                      ...(writable ? [{
+                        title: t('forecast.repair.action'), key: 'action', width: 80,
+                        render: (_: unknown, record: Forecast) => (
+                          <Popconfirm title={t('forecast.repair.deleteConfirm')} onConfirm={async () => {
+                            try {
+                              await deleteForecast(scope, record.id);
+                              message.success(t('forecast.repair.deleteSuccess'));
+                              await loadData();
+                            } catch (e: unknown) {
+                              message.error(e instanceof Error ? e.message : 'Delete failed');
+                            }
+                          }}>
+                            <Button size="small" danger>{t('forecast.repair.delete')}</Button>
+                          </Popconfirm>
+                        ),
+                      }] : []),
+                    ]}
+                  />
+                </div>
+                {writable && (
+                  <Space>
+                    <Popconfirm title={t('forecast.repair.deleteAllConfirm', { count: invalidFcs.length })} onConfirm={async () => {
+                      try {
+                        for (const f of invalidFcs) {
+                          await deleteForecast(scope, f.id);
+                        }
+                        message.success(t('forecast.repair.deleteSuccess'));
+                        await loadData();
+                      } catch (e: unknown) {
+                        message.error(e instanceof Error ? e.message : 'Delete failed');
+                      }
+                    }}>
+                      <Button size="small" danger>{t('forecast.repair.deleteAll')}</Button>
+                    </Popconfirm>
+                    <Button size="small" onClick={() => {
+                      const rows = invalidFcs.map((f) => ({
+                        id: f.id,
+                        skuId: f.skuId,
+                        skuCode: skus.find((s) => s.id === f.skuId)?.skuCode ?? '',
+                        month: f.month,
+                        forecastPcs: f.forecastPcs,
+                      }));
+                      const ws = XLSX.utils.json_to_sheet(rows);
+                      const wb = XLSX.utils.book_new();
+                      XLSX.utils.book_append_sheet(wb, ws, 'Invalid Forecasts');
+                      XLSX.writeFile(wb, 'invalid_forecasts_export.xlsx');
+                    }}>
+                      {t('forecast.repair.export')}
+                    </Button>
+                  </Space>
+                )}
+              </div>
+            }
+            style={{ marginBottom: 16 }}
+          />
+        );
+      })()}
 
       {/* Toolbar */}
       <Card size="small" style={{ marginBottom: 16 }}>
