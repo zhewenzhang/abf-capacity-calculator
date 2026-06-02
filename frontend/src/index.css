@@ -342,6 +342,13 @@ body {
   cursor: not-allowed;
 }
 
+/* Read-only derived rows (CNY/USD/YoY) — lighter, clearly not editable */
+.read-only-row {
+  background-color: var(--twk-muted, #f7f7f7) !important;
+  color: var(--twk-muted-fg, #6b6b6b) !important;
+  font-style: italic;
+}
+
 /* Row hover */
 .dsg-row:hover .dsg-cell:not(.dsg-cell-active) {
   background-color: var(--twk-muted, #f7f7f7);
