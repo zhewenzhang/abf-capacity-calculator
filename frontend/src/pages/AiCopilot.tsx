@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Alert, Typography, Space, Spin } from 'antd';
 import { RobotOutlined } from '@ant-design/icons';
+import { useSearchParams } from 'react-router-dom';
 import { useI18n } from '../i18n';
 import type { ProjectScope } from '../types';
 import { getParameters } from '../services/parameterService';
@@ -19,11 +20,27 @@ interface AiCopilotPageProps {
   scope: ProjectScope;
 }
 
+const VALID_TOOL_IDS = new Set([
+  'dataProblems',
+  'capacityRisk',
+  'bpGap',
+  'suggestFixes',
+  'scenarioImpact',
+  'lookAhead',
+  'workbenchOverview',
+  'abnormalityDetail',
+  'scenarioV2',
+  'reportNarrative',
+]);
+
 const AiCopilotPage: React.FC<AiCopilotPageProps> = ({ scope }) => {
   const { t } = useI18n();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [context, setContext] = useState<AiCopilotContext | null>(null);
+  // Track the deep-linked tool ID for auto-execution after context loads
+  const [pendingToolId, setPendingToolId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -63,6 +80,14 @@ const AiCopilotPage: React.FC<AiCopilotPageProps> = ({ scope }) => {
           scope.role
         );
         setContext(ctx);
+
+        // Check for deep-link tool query param
+        const toolParam = searchParams.get('tool');
+        if (toolParam && VALID_TOOL_IDS.has(toolParam)) {
+          setPendingToolId(toolParam);
+          // Clear the query param to avoid re-triggering on refresh
+          setSearchParams({}, { replace: true });
+        }
       } catch (e: any) {
         setError(e.message || t('results.calcFailed'));
       } finally {
@@ -70,7 +95,12 @@ const AiCopilotPage: React.FC<AiCopilotPageProps> = ({ scope }) => {
       }
     };
     loadData();
-  }, [scope]);
+  }, [scope]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Called by CopilotChat after it processes the pending tool
+  const handlePendingToolConsumed = useCallback(() => {
+    setPendingToolId(null);
+  }, []);
 
   if (loading) {
     return (
@@ -94,7 +124,11 @@ const AiCopilotPage: React.FC<AiCopilotPageProps> = ({ scope }) => {
         <RobotOutlined style={{ fontSize: 24 }} />
         <Title level={4} style={{ margin: 0 }}>{t('copilot.title')}</Title>
       </Space>
-      <CopilotChat context={context} />
+      <CopilotChat
+        context={context}
+        pendingToolId={pendingToolId}
+        onPendingToolConsumed={handlePendingToolConsumed}
+      />
     </div>
   );
 };
