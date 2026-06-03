@@ -17,6 +17,8 @@ import {
   formatPanelsWithUnit,
   formatUtilization,
   getUtilizationColor,
+  formatPlainMoney,
+  formatDelta,
 } from './formatters';
 import type { CurrencySettings } from './currency';
 
@@ -281,5 +283,61 @@ describe('getUtilizationColor', () => {
   it('returns red for high utilization', () => {
     expect(getUtilizationColor(95)).toBe('red');
     expect(getUtilizationColor(100)).toBe('red');
+  });
+});
+
+describe('formatPlainMoney', () => {
+  it('returns em dash for invalid values', () => {
+    expect(formatPlainMoney(null)).toBe(MISSING);
+    expect(formatPlainMoney(undefined)).toBe(MISSING);
+    expect(formatPlainMoney(NaN)).toBe(MISSING);
+  });
+
+  it('formats TWD as M NTD', () => {
+    expect(formatPlainMoney(3500500000, 'TWD')).toBe('3,500.5 M NTD');
+  });
+
+  it('formats CNY as M RMB', () => {
+    expect(formatPlainMoney(912000000, 'CNY')).toBe('912 M RMB');
+  });
+
+  it('formats USD as M USD', () => {
+    expect(formatPlainMoney(128600000, 'USD')).toBe('128.6 M USD');
+  });
+
+  it('formats negative values', () => {
+    expect(formatPlainMoney(-8510700000, 'TWD')).toBe('-8,510.7 M NTD');
+  });
+
+  it('formats with signed option', () => {
+    expect(formatPlainMoney(3500500000, 'TWD', { signed: true })).toBe('+3,500.5 M NTD');
+  });
+
+  it('always uses M unit, never K or B', () => {
+    // Large number should still use M, not B
+    expect(formatPlainMoney(5000000000000, 'USD')).toBe('5,000,000 M USD');
+    // Small number should still use M
+    expect(formatPlainMoney(500000, 'TWD')).toBe('0.5 M NTD');
+  });
+});
+
+describe('formatDelta', () => {
+  it('returns em dash for invalid values', () => {
+    expect(formatDelta(null)).toBe(MISSING);
+    expect(formatDelta(undefined)).toBe(MISSING);
+  });
+
+  it('formats positive with + sign', () => {
+    expect(formatDelta(3500.5)).toBe('+3,500.5');
+  });
+
+  it('formats negative with - sign', () => {
+    expect(formatDelta(-8510.7)).toBe('-8,510.7');
+  });
+
+  it('formats with currency mapping', () => {
+    expect(formatDelta(3500.5, { currency: 'TWD' })).toBe('+3,500.5 M NTD');
+    expect(formatDelta(-100, { currency: 'CNY' })).toBe('-100.0 M RMB');
+    expect(formatDelta(50, { currency: 'USD' })).toBe('+50.0 M USD');
   });
 });
