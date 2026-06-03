@@ -187,7 +187,7 @@ describe('formatBpMillionTwd', () => {
   });
 
   it('formats with 1 decimal by default', () => {
-    expect(formatBpMillionTwd(1234.56)).toBe('1234.6');
+    expect(formatBpMillionTwd(1234.56)).toBe('1,234.6');
   });
 
   it('formats zero as 0.0', () => {

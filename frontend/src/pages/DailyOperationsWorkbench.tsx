@@ -55,6 +55,7 @@ import { useI18n } from '../i18n';
 import { useAppPrefs } from '../context/AppPreferencesContext';
 import { formatCurrency, formatCurrencyShort, DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
 import { computeBpKpi, formatAttainment, formatBpAmount } from '../core/bpTargets';
+import { formatPlainMoney, formatDelta } from '../core/formatters';
 import { Line } from '@ant-design/charts';
 import TimeMatrixTable from '../components/analytics/TimeMatrixTable';
 import type { ProjectScope, SKU, Forecast, CapacityPlan, ProjectParameters } from '../types';
@@ -639,9 +640,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                 <div style={{ textAlign: 'center', padding: '8px 0' }}>
                   <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.totalRevenue')}</Text>
                   <Text strong style={{ fontSize: 18 }}>
-                    {analyticsModel.totalRevenue >= 1e6
-                      ? `${(analyticsModel.totalRevenue / 1e6).toFixed(1)}M`
-                      : analyticsModel.totalRevenue.toLocaleString()} TWD
+                    {formatPlainMoney(analyticsModel.totalRevenue, 'TWD')}
                   </Text>
                 </div>
               </Col>
@@ -716,13 +715,13 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                 <Col xs={12} sm={6}>
                   <div style={{ textAlign: 'center', padding: '8px 0' }}>
                     <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('bp.kpi.totalTarget')}</Text>
-                    <Text strong style={{ fontSize: 18 }}>{kpi.totalTargetMillionTwd?.toFixed(1) ?? '—'}M TWD</Text>
+                    <Text strong style={{ fontSize: 18 }}>{formatPlainMoney(kpi.totalTargetMillionTwd, 'TWD')}</Text>
                   </div>
                 </Col>
                 <Col xs={12} sm={6}>
                   <div style={{ textAlign: 'center', padding: '8px 0' }}>
                     <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('bp.kpi.totalForecast')}</Text>
-                    <Text strong style={{ fontSize: 18 }}>{kpi.totalForecastMillionTwd.toFixed(1)}M TWD</Text>
+                    <Text strong style={{ fontSize: 18 }}>{formatPlainMoney(kpi.totalForecastMillionTwd, 'TWD')}</Text>
                   </div>
                 </Col>
                 <Col xs={12} sm={6}>
@@ -737,7 +736,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                   <div style={{ textAlign: 'center', padding: '8px 0' }}>
                     <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('bp.kpi.totalGap')}</Text>
                     <Text strong style={{ fontSize: 18, color: (kpi.totalGapMillionTwd ?? 0) >= 0 ? token.colorSuccess : token.colorError }}>
-                      {kpi.totalGapMillionTwd !== null ? `${kpi.totalGapMillionTwd > 0 ? '+' : ''}${kpi.totalGapMillionTwd.toFixed(1)}M TWD` : '—'}
+                      {formatDelta(kpi.totalGapMillionTwd, { suffix: 'M TWD' })}
                     </Text>
                   </div>
                 </Col>
@@ -779,7 +778,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                       <td style={{ padding: '6px 8px', fontWeight: 500, position: 'sticky', left: 0, background: '#fff' }}>{t('bp.gap')}</td>
                       {bpModel.yearly.filter(r => r.status !== 'no-target').map(r => (
                         <td key={r.period} style={{ textAlign: 'right', padding: '6px 8px' }}>
-                          {r.gapMillionTwd !== null ? <Text type={r.gapMillionTwd >= 0 ? 'success' : 'danger'}>{r.gapMillionTwd > 0 ? '+' : ''}{r.gapMillionTwd.toFixed(1)}</Text> : '—'}
+                          {r.gapMillionTwd !== null ? <Text type={r.gapMillionTwd >= 0 ? 'success' : 'danger'}>{formatDelta(r.gapMillionTwd)}</Text> : '—'}
                         </td>
                       ))}
                     </tr>
@@ -1028,8 +1027,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                         color: scenarioV2Result.comparison.deltas.totalRevenueUsd.delta >= 0
                           ? token.colorSuccess : token.colorError,
                       }}>
-                        {scenarioV2Result.comparison.deltas.totalRevenueUsd.delta >= 0 ? '+' : ''}
-                        {scenarioV2Result.comparison.deltas.totalRevenueUsd.delta.toFixed(1)} USD
+                        {formatDelta(scenarioV2Result.comparison.deltas.totalRevenueUsd.delta, { suffix: ' USD' })}
                       </Text>
                     </Text>
                   )}
