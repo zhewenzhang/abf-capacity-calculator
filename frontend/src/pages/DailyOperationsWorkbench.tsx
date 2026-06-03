@@ -736,7 +736,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                   <div style={{ textAlign: 'center', padding: '8px 0' }}>
                     <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('bp.kpi.totalGap')}</Text>
                     <Text strong style={{ fontSize: 18, color: (kpi.totalGapMillionTwd ?? 0) >= 0 ? token.colorSuccess : token.colorError }}>
-                      {formatDelta(kpi.totalGapMillionTwd, { suffix: 'M TWD' })}
+                      {formatDelta(kpi.totalGapMillionTwd, { currency: 'TWD' })}
                     </Text>
                   </div>
                 </Col>
@@ -778,7 +778,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                       <td style={{ padding: '6px 8px', fontWeight: 500, position: 'sticky', left: 0, background: '#fff' }}>{t('bp.gap')}</td>
                       {bpModel.yearly.filter(r => r.status !== 'no-target').map(r => (
                         <td key={r.period} style={{ textAlign: 'right', padding: '6px 8px' }}>
-                          {r.gapMillionTwd !== null ? <Text type={r.gapMillionTwd >= 0 ? 'success' : 'danger'}>{formatDelta(r.gapMillionTwd)}</Text> : '—'}
+                          {r.gapMillionTwd !== null ? <Text type={r.gapMillionTwd >= 0 ? 'success' : 'danger'}>{formatDelta(r.gapMillionTwd, { currency: 'TWD' })}</Text> : '—'}
                         </td>
                       ))}
                     </tr>
@@ -1027,7 +1027,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                         color: scenarioV2Result.comparison.deltas.totalRevenueUsd.delta >= 0
                           ? token.colorSuccess : token.colorError,
                       }}>
-                        {formatDelta(scenarioV2Result.comparison.deltas.totalRevenueUsd.delta, { suffix: ' USD' })}
+                        {formatDelta(scenarioV2Result.comparison.deltas.totalRevenueUsd.delta, { currency: 'USD' })}
                       </Text>
                     </Text>
                   )}

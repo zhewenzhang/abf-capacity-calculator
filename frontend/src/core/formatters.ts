@@ -66,67 +66,69 @@ export function formatNumberWithSign(
 }
 
 /**
- * Format a number as plain money with M/B/K suffix and currency label.
- * No $ / NT$ / ¥ symbols. Shows: "3,500.4M TWD", "128.6M USD"
+ * Map internal currency code to display currency name.
+ * TWD → NTD, CNY → RMB, USD → USD
+ */
+export function normalizeDisplayCurrency(currency: string): string {
+  if (currency === 'TWD') return 'NTD';
+  if (currency === 'CNY') return 'RMB';
+  return 'USD';
+}
+
+/**
+ * Format a number as plain money in millions with currency label.
+ * Always uses M unit (no K/B auto-switching).
+ * No $ / NT$ / ¥ symbols. Shows: "3,500.5 M NTD", "128.6 M USD"
  * Returns '—' for null/undefined/NaN/Infinity.
  */
 export function formatPlainMoney(
   value: number | null | undefined,
   currency: string = 'TWD',
-  options?: { unit?: 'M' | 'B' | 'K' | 'none'; maximumFractionDigits?: number }
+  options?: { maximumFractionDigits?: number; signed?: boolean }
 ): string {
   if (!isValidNumber(value)) return MISSING;
-  const { unit, maximumFractionDigits = 1 } = options ?? {};
+  const { maximumFractionDigits = 1, signed = false } = options ?? {};
 
+  const displayCurrency = normalizeDisplayCurrency(currency);
   const abs = Math.abs(value);
-  const sign = value < 0 ? '-' : '';
+  const sign = value < 0 ? '-' : (signed ? '+' : '');
 
-  let displayValue: number;
-  let suffix: string;
-
-  if (unit === 'none') {
-    displayValue = abs;
-    suffix = '';
-  } else if (unit === 'B' || (!unit && abs >= 1e9)) {
-    displayValue = abs / 1e9;
-    suffix = 'B';
-  } else if (unit === 'M' || (!unit && abs >= 1e6)) {
-    displayValue = abs / 1e6;
-    suffix = 'M';
-  } else if (unit === 'K' || (!unit && abs >= 1e3)) {
-    displayValue = abs / 1e3;
-    suffix = 'K';
-  } else {
-    displayValue = abs;
-    suffix = '';
-  }
+  // Always use M unit
+  const displayValue = abs / 1e6;
 
   const formatted = displayValue.toLocaleString(undefined, {
     minimumFractionDigits: 0,
     maximumFractionDigits: maximumFractionDigits,
   });
 
-  return `${sign}${formatted}${suffix} ${currency}`;
+  return `${sign}${formatted} M ${displayCurrency}`;
 }
 
 /**
  * Format a delta value with sign and thousands separators.
  * Returns '—' for null/undefined/NaN/Infinity.
- * Example: "+3,500.5", "-8,510.7"
+ * Example: "+3,500.5", "-8,510.7 M NTD"
  */
 export function formatDelta(
   value: number | null | undefined,
-  options?: { precision?: number; suffix?: string }
+  options?: { precision?: number; suffix?: string; currency?: string }
 ): string {
   if (!isValidNumber(value)) return MISSING;
-  const { precision = 1, suffix = '' } = options ?? {};
+  const { precision = 1, suffix = '', currency } = options ?? {};
   const sign = value >= 0 ? '+' : '';
   const abs = Math.abs(value);
   const formatted = abs.toLocaleString(undefined, {
     minimumFractionDigits: precision,
     maximumFractionDigits: precision,
   });
-  return `${sign}${value < 0 ? '-' : ''}${formatted}${suffix}`;
+
+  let unitSuffix = suffix;
+  if (currency) {
+    const displayCurrency = normalizeDisplayCurrency(currency);
+    unitSuffix = ` M ${displayCurrency}`;
+  }
+
+  return `${sign}${value < 0 ? '-' : ''}${formatted}${unitSuffix}`;
 }
 
 // ============================================================================
