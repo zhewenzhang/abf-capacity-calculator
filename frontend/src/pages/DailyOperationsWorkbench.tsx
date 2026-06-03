@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Card, Row, Col, Table, Typography, Tag, Button, Space, Collapse, theme } from 'antd';
+import { Card, Row, Col, Table, Typography, Tag, Button, Space, Collapse, Segmented, theme } from 'antd';
 import {
   CheckCircleOutlined,
   WarningOutlined,
@@ -54,7 +54,7 @@ import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
 import { useAppPrefs } from '../context/AppPreferencesContext';
 import { formatCurrency, DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
-import { computeBpKpi, formatAttainment, formatBpAmount } from '../core/bpTargets';
+import { formatAttainment, formatBpAmount } from '../core/bpTargets';
 import { formatPlainMoney, formatDelta } from '../core/formatters';
 import { Line } from '@ant-design/charts';
 import TimeMatrixTable from '../components/analytics/TimeMatrixTable';
@@ -159,6 +159,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   const [scenarioV2Loading, setScenarioV2Loading] = useState<string | null>(null);
   const [scenarioV2Result, setScenarioV2Result] = useState<OperationalScenarioResult | null>(null);
   const [showActionDetails, setShowActionDetails] = useState(false);
+  const [bpSelectedYear, setBpSelectedYear] = useState<string>('2026');
 
   // ---- Aggregate abnormalities into action recommendations ----
   interface ActionRecommendation {
@@ -698,11 +699,22 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
 
       {/* SECTION 1C: Revenue & BP Analysis — migrated from Dashboard */}
       {analyticsModel && Object.keys(bpTargets).length > 0 && bpModel && (() => {
-        const kpi = computeBpKpi(bpModel.yearly);
-        const revenueChartData = analyticsModel.monthlyRevenue.map(r => ({
-          month: r.month,
-          revenue: r.revenue,
-        }));
+        // Get available BP years
+        const bpYears = bpModel.yearly.filter(r => r.status !== 'no-target').map(r => r.period);
+        const currentYear = bpSelectedYear || bpYears[0] || '2026';
+
+        // Current year KPI
+        const currentYearRecord = bpModel.yearly.find(r => r.period === currentYear);
+        const currentYearTarget = currentYearRecord?.targetMillionTwd ?? null;
+        const currentYearForecast = currentYearRecord?.forecastMillionTwd ?? null;
+        const currentYearAttainment = currentYearRecord?.attainment ?? null;
+        const currentYearGap = currentYearRecord?.gapMillionTwd ?? null;
+
+        // Chart data: only BP year range
+        const chartMonths = analyticsModel.monthlyRevenue.filter(r => {
+          const year = r.month.substring(0, 4);
+          return bpYears.includes(year);
+        });
 
         return (
           <div className="twk-card" style={{ marginBottom: 16 }}>
@@ -710,33 +722,46 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
               <span className="twk-card-title"><DollarOutlined /> {t('bp.attainmentTitle')}</span>
             </div>
             <div className="twk-card-body">
-              {/* BP KPI Cards */}
+              {/* Year Selector */}
+              <div style={{ marginBottom: 12 }}>
+                <Space>
+                  <Text type="secondary" style={{ fontSize: 12 }}>{t('bp.selectYear')}:</Text>
+                  <Segmented
+                    size="small"
+                    value={currentYear}
+                    onChange={v => setBpSelectedYear(v as string)}
+                    options={bpYears.map(y => ({ label: y, value: y }))}
+                  />
+                </Space>
+              </div>
+
+              {/* BP KPI Cards — Current Year */}
               <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
                 <Col xs={12} sm={6}>
                   <div style={{ textAlign: 'center', padding: '8px 0' }}>
-                    <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('bp.kpi.totalTarget')}</Text>
-                    <Text strong style={{ fontSize: 18 }}>{formatPlainMoney(kpi.totalTargetMillionTwd, 'TWD', { alreadyMillions: true })}</Text>
+                    <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{currentYear} {t('bp.kpi.target')}</Text>
+                    <Text strong style={{ fontSize: 18 }}>{formatPlainMoney(currentYearTarget, 'TWD', { alreadyMillions: true })}</Text>
                   </div>
                 </Col>
                 <Col xs={12} sm={6}>
                   <div style={{ textAlign: 'center', padding: '8px 0' }}>
-                    <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('bp.kpi.totalForecast')}</Text>
-                    <Text strong style={{ fontSize: 18 }}>{formatPlainMoney(kpi.totalForecastMillionTwd, 'TWD', { alreadyMillions: true })}</Text>
+                    <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{currentYear} {t('bp.kpi.forecast')}</Text>
+                    <Text strong style={{ fontSize: 18 }}>{formatPlainMoney(currentYearForecast, 'TWD', { alreadyMillions: true })}</Text>
                   </div>
                 </Col>
                 <Col xs={12} sm={6}>
                   <div style={{ textAlign: 'center', padding: '8px 0' }}>
-                    <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('bp.kpi.overallAttainment')}</Text>
-                    <Text strong style={{ fontSize: 18, color: (kpi.overallAttainment ?? 0) >= 1 ? token.colorSuccess : (kpi.overallAttainment ?? 0) >= 0.8 ? token.colorWarning : token.colorError }}>
-                      {kpi.overallAttainment !== null ? formatAttainment(kpi.overallAttainment) : '—'}
+                    <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{currentYear} {t('bp.kpi.attainment')}</Text>
+                    <Text strong style={{ fontSize: 18, color: (currentYearAttainment ?? 0) >= 1 ? token.colorSuccess : (currentYearAttainment ?? 0) >= 0.8 ? token.colorWarning : token.colorError }}>
+                      {currentYearAttainment !== null ? formatAttainment(currentYearAttainment) : '—'}
                     </Text>
                   </div>
                 </Col>
                 <Col xs={12} sm={6}>
                   <div style={{ textAlign: 'center', padding: '8px 0' }}>
-                    <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('bp.kpi.totalGap')}</Text>
-                    <Text strong style={{ fontSize: 18, color: (kpi.totalGapMillionTwd ?? 0) >= 0 ? token.colorSuccess : token.colorError }}>
-                      {formatDelta(kpi.totalGapMillionTwd, { suffix: ' M NTD' })}
+                    <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{currentYear} {t('bp.kpi.gap')}</Text>
+                    <Text strong style={{ fontSize: 18, color: (currentYearGap ?? 0) >= 0 ? token.colorSuccess : token.colorError }}>
+                      {formatDelta(currentYearGap, { suffix: ' M NTD' })}
                     </Text>
                   </div>
                 </Col>
@@ -749,7 +774,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                     <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
                       <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 600, position: 'sticky', left: 0, background: '#fff' }}>{t('scenario.annualMatrix.metric')}</th>
                       {bpModel.yearly.filter(r => r.status !== 'no-target').map(r => (
-                        <th key={r.period} style={{ textAlign: 'right', padding: '6px 8px', fontWeight: 600 }}>{r.period}</th>
+                        <th key={r.period} style={{ textAlign: 'right', padding: '6px 8px', fontWeight: 600, background: r.period === currentYear ? '#f0f9ff' : undefined }}>{r.period}</th>
                       ))}
                     </tr>
                   </thead>
@@ -757,19 +782,19 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                     <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
                       <td style={{ padding: '6px 8px', fontWeight: 500, position: 'sticky', left: 0, background: '#fff' }}>{t('bp.target')}</td>
                       {bpModel.yearly.filter(r => r.status !== 'no-target').map(r => (
-                        <td key={r.period} style={{ textAlign: 'right', padding: '6px 8px' }}>{formatBpAmount(r.targetMillionTwd)}</td>
+                        <td key={r.period} style={{ textAlign: 'right', padding: '6px 8px', background: r.period === currentYear ? '#f0f9ff' : undefined }}>{formatBpAmount(r.targetMillionTwd)}</td>
                       ))}
                     </tr>
                     <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
                       <td style={{ padding: '6px 8px', fontWeight: 500, position: 'sticky', left: 0, background: '#fff' }}>{t('bp.forecast')}</td>
                       {bpModel.yearly.filter(r => r.status !== 'no-target').map(r => (
-                        <td key={r.period} style={{ textAlign: 'right', padding: '6px 8px' }}>{formatBpAmount(r.forecastMillionTwd)}</td>
+                        <td key={r.period} style={{ textAlign: 'right', padding: '6px 8px', background: r.period === currentYear ? '#f0f9ff' : undefined }}>{formatBpAmount(r.forecastMillionTwd)}</td>
                       ))}
                     </tr>
                     <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
                       <td style={{ padding: '6px 8px', fontWeight: 500, position: 'sticky', left: 0, background: '#fff' }}>{t('bp.attainment')}</td>
                       {bpModel.yearly.filter(r => r.status !== 'no-target').map(r => (
-                        <td key={r.period} style={{ textAlign: 'right', padding: '6px 8px' }}>
+                        <td key={r.period} style={{ textAlign: 'right', padding: '6px 8px', background: r.period === currentYear ? '#f0f9ff' : undefined }}>
                           {r.attainment !== null ? <Tag color={r.attainment >= 1 ? 'green' : r.attainment >= 0.8 ? 'orange' : 'red'}>{formatAttainment(r.attainment)}</Tag> : '—'}
                         </td>
                       ))}
@@ -777,7 +802,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                     <tr>
                       <td style={{ padding: '6px 8px', fontWeight: 500, position: 'sticky', left: 0, background: '#fff' }}>{t('bp.gap')}</td>
                       {bpModel.yearly.filter(r => r.status !== 'no-target').map(r => (
-                        <td key={r.period} style={{ textAlign: 'right', padding: '6px 8px' }}>
+                        <td key={r.period} style={{ textAlign: 'right', padding: '6px 8px', background: r.period === currentYear ? '#f0f9ff' : undefined }}>
                           {r.gapMillionTwd !== null ? <Text type={r.gapMillionTwd >= 0 ? 'success' : 'danger'}>{formatDelta(r.gapMillionTwd, { suffix: ' M NTD' })}</Text> : '—'}
                         </td>
                       ))}
@@ -787,19 +812,16 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
               </div>
 
               {/* Revenue Trend Chart with BP Monthly Target Line */}
-              {revenueChartData.length > 0 && (
+              {chartMonths.length > 0 && (
                 <div>
                   <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{t('dashboard.revenueTrendTitle')}</Text>
                   <div style={{ height: 200 }}>
                     <Line
                       data={(() => {
-                        // Build chart data with both revenue and BP monthly target
                         const chartData: Array<{ month: string; type: string; value: number }> = [];
-                        for (const r of revenueChartData) {
+                        for (const r of chartMonths) {
                           const year = r.month.substring(0, 4);
-                          // Revenue in millions
                           chartData.push({ month: r.month, type: t('dashboard.forecastRevenue'), value: r.revenue / 1e6 });
-                          // BP monthly target (yearly target / 12)
                           const yearlyTarget = bpTargets[year];
                           if (yearlyTarget && yearlyTarget > 0) {
                             chartData.push({ month: r.month, type: t('dashboard.monthlyBpTarget'), value: yearlyTarget / 12 });
@@ -812,10 +834,20 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                       seriesField="type"
                       height={200}
                       autoFit
-                      xAxis={{ label: { autoRotate: true, formatter: (v: string) => v.substring(2) } }}
+                      xAxis={{
+                        label: {
+                          autoRotate: false,
+                          formatter: (v: string) => {
+                            // Only show Jan labels (01) to reduce clutter
+                            const month = v.substring(5);
+                            return month === '01' ? v.substring(0, 4) : '';
+                          },
+                        },
+                      }}
                       yAxis={{ label: { formatter: (v: any) => `${Number(v).toLocaleString()} M` } }}
                       tooltip={{ formatter: (datum: any) => ({ name: datum.type, value: `${datum.value.toLocaleString(undefined, { maximumFractionDigits: 1 })} M NTD` }) }}
                       color={['#1677ff', '#ff7a45']}
+                      point={{ size: 3 }}
                     />
                   </div>
                 </div>
