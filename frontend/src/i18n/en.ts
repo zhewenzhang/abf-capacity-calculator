@@ -64,6 +64,7 @@ export const en: Record<string, string> = {
   'dashboard.revenueTrendTitle': 'Revenue Trend',
   'dashboard.forecastRevenue': 'Forecast Revenue',
   'dashboard.monthlyBpTarget': 'Monthly BP Target',
+  'dashboard.chartNote': 'Monthly BP target = annual BP target / 12; forecast revenue is converted to M NTD.',
   'dashboard.utilTrendTitle': 'Core & BU Utilization Trend',
   'dashboard.revByCustomer': 'Revenue by Customer',
   'dashboard.coreBySize': 'Core Demand by Size',
