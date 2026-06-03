@@ -47,7 +47,7 @@ export function formatNumber(
 }
 
 /**
- * Format a number with sign (+/-).
+ * Format a number with sign (+/-) and thousands separators.
  * Returns '—' for null/undefined/NaN/Infinity.
  */
 export function formatNumberWithSign(
@@ -57,7 +57,76 @@ export function formatNumberWithSign(
   if (!isValidNumber(value)) return MISSING;
   const { precision = 1 } = options ?? {};
   const sign = value >= 0 ? '+' : '';
-  return `${sign}${value.toFixed(precision)}`;
+  const abs = Math.abs(value);
+  const formatted = abs.toLocaleString(undefined, {
+    minimumFractionDigits: precision,
+    maximumFractionDigits: precision,
+  });
+  return `${sign}${value < 0 ? '-' : ''}${formatted}`;
+}
+
+/**
+ * Format a number as plain money with M/B/K suffix and currency label.
+ * No $ / NT$ / ¥ symbols. Shows: "3,500.4M TWD", "128.6M USD"
+ * Returns '—' for null/undefined/NaN/Infinity.
+ */
+export function formatPlainMoney(
+  value: number | null | undefined,
+  currency: string = 'TWD',
+  options?: { unit?: 'M' | 'B' | 'K' | 'none'; maximumFractionDigits?: number }
+): string {
+  if (!isValidNumber(value)) return MISSING;
+  const { unit, maximumFractionDigits = 1 } = options ?? {};
+
+  const abs = Math.abs(value);
+  const sign = value < 0 ? '-' : '';
+
+  let displayValue: number;
+  let suffix: string;
+
+  if (unit === 'none') {
+    displayValue = abs;
+    suffix = '';
+  } else if (unit === 'B' || (!unit && abs >= 1e9)) {
+    displayValue = abs / 1e9;
+    suffix = 'B';
+  } else if (unit === 'M' || (!unit && abs >= 1e6)) {
+    displayValue = abs / 1e6;
+    suffix = 'M';
+  } else if (unit === 'K' || (!unit && abs >= 1e3)) {
+    displayValue = abs / 1e3;
+    suffix = 'K';
+  } else {
+    displayValue = abs;
+    suffix = '';
+  }
+
+  const formatted = displayValue.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maximumFractionDigits,
+  });
+
+  return `${sign}${formatted}${suffix} ${currency}`;
+}
+
+/**
+ * Format a delta value with sign and thousands separators.
+ * Returns '—' for null/undefined/NaN/Infinity.
+ * Example: "+3,500.5", "-8,510.7"
+ */
+export function formatDelta(
+  value: number | null | undefined,
+  options?: { precision?: number; suffix?: string }
+): string {
+  if (!isValidNumber(value)) return MISSING;
+  const { precision = 1, suffix = '' } = options ?? {};
+  const sign = value >= 0 ? '+' : '';
+  const abs = Math.abs(value);
+  const formatted = abs.toLocaleString(undefined, {
+    minimumFractionDigits: precision,
+    maximumFractionDigits: precision,
+  });
+  return `${sign}${value < 0 ? '-' : ''}${formatted}${suffix}`;
 }
 
 // ============================================================================
@@ -170,16 +239,16 @@ export function formatCurrencyDelta(
 }
 
 /**
- * Helper to format large numbers with K/M/B suffix.
+ * Helper to format large numbers with K/M/B suffix and thousands separators.
  */
 function formatShortNumber(value: number): string {
   const abs = Math.abs(value);
   const sign = value < 0 ? '-' : '';
 
-  if (abs >= 1e9) return `${sign}${(abs / 1e9).toFixed(1)}B`;
-  if (abs >= 1e6) return `${sign}${(abs / 1e6).toFixed(1)}M`;
-  if (abs >= 1e3) return `${sign}${(abs / 1e3).toFixed(1)}K`;
-  return `${sign}${abs.toFixed(0)}`;
+  if (abs >= 1e9) return `${sign}${(abs / 1e9).toLocaleString(undefined, { maximumFractionDigits: 1 })}B`;
+  if (abs >= 1e6) return `${sign}${(abs / 1e6).toLocaleString(undefined, { maximumFractionDigits: 1 })}M`;
+  if (abs >= 1e3) return `${sign}${(abs / 1e3).toLocaleString(undefined, { maximumFractionDigits: 1 })}K`;
+  return `${sign}${abs.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 }
 
 // ============================================================================
@@ -187,7 +256,7 @@ function formatShortNumber(value: number): string {
 // ============================================================================
 
 /**
- * Format BP amount in Million TWD.
+ * Format BP amount in Million TWD with thousands separators.
  * Returns '—' for null/undefined/NaN/Infinity.
  *
  * Note: Unit label "Million TWD" should be added separately in UI.
@@ -198,11 +267,14 @@ export function formatBpMillionTwd(
 ): string {
   if (!isValidNumber(value)) return MISSING;
   const { precision = 1 } = options ?? {};
-  return value.toFixed(precision);
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: precision,
+    maximumFractionDigits: precision,
+  });
 }
 
 /**
- * Format BP gap with sign.
+ * Format BP gap with sign and thousands separators.
  * Returns '—' for null/undefined/NaN/Infinity.
  */
 export function formatBpGapMillionTwd(
@@ -211,8 +283,13 @@ export function formatBpGapMillionTwd(
 ): string {
   if (!isValidNumber(value)) return MISSING;
   const { precision = 1 } = options ?? {};
-  const sign = value >= 0 ? '+' : '';
-  return `${sign}${value.toFixed(precision)}`;
+  const sign = value >= 0 ? '+' : '-';
+  const abs = Math.abs(value);
+  const formatted = abs.toLocaleString(undefined, {
+    minimumFractionDigits: precision,
+    maximumFractionDigits: precision,
+  });
+  return `${sign}${formatted}`;
 }
 
 // ============================================================================
