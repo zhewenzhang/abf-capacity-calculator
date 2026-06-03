@@ -46,7 +46,7 @@ const ScenarioPlanningPage = lazy(() => import('./pages/ScenarioPlanning'));
 const AiCopilotPage = lazy(() => import('./pages/AiCopilot'));
 const DailyOperationsWorkbench = lazy(() => import('./pages/DailyOperationsWorkbench'));
 
-const APP_VERSION = 'v1.56.6';
+const APP_VERSION = 'v1.56.7';
 
 // --- High-frequency nav items (always visible) ---
 // Note: /dashboard redirects to /operations (consolidated in v1.56)

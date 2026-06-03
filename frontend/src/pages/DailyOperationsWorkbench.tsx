@@ -53,7 +53,7 @@ import EmptyState from '../components/common/EmptyState';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
 import { useAppPrefs } from '../context/AppPreferencesContext';
-import { formatCurrency, DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
+import { formatCurrency, convertFromUsd, DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
 import { formatAttainment, formatBpAmount } from '../core/bpTargets';
 import { formatPlainMoney, formatDelta } from '../core/formatters';
 import { Line } from '@ant-design/charts';
@@ -812,46 +812,77 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
               </div>
 
               {/* Revenue Trend Chart with BP Monthly Target Line */}
-              {chartMonths.length > 0 && (
-                <div>
-                  <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{t('dashboard.revenueTrendTitle')}</Text>
-                  <div style={{ height: 200 }}>
-                    <Line
-                      data={(() => {
-                        const chartData: Array<{ month: string; type: string; value: number }> = [];
-                        for (const r of chartMonths) {
-                          const year = r.month.substring(0, 4);
-                          chartData.push({ month: r.month, type: t('dashboard.forecastRevenue'), value: r.revenue / 1e6 });
-                          const yearlyTarget = bpTargets[year];
-                          if (yearlyTarget && yearlyTarget > 0) {
-                            chartData.push({ month: r.month, type: t('dashboard.monthlyBpTarget'), value: yearlyTarget / 12 });
-                          }
-                        }
-                        return chartData;
-                      })()}
-                      xField="month"
-                      yField="value"
-                      seriesField="type"
-                      height={200}
-                      autoFit
-                      xAxis={{
-                        label: {
-                          autoRotate: false,
-                          formatter: (v: string) => {
-                            // Only show Jan labels (01) to reduce clutter
-                            const month = v.substring(5);
-                            return month === '01' ? v.substring(0, 4) : '';
+              {chartMonths.length > 0 && (() => {
+                // Chart color constants
+                const CHART_COLORS = {
+                  target: '#f59e0b',   // amber
+                  revenue: '#10b981',  // emerald
+                };
+
+                // Build chart data with proper currency conversion
+                const chartData: Array<{ month: string; type: string; value: number; rawMonth: string }> = [];
+                for (const r of chartMonths) {
+                  const year = r.month.substring(0, 4);
+                  // Convert revenue from USD to TWD, then to M
+                  const revenueTwd = convertFromUsd(r.revenue, 'TWD', currencySettings, year);
+                  chartData.push({ month: r.month, type: t('dashboard.forecastRevenue'), value: revenueTwd / 1e6, rawMonth: r.month });
+                  const yearlyTarget = bpTargets[year];
+                  if (yearlyTarget && yearlyTarget > 0) {
+                    chartData.push({ month: r.month, type: t('dashboard.monthlyBpTarget'), value: yearlyTarget / 12, rawMonth: r.month });
+                  }
+                }
+
+                // X-axis formatter: show year for Jan, month number for Apr/Jul/Oct
+                const formatMonthTick = (v: string): string => {
+                  const month = parseInt(v.substring(5, 7), 10);
+                  const year = v.substring(0, 4);
+                  if (month === 1) return `${year}年1月`;
+                  if (month === 4 || month === 7 || month === 10) return `${month}月`;
+                  return '';
+                };
+
+                // Y-axis formatter
+                const formatMoneyTick = (v: any): string => {
+                  return `${Number(v).toLocaleString()} M`;
+                };
+
+                return (
+                  <div>
+                    <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{t('dashboard.revenueTrendTitle')}</Text>
+                    <div style={{ height: 200 }}>
+                      <Line
+                        data={chartData}
+                        xField="month"
+                        yField="value"
+                        seriesField="type"
+                        height={200}
+                        autoFit
+                        xAxis={{
+                          label: {
+                            autoRotate: false,
+                            formatter: formatMonthTick,
                           },
-                        },
-                      }}
-                      yAxis={{ label: { formatter: (v: any) => `${Number(v).toLocaleString()} M` } }}
-                      tooltip={{ formatter: (datum: any) => ({ name: datum.type, value: `${datum.value.toLocaleString(undefined, { maximumFractionDigits: 1 })} M NTD` }) }}
-                      color={['#1677ff', '#ff7a45']}
-                      point={{ size: 3 }}
-                    />
+                        }}
+                        yAxis={{ label: { formatter: formatMoneyTick } }}
+                        tooltip={{
+                          formatter: (datum: any) => {
+                            const val = datum.value;
+                            return {
+                              name: datum.type,
+                              value: `${val.toLocaleString(undefined, { maximumFractionDigits: 1 })} M NTD`,
+                            };
+                          },
+                        }}
+                        color={[CHART_COLORS.revenue, CHART_COLORS.target]}
+                        point={{ size: 3 }}
+                      />
+                    </div>
+                    <Text type="secondary" style={{ fontSize: 10, display: 'block', marginTop: 4 }}>
+                      {t('dashboard.chartNote')}
+                    </Text>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
         );

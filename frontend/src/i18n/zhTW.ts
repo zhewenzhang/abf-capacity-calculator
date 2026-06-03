@@ -73,6 +73,7 @@ export const zhTW: Record<string, string> = {
   'dashboard.revenueTrendTitle': '營收趨勢',
   'dashboard.forecastRevenue': '預測營收',
   'dashboard.monthlyBpTarget': 'BP 月均目標',
+  'dashboard.chartNote': 'BP 月目標 = 年度 BP 目標 / 12；預測營收已換算為 M NTD。',
   'dashboard.utilTrendTitle': 'Core 與 BU 稼動率趨勢',
   'dashboard.revByCustomer': '客戶營收',
   'dashboard.coreBySize': 'Core 需求（尺寸）',
