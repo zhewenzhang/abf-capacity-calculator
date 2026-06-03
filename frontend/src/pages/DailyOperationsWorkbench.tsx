@@ -53,7 +53,7 @@ import EmptyState from '../components/common/EmptyState';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
 import { useAppPrefs } from '../context/AppPreferencesContext';
-import { formatCurrency, formatCurrencyShort, DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
+import { formatCurrency, DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
 import { computeBpKpi, formatAttainment, formatBpAmount } from '../core/bpTargets';
 import { formatPlainMoney, formatDelta } from '../core/formatters';
 import { Line } from '@ant-design/charts';
@@ -640,7 +640,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                 <div style={{ textAlign: 'center', padding: '8px 0' }}>
                   <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.totalRevenue')}</Text>
                   <Text strong style={{ fontSize: 18 }}>
-                    {formatPlainMoney(analyticsModel.totalRevenue, 'TWD')}
+                    {formatPlainMoney(analyticsModel.totalRevenue, 'USD')}
                   </Text>
                 </div>
               </Col>
@@ -715,13 +715,13 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                 <Col xs={12} sm={6}>
                   <div style={{ textAlign: 'center', padding: '8px 0' }}>
                     <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('bp.kpi.totalTarget')}</Text>
-                    <Text strong style={{ fontSize: 18 }}>{formatPlainMoney(kpi.totalTargetMillionTwd, 'TWD')}</Text>
+                    <Text strong style={{ fontSize: 18 }}>{formatPlainMoney(kpi.totalTargetMillionTwd, 'TWD', { alreadyMillions: true })}</Text>
                   </div>
                 </Col>
                 <Col xs={12} sm={6}>
                   <div style={{ textAlign: 'center', padding: '8px 0' }}>
                     <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('bp.kpi.totalForecast')}</Text>
-                    <Text strong style={{ fontSize: 18 }}>{formatPlainMoney(kpi.totalForecastMillionTwd, 'TWD')}</Text>
+                    <Text strong style={{ fontSize: 18 }}>{formatPlainMoney(kpi.totalForecastMillionTwd, 'TWD', { alreadyMillions: true })}</Text>
                   </div>
                 </Col>
                 <Col xs={12} sm={6}>
@@ -736,7 +736,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                   <div style={{ textAlign: 'center', padding: '8px 0' }}>
                     <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('bp.kpi.totalGap')}</Text>
                     <Text strong style={{ fontSize: 18, color: (kpi.totalGapMillionTwd ?? 0) >= 0 ? token.colorSuccess : token.colorError }}>
-                      {formatDelta(kpi.totalGapMillionTwd, { currency: 'TWD' })}
+                      {formatDelta(kpi.totalGapMillionTwd, { suffix: ' M NTD' })}
                     </Text>
                   </div>
                 </Col>
@@ -778,7 +778,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                       <td style={{ padding: '6px 8px', fontWeight: 500, position: 'sticky', left: 0, background: '#fff' }}>{t('bp.gap')}</td>
                       {bpModel.yearly.filter(r => r.status !== 'no-target').map(r => (
                         <td key={r.period} style={{ textAlign: 'right', padding: '6px 8px' }}>
-                          {r.gapMillionTwd !== null ? <Text type={r.gapMillionTwd >= 0 ? 'success' : 'danger'}>{formatDelta(r.gapMillionTwd, { currency: 'TWD' })}</Text> : '—'}
+                          {r.gapMillionTwd !== null ? <Text type={r.gapMillionTwd >= 0 ? 'success' : 'danger'}>{formatDelta(r.gapMillionTwd, { suffix: ' M NTD' })}</Text> : '—'}
                         </td>
                       ))}
                     </tr>
@@ -786,19 +786,36 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                 </table>
               </div>
 
-              {/* Revenue Trend Chart */}
+              {/* Revenue Trend Chart with BP Monthly Target Line */}
               {revenueChartData.length > 0 && (
                 <div>
                   <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{t('dashboard.revenueTrendTitle')}</Text>
                   <div style={{ height: 200 }}>
                     <Line
-                      data={revenueChartData}
+                      data={(() => {
+                        // Build chart data with both revenue and BP monthly target
+                        const chartData: Array<{ month: string; type: string; value: number }> = [];
+                        for (const r of revenueChartData) {
+                          const year = r.month.substring(0, 4);
+                          // Revenue in millions
+                          chartData.push({ month: r.month, type: t('dashboard.forecastRevenue'), value: r.revenue / 1e6 });
+                          // BP monthly target (yearly target / 12)
+                          const yearlyTarget = bpTargets[year];
+                          if (yearlyTarget && yearlyTarget > 0) {
+                            chartData.push({ month: r.month, type: t('dashboard.monthlyBpTarget'), value: yearlyTarget / 12 });
+                          }
+                        }
+                        return chartData;
+                      })()}
                       xField="month"
-                      yField="revenue"
+                      yField="value"
+                      seriesField="type"
                       height={200}
                       autoFit
-                      xAxis={{ label: { autoRotate: true } }}
-                      yAxis={{ label: { formatter: (v: any) => formatCurrencyShort(Number(v), currencySettings) } }}
+                      xAxis={{ label: { autoRotate: true, formatter: (v: string) => v.substring(2) } }}
+                      yAxis={{ label: { formatter: (v: any) => `${Number(v).toLocaleString()} M` } }}
+                      tooltip={{ formatter: (datum: any) => ({ name: datum.type, value: `${datum.value.toLocaleString(undefined, { maximumFractionDigits: 1 })} M NTD` }) }}
+                      color={['#1677ff', '#ff7a45']}
                     />
                   </div>
                 </div>

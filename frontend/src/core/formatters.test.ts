@@ -319,6 +319,13 @@ describe('formatPlainMoney', () => {
     // Small number should still use M
     expect(formatPlainMoney(500000, 'TWD')).toBe('0.5 M NTD');
   });
+
+  it('handles alreadyMillions option for BP values', () => {
+    // BP target 11076 means 11,076 million TWD
+    expect(formatPlainMoney(11076, 'TWD', { alreadyMillions: true })).toBe('11,076 M NTD');
+    // Total of 5 years: 11076 + 20216 + 28664 + 33859 + 43329 = 137144
+    expect(formatPlainMoney(137144, 'TWD', { alreadyMillions: true })).toBe('137,144 M NTD');
+  });
 });
 
 describe('formatDelta', () => {

@@ -71,6 +71,8 @@ export const zhTW: Record<string, string> = {
   'dashboard.capacityConstrained': '產能受限',
   'dashboard.yearlyHealth': '年度產能健康度',
   'dashboard.revenueTrendTitle': '營收趨勢',
+  'dashboard.forecastRevenue': '預測營收',
+  'dashboard.monthlyBpTarget': 'BP 月均目標',
   'dashboard.utilTrendTitle': 'Core 與 BU 稼動率趨勢',
   'dashboard.revByCustomer': '客戶營收',
   'dashboard.coreBySize': 'Core 需求（尺寸）',

@@ -62,6 +62,8 @@ export const en: Record<string, string> = {
   'dashboard.capacityConstrained': 'Capacity constrained',
   'dashboard.yearlyHealth': 'Yearly Capacity Health',
   'dashboard.revenueTrendTitle': 'Revenue Trend',
+  'dashboard.forecastRevenue': 'Forecast Revenue',
+  'dashboard.monthlyBpTarget': 'Monthly BP Target',
   'dashboard.utilTrendTitle': 'Core & BU Utilization Trend',
   'dashboard.revByCustomer': 'Revenue by Customer',
   'dashboard.coreBySize': 'Core Demand by Size',

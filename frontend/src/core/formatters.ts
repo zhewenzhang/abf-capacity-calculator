@@ -80,21 +80,26 @@ export function normalizeDisplayCurrency(currency: string): string {
  * Always uses M unit (no K/B auto-switching).
  * No $ / NT$ / ¥ symbols. Shows: "3,500.5 M NTD", "128.6 M USD"
  * Returns '—' for null/undefined/NaN/Infinity.
+ *
+ * @param value - The amount to format
+ * @param currency - Currency code (TWD/CNY/USD)
+ * @param options - Options object
+ * @param options.alreadyMillions - If true, value is already in millions (skip /1e6 conversion)
  */
 export function formatPlainMoney(
   value: number | null | undefined,
   currency: string = 'TWD',
-  options?: { maximumFractionDigits?: number; signed?: boolean }
+  options?: { maximumFractionDigits?: number; signed?: boolean; alreadyMillions?: boolean }
 ): string {
   if (!isValidNumber(value)) return MISSING;
-  const { maximumFractionDigits = 1, signed = false } = options ?? {};
+  const { maximumFractionDigits = 1, signed = false, alreadyMillions = false } = options ?? {};
 
   const displayCurrency = normalizeDisplayCurrency(currency);
   const abs = Math.abs(value);
   const sign = value < 0 ? '-' : (signed ? '+' : '');
 
-  // Always use M unit
-  const displayValue = abs / 1e6;
+  // If value is already in millions, don't divide again
+  const displayValue = alreadyMillions ? abs : abs / 1e6;
 
   const formatted = displayValue.toLocaleString(undefined, {
     minimumFractionDigits: 0,
