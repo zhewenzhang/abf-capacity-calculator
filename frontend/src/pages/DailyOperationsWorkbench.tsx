@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Card, Row, Col, Table, Typography, Tag, Button, Badge, Space, Collapse, theme } from 'antd';
+import { Card, Row, Col, Table, Typography, Tag, Button, Space, Collapse, theme } from 'antd';
 import {
   CheckCircleOutlined,
   WarningOutlined,
@@ -157,6 +157,143 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   const [reportPreview, setReportPreview] = useState<string>('');
   const [scenarioV2Loading, setScenarioV2Loading] = useState<string | null>(null);
   const [scenarioV2Result, setScenarioV2Result] = useState<OperationalScenarioResult | null>(null);
+  const [showActionDetails, setShowActionDetails] = useState(false);
+
+  // ---- Aggregate abnormalities into action recommendations ----
+  interface ActionRecommendation {
+    id: string;
+    type: 'capacity' | 'data' | 'bp' | 'forecast' | 'revenue';
+    riskLevel: 'high' | 'medium' | 'check';
+    title: string;
+    impact: string;
+    affectedMonths: string[];
+    actions: Array<{ label: string; icon: React.ReactNode; onClick: () => void }>;
+    details: Array<{ title: string; whyItMatters: string }>;
+  }
+
+  const actionRecommendations = useMemo((): ActionRecommendation[] => {
+    if (!rankedOutput || rankedOutput.ranked.length === 0) return [];
+
+    const recommendations: ActionRecommendation[] = [];
+
+    // Group by category
+    const byCategory = new Map<string, typeof rankedOutput.ranked>();
+    for (const item of rankedOutput.ranked) {
+      const cat = item.taxonomyType?.category ?? item.insight.domain;
+      if (!byCategory.has(cat)) byCategory.set(cat, []);
+      byCategory.get(cat)!.push(item);
+    }
+
+    // Capacity issues
+    const capacityItems = byCategory.get('capacity-constraint') ?? [];
+    if (capacityItems.length > 0) {
+      const months = new Set<string>();
+      const details: Array<{ title: string; whyItMatters: string }> = [];
+      let maxScore = 0;
+      for (const item of capacityItems) {
+        maxScore = Math.max(maxScore, item.severityScore);
+        details.push({ title: item.insight.title, whyItMatters: item.whyItMatters });
+        // Extract months from evidence if available
+        const evidence = item.insight.evidence;
+        if (evidence && typeof evidence.month === 'string') {
+          months.add(evidence.month);
+        }
+      }
+      const sortedMonths = Array.from(months).sort();
+      recommendations.push({
+        id: 'capacity-aggregate',
+        type: 'capacity',
+        riskLevel: maxScore >= 70 ? 'high' : maxScore >= 40 ? 'medium' : 'check',
+        title: t('workbench.actionable.typeCapacity'),
+        impact: sortedMonths.length > 0
+          ? t('workbench.actionable.continuousPeriod', { start: sortedMonths[0], end: sortedMonths[sortedMonths.length - 1] })
+          : `${capacityItems.length} issue(s) detected`,
+        affectedMonths: sortedMonths,
+        actions: [
+          { label: t('workbench.actionable.viewCapacity'), icon: <CloudOutlined />, onClick: () => navigate('/capacity') },
+          { label: t('workbench.actionable.runScenario'), icon: <ExperimentOutlined />, onClick: () => navigate('/scenario') },
+          { label: t('workbench.actionable.askAI'), icon: <RobotOutlined />, onClick: () => navigate('/copilot?tool=capacityRisk') },
+        ],
+        details,
+      });
+    }
+
+    // Data integrity issues
+    const dataItems = byCategory.get('data-integrity') ?? [];
+    if (dataItems.length > 0) {
+      const details: Array<{ title: string; whyItMatters: string }> = [];
+      let maxScore = 0;
+      for (const item of dataItems) {
+        maxScore = Math.max(maxScore, item.severityScore);
+        details.push({ title: item.insight.title, whyItMatters: item.whyItMatters });
+      }
+      recommendations.push({
+        id: 'data-aggregate',
+        type: 'data',
+        riskLevel: maxScore >= 70 ? 'high' : maxScore >= 40 ? 'medium' : 'check',
+        title: t('workbench.actionable.typeData'),
+        impact: `${dataItems.length} data issue(s) affecting calculations`,
+        affectedMonths: [],
+        actions: [
+          { label: t('workbench.actionable.fixForecasts'), icon: <BarChartOutlined />, onClick: () => navigate('/forecasts') },
+          { label: t('workbench.actionable.fixProducts'), icon: <InboxOutlined />, onClick: () => navigate('/products') },
+          { label: t('workbench.actionable.askAI'), icon: <RobotOutlined />, onClick: () => navigate('/copilot?tool=dataProblems') },
+        ],
+        details,
+      });
+    }
+
+    // BP / Revenue issues
+    const bpItems = [...(byCategory.get('revenue-risk') ?? []), ...(byCategory.get('operational-readiness') ?? [])];
+    if (bpItems.length > 0) {
+      const details: Array<{ title: string; whyItMatters: string }> = [];
+      let maxScore = 0;
+      for (const item of bpItems) {
+        maxScore = Math.max(maxScore, item.severityScore);
+        details.push({ title: item.insight.title, whyItMatters: item.whyItMatters });
+      }
+      recommendations.push({
+        id: 'bp-aggregate',
+        type: 'bp',
+        riskLevel: maxScore >= 70 ? 'high' : maxScore >= 40 ? 'medium' : 'check',
+        title: t('workbench.actionable.typeBp'),
+        impact: `${bpItems.length} BP/revenue issue(s) detected`,
+        affectedMonths: [],
+        actions: [
+          { label: t('workbench.actionable.viewBpTargets'), icon: <DollarOutlined />, onClick: () => navigate('/bp-targets') },
+          { label: t('workbench.actionable.viewRevenue'), icon: <BarChartOutlined />, onClick: () => navigate('/results') },
+          { label: t('workbench.actionable.askAI'), icon: <RobotOutlined />, onClick: () => navigate('/copilot?tool=bpGap') },
+        ],
+        details,
+      });
+    }
+
+    // Forecast gap issues
+    const forecastItems = byCategory.get('forecast-gap') ?? [];
+    if (forecastItems.length > 0) {
+      const details: Array<{ title: string; whyItMatters: string }> = [];
+      let maxScore = 0;
+      for (const item of forecastItems) {
+        maxScore = Math.max(maxScore, item.severityScore);
+        details.push({ title: item.insight.title, whyItMatters: item.whyItMatters });
+      }
+      recommendations.push({
+        id: 'forecast-aggregate',
+        type: 'forecast',
+        riskLevel: maxScore >= 70 ? 'high' : maxScore >= 40 ? 'medium' : 'check',
+        title: t('workbench.actionable.typeForecast'),
+        impact: `${forecastItems.length} forecast issue(s) detected`,
+        affectedMonths: [],
+        actions: [
+          { label: t('workbench.actionable.fixForecasts'), icon: <BarChartOutlined />, onClick: () => navigate('/forecasts') },
+          { label: t('workbench.actionable.askAI'), icon: <RobotOutlined />, onClick: () => navigate('/copilot?tool=dataProblems') },
+        ],
+        details,
+      });
+    }
+
+    return recommendations;
+  }, [rankedOutput, t, navigate]);
 
   // ---- File download helper ----
   const downloadFile = useCallback((content: string, filename: string, mimeType: string) => {
@@ -751,115 +888,74 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
         </Row>
       )}
 
-      {/* SECTION 2B: Abnormality Intelligence Panel (v1.43) — Designbyte db-card */}
-      {rankedOutput && rankedOutput.ranked.length > 0 && (
-        <div className="twk-card" style={{ marginBottom: 16 }}>
-          <div className="twk-card-header">
-            <span className="twk-card-title"><AlertOutlined /> {t('workbench.abnormalityIntelligence.title')}</span>
-          </div>
-          <div className="twk-card-body">
-          {/* Must Act Today */}
-          {rankedOutput.mustActToday.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <Text strong style={{ color: token.colorError, fontSize: 13 }}>
-                {t('workbench.abnormalityIntelligence.mustActToday')}
-              </Text>
-              <Row gutter={[8, 8]} style={{ marginTop: 8 }}>
-                {rankedOutput.mustActToday.map((item, idx) => {
-                  const scoreColor = item.severityScore >= 80 ? '#ff4d4f'
-                    : item.severityScore >= 60 ? '#fa8c16'
-                    : item.severityScore >= 40 ? '#fadb14'
-                    : '#d9d9d9';
-                  return (
-                    <Col xs={24} sm={8} key={idx}>
-                      <Card size="small" style={{ borderColor: scoreColor, borderWidth: 2 }}>
-                        <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                          <Space>
-                            <Badge
-                              count={item.severityScore}
-                              style={{
-                                backgroundColor: scoreColor,
-                                color: item.severityScore >= 60 ? '#fff' : '#000',
-                                fontWeight: 700,
-                              }}
-                            />
-                            {item.taxonomyType && (
-                              <Tag color="blue">{t(`workbench.abnormalityIntelligence.${item.impactCategory}`)}</Tag>
-                            )}
-                          </Space>
-                          <Text strong style={{ fontSize: 12 }}>{item.insight.title}</Text>
-                          <Text style={{ fontSize: 11 }} type="secondary">
-                            {item.whyItMatters}
-                          </Text>
-                          {item.insight.sourcePage && (
-                            <Button
-                              type="link"
-                              size="small"
-                              style={{ padding: 0, fontSize: 11 }}
-                              onClick={() => navigate(item.insight.sourcePage)}
-                            >
-                              {t('workbench.abnormalityIntelligence.investigate')} <RightOutlined />
-                            </Button>
-                          )}
-                        </Space>
-                      </Card>
-                    </Col>
-                  );
-                })}
-              </Row>
-            </div>
-          )}
-
-          {/* All Ranked Abnormalities (compact) */}
-          <Table
-            dataSource={rankedOutput.ranked.map((r, idx) => ({ ...r, key: idx }))}
-            size="small"
-            pagination={{ pageSize: 5 }}
-            scroll={{ x: 600 }}
-            columns={[
-              {
-                title: t('workbench.abnormalityIntelligence.score'),
-                dataIndex: 'severityScore',
-                key: 'score',
-                width: 70,
-                sorter: (a: { severityScore: number }, b: { severityScore: number }) => a.severityScore - b.severityScore,
-                render: (score: number) => {
-                  const color = score >= 80 ? '#ff4d4f'
-                    : score >= 60 ? '#fa8c16'
-                    : score >= 40 ? '#fadb14'
-                    : '#d9d9d9';
-                  return <Badge count={score} style={{ backgroundColor: color, color: score >= 60 ? '#fff' : '#000' }} />;
-                },
-              },
-              {
-                title: t('workbench.abnormalityIntelligence.category'),
-                dataIndex: ['taxonomyType', 'category'],
-                key: 'category',
-                width: 140,
-                render: (_: unknown, record: any) => (
-                  <Tag>{record.taxonomyType?.category ?? record.impactCategory}</Tag>
-                ),
-              },
-              {
-                title: t('workbench.abnormality.title'),
-                dataIndex: ['insight', 'title'],
-                key: 'title',
-                ellipsis: true,
-              },
-              {
-                title: t('workbench.abnormalityIntelligence.whyItMatters'),
-                dataIndex: 'whyItMatters',
-                key: 'whyItMatters',
-                ellipsis: true,
-                render: (text: string) => (
-                  <Text style={{ fontSize: 11 }} ellipsis={{ tooltip: text }}>{text}</Text>
-                ),
-              },
-            ]}
-          />
-          </div>
+      {/* SECTION 2B: Actionable Intelligence — v1.56.2 redesign */}
+      <div className="twk-card" style={{ marginBottom: 16 }}>
+        <div className="twk-card-header">
+          <span className="twk-card-title"><AlertOutlined /> {t('workbench.actionable.title')}</span>
         </div>
-      )}
+        <div className="twk-card-body">
+          {actionRecommendations.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '24px 0' }}>
+              <CheckCircleOutlined style={{ fontSize: 32, color: 'var(--twk-success)', marginBottom: 8 }} />
+              <div><Text strong>{t('workbench.actionable.noActions')}</Text></div>
+              <div><Text type="secondary" style={{ fontSize: 12 }}>{t('workbench.actionable.noActionsDesc')}</Text></div>
+            </div>
+          ) : (
+            <Space direction="vertical" size={12} style={{ width: '100%' }}>
+              {actionRecommendations.map(rec => {
+                const riskColor = rec.riskLevel === 'high' ? '#dc2626' : rec.riskLevel === 'medium' ? '#f59e0b' : '#6b7280';
+                const riskLabel = rec.riskLevel === 'high' ? t('workbench.actionable.riskHigh') : rec.riskLevel === 'medium' ? t('workbench.actionable.riskMedium') : t('workbench.actionable.riskCheck');
+                const typeLabel = t(`workbench.actionable.type${rec.type.charAt(0).toUpperCase() + rec.type.slice(1)}`);
+
+                return (
+                  <div key={rec.id} style={{ border: `1px solid ${riskColor}20`, borderRadius: 12, padding: '12px 16px', background: `${riskColor}05` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <Tag color={riskColor} style={{ margin: 0, fontSize: 11 }}>{riskLabel}</Tag>
+                      <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>{typeLabel}</Tag>
+                      <Text strong style={{ fontSize: 13 }}>{rec.title}</Text>
+                    </div>
+                    <Text style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{rec.impact}</Text>
+                    {rec.affectedMonths.length > 0 && (
+                      <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>
+                        {t('workbench.actionable.affectedMonths', { count: rec.affectedMonths.length })}
+                      </Text>
+                    )}
+                    <Space wrap size={[8, 8]}>
+                      {rec.actions.map((action, idx) => (
+                        <Button key={idx} size="small" icon={action.icon} onClick={action.onClick}>
+                          {action.label}
+                        </Button>
+                      ))}
+                    </Space>
+                    {rec.details.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <Button
+                          type="link"
+                          size="small"
+                          style={{ padding: 0, fontSize: 11 }}
+                          onClick={() => setShowActionDetails(!showActionDetails)}
+                        >
+                          {showActionDetails ? t('workbench.actionable.hideDetails') : t('workbench.actionable.showDetails')} ({rec.details.length})
+                        </Button>
+                        {showActionDetails && (
+                          <ul style={{ margin: '4px 0 0 0', paddingLeft: 16, fontSize: 11 }}>
+                            {rec.details.map((d, idx) => (
+                              <li key={idx}>
+                                <Text style={{ fontSize: 11 }}>{d.title}</Text>
+                                <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>{d.whyItMatters}</Text>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </Space>
+          )}
+        </div>
+      </div>
 
       {/* SECTION 3: Look-Ahead Focus Panel — Designbyte db-card + twk-table-wrapper */}
       <div className="twk-card" style={{ marginBottom: 16 }}>
