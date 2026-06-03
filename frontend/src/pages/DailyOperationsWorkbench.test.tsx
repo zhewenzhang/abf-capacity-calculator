@@ -19,6 +19,7 @@ if (typeof window !== 'undefined' && !window.matchMedia) {
 }
 import { I18nContext } from '../i18n';
 import type { TranslateFn } from '../i18n';
+import { AppPrefsProvider } from '../context/AppPreferencesContext';
 import type {
   WorkbenchViewModel,
   WorkflowStage,
@@ -194,7 +195,16 @@ vi.mock('../core/bpTargets', () => ({
     totalBpTarget: 0,
     attainment: 0,
     gap: 0,
+    yearly: [],
   }),
+  computeBpKpi: vi.fn().mockReturnValue({
+    totalTargetMillionTwd: 0,
+    totalForecastMillionTwd: 0,
+    overallAttainment: null,
+    totalGapMillionTwd: null,
+  }),
+  formatAttainment: vi.fn().mockReturnValue('0%'),
+  formatBpAmount: vi.fn().mockReturnValue('0'),
 }));
 
 vi.mock('../core/currency', () => ({
@@ -203,6 +213,21 @@ vi.mock('../core/currency', () => ({
     usdTwdRate: 32,
     usdCnyRate: 7.2,
   }),
+  DEFAULT_CURRENCY_SETTINGS: {
+    displayCurrency: 'USD',
+    usdTwdRate: 32,
+    usdCnyRate: 7.2,
+  },
+  formatCurrency: vi.fn().mockReturnValue('0'),
+  formatCurrencyShort: vi.fn().mockReturnValue('0'),
+}));
+
+vi.mock('@ant-design/charts', () => ({
+  Line: vi.fn().mockReturnValue(null),
+}));
+
+vi.mock('../components/analytics/TimeMatrixTable', () => ({
+  default: vi.fn().mockReturnValue(null),
 }));
 
 vi.mock('../core/abnormalityIntelligence', () => ({
@@ -249,9 +274,11 @@ function renderWithProviders(ui: React.ReactElement) {
   return render(
     <ConfigProvider>
       <MemoryRouter initialEntries={['/operations']}>
-        <I18nContext.Provider value={mockI18n}>
-          {ui}
-        </I18nContext.Provider>
+        <AppPrefsProvider>
+          <I18nContext.Provider value={mockI18n}>
+            {ui}
+          </I18nContext.Provider>
+        </AppPrefsProvider>
       </MemoryRouter>
     </ConfigProvider>
   );

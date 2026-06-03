@@ -29,7 +29,6 @@ import {
   buildWorkbenchViewModel,
   type WorkbenchViewModel,
   type WorkflowStageStatus,
-  type RevenueBpSummary,
 } from '../core/workbench';
 import { buildDataQualitySummary, type DataQualitySummary } from '../core/dataQuality';
 import { buildAnalyticsModel, type AnalyticsModel } from '../core/analytics';
@@ -53,6 +52,11 @@ import { PageLoading } from '../components/common';
 import EmptyState from '../components/common/EmptyState';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
+import { useAppPrefs } from '../context/AppPreferencesContext';
+import { formatCurrency, formatCurrencyShort, DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
+import { computeBpKpi, formatAttainment, formatBpAmount } from '../core/bpTargets';
+import { Line } from '@ant-design/charts';
+import TimeMatrixTable from '../components/analytics/TimeMatrixTable';
 import type { ProjectScope, SKU, Forecast, CapacityPlan, ProjectParameters } from '../types';
 
 const { Text } = Typography;
@@ -130,6 +134,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   const { t } = useI18n();
   const navigate = useNavigate();
   const { token } = theme.useToken();
+  const { prefs } = useAppPrefs();
   const writable = canEdit(scope.role);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -146,6 +151,8 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   const [rankedOutput, setRankedOutput] = useState<AbnormalityIntelligenceOutput | null>(null);
   const [analyticsModel, setAnalyticsModel] = useState<AnalyticsModel | null>(null);
   const [bpModel, setBpModel] = useState<BpAnalysisModel | null>(null);
+  const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(DEFAULT_CURRENCY_SETTINGS);
+  const [bpTargets, setBpTargets] = useState<Record<string, number>>({});
   const [managementReport, setManagementReport] = useState<ManagementReport | null>(null);
   const [reportPreview, setReportPreview] = useState<string>('');
   const [scenarioV2Loading, setScenarioV2Loading] = useState<string | null>(null);
@@ -211,13 +218,18 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
       const analytics = buildAnalyticsModel(skus, forecasts, capacityPlans, paramsData);
       setAnalyticsModel(analytics);
 
-      const currencySettings = normalizeCurrencySettings(paramsData.currencySettings);
+      const cs = normalizeCurrencySettings(paramsData.currencySettings);
+      setCurrencySettings({ ...cs, displayCurrency: prefs.displayCurrency });
+
+      const bpTargetsData = paramsData.bpTargets?.yearlyRevenueTargetsMillionTwd ?? {};
+      setBpTargets({ ...bpTargetsData });
+
       const bp = buildBpAnalysis(
         analytics.skuResults,
         skus,
         analytics.monthlySummaries,
-        paramsData.bpTargets?.yearlyRevenueTargetsMillionTwd ?? {},
-        currencySettings,
+        bpTargetsData,
+        cs,
       );
       setBpModel(bp);
     } catch (e: unknown) {
@@ -408,20 +420,6 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
     },
   ];
 
-  // ---- Revenue/BP status color ----
-  const revenueBpStatusColor = (status: RevenueBpSummary['status']) => {
-    switch (status) {
-      case 'met':
-        return token.colorSuccess;
-      case 'watch':
-        return token.colorWarning;
-      case 'miss':
-        return token.colorError;
-      default:
-        return token.colorTextSecondary;
-    }
-  };
-
   // ---- Render ----
   return (
     <div className="twk-page">
@@ -562,6 +560,197 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
         </div>
       )}
 
+      {/* SECTION 1C: Revenue & BP Analysis — migrated from Dashboard */}
+      {analyticsModel && Object.keys(bpTargets).length > 0 && bpModel && (() => {
+        const kpi = computeBpKpi(bpModel.yearly);
+        const revenueChartData = analyticsModel.monthlyRevenue.map(r => ({
+          month: r.month,
+          revenue: r.revenue,
+        }));
+
+        return (
+          <div className="twk-card" style={{ marginBottom: 16 }}>
+            <div className="twk-card-header">
+              <span className="twk-card-title"><DollarOutlined /> {t('bp.attainmentTitle')}</span>
+            </div>
+            <div className="twk-card-body">
+              {/* BP KPI Cards */}
+              <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                <Col xs={12} sm={6}>
+                  <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                    <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('bp.kpi.totalTarget')}</Text>
+                    <Text strong style={{ fontSize: 18 }}>{kpi.totalTargetMillionTwd?.toFixed(1) ?? '—'}M TWD</Text>
+                  </div>
+                </Col>
+                <Col xs={12} sm={6}>
+                  <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                    <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('bp.kpi.totalForecast')}</Text>
+                    <Text strong style={{ fontSize: 18 }}>{kpi.totalForecastMillionTwd.toFixed(1)}M TWD</Text>
+                  </div>
+                </Col>
+                <Col xs={12} sm={6}>
+                  <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                    <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('bp.kpi.overallAttainment')}</Text>
+                    <Text strong style={{ fontSize: 18, color: (kpi.overallAttainment ?? 0) >= 1 ? token.colorSuccess : (kpi.overallAttainment ?? 0) >= 0.8 ? token.colorWarning : token.colorError }}>
+                      {kpi.overallAttainment !== null ? formatAttainment(kpi.overallAttainment) : '—'}
+                    </Text>
+                  </div>
+                </Col>
+                <Col xs={12} sm={6}>
+                  <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                    <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('bp.kpi.totalGap')}</Text>
+                    <Text strong style={{ fontSize: 18, color: (kpi.totalGapMillionTwd ?? 0) >= 0 ? token.colorSuccess : token.colorError }}>
+                      {kpi.totalGapMillionTwd !== null ? `${kpi.totalGapMillionTwd > 0 ? '+' : ''}${kpi.totalGapMillionTwd.toFixed(1)}M TWD` : '—'}
+                    </Text>
+                  </div>
+                </Col>
+              </Row>
+
+              {/* BP Attainment Table */}
+              <div style={{ overflowX: 'auto', marginBottom: 16 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                      <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 600, position: 'sticky', left: 0, background: '#fff' }}>{t('scenario.annualMatrix.metric')}</th>
+                      {bpModel.yearly.filter(r => r.status !== 'no-target').map(r => (
+                        <th key={r.period} style={{ textAlign: 'right', padding: '6px 8px', fontWeight: 600 }}>{r.period}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                      <td style={{ padding: '6px 8px', fontWeight: 500, position: 'sticky', left: 0, background: '#fff' }}>{t('bp.target')}</td>
+                      {bpModel.yearly.filter(r => r.status !== 'no-target').map(r => (
+                        <td key={r.period} style={{ textAlign: 'right', padding: '6px 8px' }}>{formatBpAmount(r.targetMillionTwd)}</td>
+                      ))}
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                      <td style={{ padding: '6px 8px', fontWeight: 500, position: 'sticky', left: 0, background: '#fff' }}>{t('bp.forecast')}</td>
+                      {bpModel.yearly.filter(r => r.status !== 'no-target').map(r => (
+                        <td key={r.period} style={{ textAlign: 'right', padding: '6px 8px' }}>{formatBpAmount(r.forecastMillionTwd)}</td>
+                      ))}
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                      <td style={{ padding: '6px 8px', fontWeight: 500, position: 'sticky', left: 0, background: '#fff' }}>{t('bp.attainment')}</td>
+                      {bpModel.yearly.filter(r => r.status !== 'no-target').map(r => (
+                        <td key={r.period} style={{ textAlign: 'right', padding: '6px 8px' }}>
+                          {r.attainment !== null ? <Tag color={r.attainment >= 1 ? 'green' : r.attainment >= 0.8 ? 'orange' : 'red'}>{formatAttainment(r.attainment)}</Tag> : '—'}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '6px 8px', fontWeight: 500, position: 'sticky', left: 0, background: '#fff' }}>{t('bp.gap')}</td>
+                      {bpModel.yearly.filter(r => r.status !== 'no-target').map(r => (
+                        <td key={r.period} style={{ textAlign: 'right', padding: '6px 8px' }}>
+                          {r.gapMillionTwd !== null ? <Text type={r.gapMillionTwd >= 0 ? 'success' : 'danger'}>{r.gapMillionTwd > 0 ? '+' : ''}{r.gapMillionTwd.toFixed(1)}</Text> : '—'}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Revenue Trend Chart */}
+              {revenueChartData.length > 0 && (
+                <div>
+                  <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{t('dashboard.revenueTrendTitle')}</Text>
+                  <div style={{ height: 200 }}>
+                    <Line
+                      data={revenueChartData}
+                      xField="month"
+                      yField="revenue"
+                      height={200}
+                      autoFit
+                      xAxis={{ label: { autoRotate: true } }}
+                      yAxis={{ label: { formatter: (v: any) => formatCurrencyShort(Number(v), currencySettings) } }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* SECTION 1D: Capacity Analysis — migrated from Dashboard */}
+      {analyticsModel && analyticsModel.monthlyUtilization.length > 0 && (
+        <div className="twk-card" style={{ marginBottom: 16 }}>
+          <div className="twk-card-header">
+            <span className="twk-card-title"><CloudOutlined /> {t('dashboard.utilTrendTitle')}</span>
+          </div>
+          <div className="twk-card-body">
+            <div style={{ height: 200 }}>
+              <Line
+                data={(() => {
+                  const data: Array<{ month: string; type: string; value: number }> = [];
+                  analyticsModel.monthlyUtilization.forEach(u => {
+                    if (u.coreUtil !== null) data.push({ month: u.month, type: t('results.coreUtil'), value: u.coreUtil * 100 });
+                    if (u.buUtil !== null) data.push({ month: u.month, type: t('results.buUtil'), value: u.buUtil * 100 });
+                  });
+                  return data;
+                })()}
+                xField="month"
+                yField="value"
+                seriesField="type"
+                height={200}
+                autoFit
+                xAxis={{ label: { autoRotate: true } }}
+                yAxis={{ label: { formatter: (v: any) => `${v}%` } }}
+                color={['#1677ff', '#ff4d4f']}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 1E: Top Driver Snapshots — migrated from Dashboard */}
+      {analyticsModel && (
+        <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+          <Col xs={24} lg={8}>
+            <div className="twk-card">
+              <div className="twk-card-header">
+                <span className="twk-card-title" style={{ fontSize: 13 }}>{t('dashboard.revByCustomer')}</span>
+              </div>
+              <div className="twk-card-body">
+                <TimeMatrixTable
+                  rows={analyticsModel.revenueByCustomer.slice(0, 5)}
+                  timeColumns={analyticsModel.yearlyHealth.map(y => y.year)}
+                  formatValue={(v) => formatCurrency(v, currencySettings, analyticsModel.yearlyHealth[0]?.year)}
+                />
+              </div>
+            </div>
+          </Col>
+          <Col xs={24} lg={8}>
+            <div className="twk-card">
+              <div className="twk-card-header">
+                <span className="twk-card-title" style={{ fontSize: 13 }}>{t('dashboard.coreBySize')}</span>
+              </div>
+              <div className="twk-card-body">
+                <TimeMatrixTable
+                  rows={analyticsModel.coreDemandBySize}
+                  timeColumns={analyticsModel.yearlyHealth.map(y => y.year)}
+                  formatValue={(v) => v.toLocaleString()}
+                />
+              </div>
+            </div>
+          </Col>
+          <Col xs={24} lg={8}>
+            <div className="twk-card">
+              <div className="twk-card-header">
+                <span className="twk-card-title" style={{ fontSize: 13 }}>{t('dashboard.revByApp')}</span>
+              </div>
+              <div className="twk-card-body">
+                <TimeMatrixTable
+                  rows={analyticsModel.revenueByApplication}
+                  timeColumns={analyticsModel.yearlyHealth.map(y => y.year)}
+                  formatValue={(v) => formatCurrency(v, currencySettings, analyticsModel.yearlyHealth[0]?.year)}
+                />
+              </div>
+            </div>
+          </Col>
+        </Row>
+      )}
+
       {/* SECTION 2B: Abnormality Intelligence Panel (v1.43) — Designbyte db-card */}
       {rankedOutput && rankedOutput.ranked.length > 0 && (
         <div className="twk-card" style={{ marginBottom: 16 }}>
@@ -696,69 +885,6 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
           )}
         </div>
       </div>
-
-      {/* SECTION 4: Revenue / BP Summary — Designbyte twk-kpi */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={12}>
-          <div className="twk-kpi">
-            <div className="twk-kpi-label">{t('workbench.revenue.current')}</div>
-            <div className="twk-kpi-value" style={{ color: revenueBpStatusColor(vm.revenueBp.status) }}>
-              {vm.revenueBp.currentRevenue?.toFixed(1) ?? '-'} <span style={{ fontSize: 14, fontWeight: 400 }}>M TWD</span>
-            </div>
-          </div>
-        </Col>
-        <Col xs={24} sm={12}>
-          <div className="twk-kpi">
-            <div className="twk-kpi-label">{t('workbench.revenue.title')}</div>
-            <div style={{ marginTop: 8 }}>
-              <Space>
-                <Text strong>{t('workbench.revenue.target')}:</Text>
-                <Text>
-                  {vm.revenueBp.bpTarget !== null
-                    ? `${vm.revenueBp.bpTarget.toFixed(1)}M TWD`
-                    : '-'}
-                </Text>
-              </Space>
-              <br />
-              <Space>
-                <Text strong>{t('workbench.revenue.attainment')}:</Text>
-                <Text
-                  style={{
-                    color: vm.revenueBp.attainment !== null
-                      ? vm.revenueBp.attainment >= 1.0
-                        ? token.colorSuccess
-                        : vm.revenueBp.attainment >= 0.8
-                          ? token.colorWarning
-                          : token.colorError
-                      : undefined,
-                  }}
-                >
-                  {vm.revenueBp.attainment !== null
-                    ? `${(vm.revenueBp.attainment * 100).toFixed(1)}%`
-                    : '-'}
-                </Text>
-              </Space>
-              <br />
-              <Space>
-                <Text strong>{t('workbench.revenue.gap')}:</Text>
-                <Text
-                  style={{
-                    color: vm.revenueBp.gap !== null
-                      ? vm.revenueBp.gap >= 0
-                        ? token.colorSuccess
-                        : token.colorError
-                      : undefined,
-                  }}
-                >
-                  {vm.revenueBp.gap !== null
-                    ? `${vm.revenueBp.gap > 0 ? '+' : ''}${vm.revenueBp.gap.toFixed(1)}M TWD`
-                    : '-'}
-                </Text>
-              </Space>
-            </div>
-          </div>
-        </Col>
-      </Row>
 
       {/* SECTION 5B: Scenario v2 Shortcuts (v1.44) — Designbyte db-card */}
       <div className="twk-card" style={{ marginBottom: 16 }}>
