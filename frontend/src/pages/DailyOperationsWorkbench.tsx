@@ -820,16 +820,17 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                 };
 
                 // Build chart data with proper currency conversion
-                const chartData: Array<{ month: string; type: string; value: number; rawMonth: string }> = [];
+                // Use flat structure: each row has month, revenue, target
+                const chartData: Array<{ month: string; revenue: number; target: number }> = [];
                 for (const r of chartMonths) {
                   const year = r.month.substring(0, 4);
-                  // Convert revenue from USD to TWD, then to M
                   const revenueTwd = convertFromUsd(r.revenue, 'TWD', currencySettings, year);
-                  chartData.push({ month: r.month, type: t('dashboard.forecastRevenue'), value: revenueTwd / 1e6, rawMonth: r.month });
-                  const yearlyTarget = bpTargets[year];
-                  if (yearlyTarget && yearlyTarget > 0) {
-                    chartData.push({ month: r.month, type: t('dashboard.monthlyBpTarget'), value: yearlyTarget / 12, rawMonth: r.month });
-                  }
+                  const yearlyTarget = bpTargets[year] ?? 0;
+                  chartData.push({
+                    month: r.month,
+                    revenue: revenueTwd / 1e6,
+                    target: yearlyTarget / 12,
+                  });
                 }
 
                 // X-axis formatter: show year for Jan, month number for Apr/Jul/Oct
@@ -846,6 +847,26 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                   return `${Number(v).toLocaleString()} M`;
                 };
 
+                // Custom tooltip formatter
+                const formatTooltip = (title: string, items: any[]) => {
+                  const revenueItem = items.find((i: any) => i.name === t('dashboard.forecastRevenue'));
+                  const targetItem = items.find((i: any) => i.name === t('dashboard.monthlyBpTarget'));
+                  const revenueVal = revenueItem?.value ?? 0;
+                  const targetVal = targetItem?.value ?? 0;
+                  const gap = revenueVal - targetVal;
+                  const attainment = targetVal > 0 ? (revenueVal / targetVal * 100) : 0;
+
+                  return {
+                    name: title,
+                    value: [
+                      `${t('dashboard.monthlyBpTarget')}: ${targetVal.toLocaleString(undefined, { maximumFractionDigits: 1 })} M NTD`,
+                      `${t('dashboard.forecastRevenue')}: ${revenueVal.toLocaleString(undefined, { maximumFractionDigits: 1 })} M NTD`,
+                      `${t('bp.gap')}: ${gap >= 0 ? '+' : ''}${gap.toLocaleString(undefined, { maximumFractionDigits: 1 })} M NTD`,
+                      `${t('bp.attainment')}: ${attainment.toFixed(1)}%`,
+                    ].join('\n'),
+                  };
+                };
+
                 return (
                   <div>
                     <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{t('dashboard.revenueTrendTitle')}</Text>
@@ -853,8 +874,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                       <Line
                         data={chartData}
                         xField="month"
-                        yField="value"
-                        seriesField="type"
+                        yField={['revenue', 'target']}
                         height={200}
                         autoFit
                         xAxis={{
@@ -865,16 +885,29 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                         }}
                         yAxis={{ label: { formatter: formatMoneyTick } }}
                         tooltip={{
-                          formatter: (datum: any) => {
-                            const val = datum.value;
-                            return {
-                              name: datum.type,
-                              value: `${val.toLocaleString(undefined, { maximumFractionDigits: 1 })} M NTD`,
-                            };
-                          },
+                          formatter: formatTooltip,
                         }}
                         color={[CHART_COLORS.revenue, CHART_COLORS.target]}
                         point={{ size: 3 }}
+                        legend={{
+                          itemName: {
+                            formatter: (text: string) => {
+                              if (text === 'revenue') return t('dashboard.forecastRevenue');
+                              if (text === 'target') return t('dashboard.monthlyBpTarget');
+                              return text;
+                            },
+                          },
+                        }}
+                        label={{
+                          formatter: (datum: any) => {
+                            // Only show label for last point
+                            const lastMonth = chartData[chartData.length - 1]?.month;
+                            if (datum.month === lastMonth) {
+                              return datum.revenue?.toLocaleString(undefined, { maximumFractionDigits: 1 }) ?? '';
+                            }
+                            return '';
+                          },
+                        }}
                       />
                     </div>
                     <Text type="secondary" style={{ fontSize: 10, display: 'block', marginTop: 4 }}>
