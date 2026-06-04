@@ -548,20 +548,21 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
         title={<Space><Text strong>{t('scenario.annualMatrix.title')}</Text></Space>}
       >
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <table style={{ minWidth: `${140 + years.length * 90 + 60}px`, borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr>
                 <th style={{
                   position: 'sticky', left: 0, background: '#fff', zIndex: 1,
                   textAlign: 'left', padding: '8px 12px', borderBottom: '1px solid #f0f0f0',
-                  width: 140, fontWeight: 600,
+                  width: 140, minWidth: 140, fontWeight: 600,
+                  whiteSpace: 'normal', wordBreak: 'keep-all', lineHeight: 1.35,
                 }}>
                   {t('scenario.annualMatrix.metric')}
                 </th>
                 {years.map(y => (
                   <th key={y} style={{
                     textAlign: 'center', padding: '8px 8px', borderBottom: '1px solid #f0f0f0',
-                    fontWeight: 600, minWidth: 90,
+                    fontWeight: 600, minWidth: 90, width: 90,
                   }}>
                     {y}
                   </th>
@@ -588,7 +589,8 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
                   <td style={{
                     position: 'sticky', left: 0, background: '#fff', zIndex: 1,
                     padding: '6px 12px', borderBottom: '1px solid #f0f0f0',
-                    fontWeight: 500,
+                    fontWeight: 500, minWidth: 140, width: 140,
+                    whiteSpace: 'normal', wordBreak: 'keep-all', lineHeight: 1.35,
                   }}>
                     {t(`scenario.multiplier.${key}`)}
                   </td>
@@ -787,20 +789,21 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
             }
           >
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <table style={{ minWidth: `${160 + displayYears.length * 120}px`, borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr>
                     <th style={{
                       position: 'sticky', left: 0, background: '#fff', zIndex: 1,
                       textAlign: 'left', padding: '8px 12px', borderBottom: '2px solid #e5e7eb',
-                      fontWeight: 600, width: 160,
+                      fontWeight: 600, width: 160, minWidth: 160,
+                      whiteSpace: 'normal', wordBreak: 'keep-all', lineHeight: 1.35,
                     }}>
                       {t('scenario.table.metric')}
                     </th>
                     {displayYears.map(y => (
                       <th key={y} style={{
                         textAlign: 'right', padding: '8px 12px', borderBottom: '2px solid #e5e7eb',
-                        fontWeight: 600,
+                        fontWeight: 600, minWidth: 120, width: 120,
                       }}>
                         {y}
                       </th>
@@ -813,6 +816,8 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
                       <td style={{
                         position: 'sticky', left: 0, background: '#fff', zIndex: 1,
                         padding: '8px 12px', borderBottom: '1px solid #f0f0f0', fontWeight: 500,
+                        minWidth: 160, width: 160,
+                        whiteSpace: 'normal', wordBreak: 'keep-all', lineHeight: 1.35,
                       }}>
                         {row.label}
                       </td>
@@ -826,6 +831,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
                             borderBottom: '1px solid #f0f0f0',
                             color: isPositive ? S.positive : isNegative ? S.negative : S.textPrimary,
                             fontWeight: isDelta ? 600 : 400,
+                            minWidth: 120, width: 120,
                           }}>
                             {val}
                           </td>
