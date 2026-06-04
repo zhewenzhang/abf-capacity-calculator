@@ -1356,6 +1356,27 @@ export const zhTW: Record<string, string> = {
   'workbench.lookahead.bottleneck': '瓶頸',
   'workbench.lookahead.shortage': '短缺',
 
+  // 風險雷達 (v1.57.2)
+  'workbench.riskRadar.title': '未來 6 個月營運風險雷達',
+  'workbench.riskRadar.conclusion.safe': '未來 6 個月未偵測到重大短缺，Core / BU 稼動率均低於 80%，目前可維持觀察。',
+  'workbench.riskRadar.conclusion.hasRisk': '未來 6 個月有 {shortageCount} 個短缺月份，主要瓶頸在 {bottleneck}，最高稼動率 {maxUtil}%，建議優先檢查 {riskMonths} 的 {bottleneck} 產能。',
+  'workbench.riskRadar.level.safe': '安全',
+  'workbench.riskRadar.level.watch': '觀察',
+  'workbench.riskRadar.level.risk': '風險',
+  'workbench.riskRadar.level.overload': '超載',
+  'workbench.riskRadar.highestRisk': '最高風險',
+  'workbench.riskRadar.top3Title': 'Top 3 風險月份',
+  'workbench.riskRadar.viewCapacity': '查看產能規劃',
+  'workbench.riskRadar.runScenario': '執行情境模擬',
+  'workbench.riskRadar.viewDetails': '查看明細',
+  'workbench.riskRadar.hideDetails': '隱藏明細',
+  'workbench.riskRadar.noRisk': '未來 6 個月未偵測到重大短缺。',
+  'workbench.riskRadar.coreBottleneck': 'Core 瓶頸',
+  'workbench.riskRadar.buBottleneck': 'BU 瓶頸',
+  'workbench.riskRadar.noBottleneck': '無瓶頸',
+  'workbench.riskRadar.shortage': '短缺',
+  'workbench.riskRadar.noShortage': '無短缺',
+
   // 營收 / BP 摘要
   'workbench.revenue.title': '營收 vs BP 目標',
   'workbench.revenue.current': '目前預測',

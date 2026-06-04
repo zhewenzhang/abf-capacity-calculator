@@ -155,6 +155,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   const [bpSelectedYear, setBpSelectedYear] = useState<string>('2026');
   const [driverTab, setDriverTab] = useState<string>('customer');
   const [driverYear, setDriverYear] = useState<string>('2027');
+  const [showRiskDetails, setShowRiskDetails] = useState(false);
 
   // ---- File download helper ----
   const downloadFile = useCallback((content: string, filename: string, mimeType: string) => {
@@ -353,7 +354,57 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
     );
   }
 
-  // ---- Look-ahead columns ----
+  // ---- Risk classification helper ----
+  type RiskLevel = 'safe' | 'watch' | 'risk' | 'overload';
+
+  interface RiskClassification {
+    level: RiskLevel;
+    bottleneck: 'core' | 'bu' | 'none';
+    maxUtilization: number;
+  }
+
+  function classifyRisk(coreUtil: number | null, buUtil: number | null, hasShortage: boolean): RiskClassification {
+    const core = coreUtil !== null ? coreUtil * 100 : 0;
+    const bu = buUtil !== null ? buUtil * 100 : 0;
+    const maxUtil = Math.max(core, bu);
+
+    let level: RiskLevel;
+    if (hasShortage || maxUtil >= 100) {
+      level = 'overload';
+    } else if (maxUtil >= 90) {
+      level = 'risk';
+    } else if (maxUtil >= 80) {
+      level = 'watch';
+    } else {
+      level = 'safe';
+    }
+
+    let bottleneck: 'core' | 'bu' | 'none';
+    if (bu >= core && bu >= 80) {
+      bottleneck = 'bu';
+    } else if (core > bu && core >= 80) {
+      bottleneck = 'core';
+    } else {
+      bottleneck = 'none';
+    }
+
+    return { level, bottleneck, maxUtilization: maxUtil };
+  }
+
+  function getRiskColor(level: RiskLevel): string {
+    switch (level) {
+      case 'safe': return '#52c41a';
+      case 'watch': return '#faad14';
+      case 'risk': return '#fa8c16';
+      case 'overload': return '#ff4d4f';
+    }
+  }
+
+  function getRiskLabel(level: RiskLevel): string {
+    return t(`workbench.riskRadar.level.${level}`);
+  }
+
+  // ---- Look-ahead detail columns (for collapsed table) ----
   const lookAheadColumns = [
     {
       title: t('workbench.lookahead.month'),
@@ -1227,30 +1278,179 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
         );
       })()}
 
-      {/* SECTION 3: Look-Ahead Focus Panel — Designbyte db-card + twk-table-wrapper */}
-      <div className="twk-card" style={{ marginBottom: 16 }}>
-        <div className="twk-card-header">
-          <span className="twk-card-title"><BarChartOutlined /> {t('workbench.lookahead.title')}</span>
-        </div>
-        <div className="twk-card-body">
-          {vm.lookAhead.length === 0 ? (
-            <div className="twk-empty" style={{ padding: '24px 0' }}>
-              <CheckCircleOutlined className="twk-empty-icon" style={{ color: 'var(--twk-success)' }} />
-              <div className="twk-empty-title">{t('workbench.status.ready')}</div>
+      {/* SECTION 3: Risk Radar — v1.57.2 redesign */}
+      {(() => {
+        if (vm.lookAhead.length === 0) {
+          return (
+            <div className="twk-card" style={{ marginBottom: 16 }}>
+              <div className="twk-card-header">
+                <span className="twk-card-title"><BarChartOutlined /> {t('workbench.riskRadar.title')}</span>
+              </div>
+              <div className="twk-card-body">
+                <div className="twk-empty" style={{ padding: '24px 0' }}>
+                  <CheckCircleOutlined className="twk-empty-icon" style={{ color: 'var(--twk-success)' }} />
+                  <div className="twk-empty-title">{t('workbench.riskRadar.noRisk')}</div>
+                </div>
+              </div>
             </div>
-          ) : (
-            <div className="twk-table-wrapper">
-              <Table
-                columns={lookAheadColumns}
-                dataSource={vm.lookAhead.map((item, idx) => ({ ...item, key: idx }))}
-                size="small"
-                pagination={false}
-                scroll={{ x: 480 }}
-              />
+          );
+        }
+
+        // Take first 6 months
+        const next6 = vm.lookAhead.slice(0, 6);
+
+        // Classify each month
+        const classified = next6.map(item => ({
+          ...item,
+          risk: classifyRisk(item.coreUtilization, item.buUtilization, item.hasShortage),
+        }));
+
+        // Find highest risk month
+        const riskOrder: Record<RiskLevel, number> = { overload: 4, risk: 3, watch: 2, safe: 1 };
+        const highestRiskIdx = classified.reduce((maxIdx, item, idx) => {
+          return riskOrder[item.risk.level] > riskOrder[classified[maxIdx].risk.level] ? idx : maxIdx;
+        }, 0);
+
+        // Summary stats
+        const shortageCount = classified.filter(c => c.hasShortage).length;
+        const maxUtil = Math.max(...classified.map(c => c.risk.maxUtilization));
+        const bottleneckCounts = { core: 0, bu: 0, none: 0 };
+        classified.forEach(c => { bottleneckCounts[c.risk.bottleneck]++; });
+        const primaryBottleneck = bottleneckCounts.bu >= bottleneckCounts.core ? 'BU' : 'Core';
+
+        // Top 3 risk months (sorted by: shortage first, then max util desc)
+        const top3 = [...classified]
+          .sort((a, b) => {
+            if (a.hasShortage !== b.hasShortage) return a.hasShortage ? -1 : 1;
+            if (riskOrder[a.risk.level] !== riskOrder[b.risk.level]) return riskOrder[b.risk.level] - riskOrder[a.risk.level];
+            return b.risk.maxUtilization - a.risk.maxUtilization;
+          })
+          .slice(0, 3);
+
+        // Build conclusion text
+        const hasRisk = shortageCount > 0 || classified.some(c => c.risk.level !== 'safe');
+        const riskMonths = top3.map(c => c.month).join(', ');
+        const conclusion = hasRisk
+          ? t('workbench.riskRadar.conclusion.hasRisk', {
+              shortageCount,
+              bottleneck: primaryBottleneck,
+              maxUtil: maxUtil.toFixed(1),
+              riskMonths,
+            })
+          : t('workbench.riskRadar.conclusion.safe');
+
+        return (
+          <div className="twk-card" style={{ marginBottom: 16 }}>
+            <div className="twk-card-header">
+              <span className="twk-card-title"><BarChartOutlined /> {t('workbench.riskRadar.title')}</span>
             </div>
-          )}
-        </div>
-      </div>
+            <div className="twk-card-body">
+              {/* A. One-line risk conclusion */}
+              <div style={{ marginBottom: 16, padding: '10px 14px', background: hasRisk ? '#fff7e6' : '#f6ffed', borderRadius: 8, border: hasRisk ? '1px solid #ffd591' : '1px solid #b7eb8f' }}>
+                <Text style={{ fontSize: 13 }}>{conclusion}</Text>
+              </div>
+
+              {/* B. Risk timeline */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+                  {classified.map((item, idx) => {
+                    const isHighest = idx === highestRiskIdx;
+                    return (
+                      <div
+                        key={item.month}
+                        style={{
+                          flex: '0 0 auto',
+                          minWidth: 100,
+                          padding: '8px 10px',
+                          borderRadius: 8,
+                          border: `2px solid ${getRiskColor(item.risk.level)}`,
+                          background: isHighest ? `${getRiskColor(item.risk.level)}10` : '#fff',
+                          position: 'relative',
+                        }}
+                      >
+                        {isHighest && (
+                          <div style={{ position: 'absolute', top: -8, right: 4, background: getRiskColor(item.risk.level), color: '#fff', fontSize: 9, padding: '1px 6px', borderRadius: 4 }}>
+                            {t('workbench.riskRadar.highestRisk')}
+                          </div>
+                        )}
+                        <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>{item.month}</div>
+                        <div style={{ fontSize: 11, color: getRiskColor(item.risk.level), fontWeight: 600 }}>
+                          {getRiskLabel(item.risk.level)}
+                        </div>
+                        <div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>
+                          {item.risk.bottleneck === 'bu' ? 'BU' : item.risk.bottleneck === 'core' ? 'Core' : '-'} · {item.risk.maxUtilization.toFixed(1)}%
+                        </div>
+                        {item.hasShortage && (
+                          <div style={{ fontSize: 10, color: '#ff4d4f', marginTop: 2 }}>● {t('workbench.riskRadar.shortage')}</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* C. Top 3 risk month cards */}
+              {hasRisk && (
+                <div style={{ marginBottom: 16 }}>
+                  <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{t('workbench.riskRadar.top3Title')}</Text>
+                  <Row gutter={[8, 8]}>
+                    {top3.map((item) => (
+                      <Col xs={24} sm={8} key={item.month}>
+                        <div style={{ padding: '10px 12px', borderRadius: 8, border: `1px solid ${getRiskColor(item.risk.level)}`, background: '#fff' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                            <Text strong style={{ fontSize: 13 }}>{item.month}</Text>
+                            <Tag color={getRiskColor(item.risk.level)} style={{ margin: 0, fontSize: 10 }}>{getRiskLabel(item.risk.level)}</Tag>
+                          </div>
+                          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>
+                            {item.risk.bottleneck === 'bu' ? t('workbench.riskRadar.buBottleneck') : item.risk.bottleneck === 'core' ? t('workbench.riskRadar.coreBottleneck') : t('workbench.riskRadar.noBottleneck')}
+                          </div>
+                          <div style={{ fontSize: 11, marginBottom: 4 }}>
+                            {t('workbench.lookahead.coreUtil')}: {item.coreUtilization !== null ? `${(item.coreUtilization * 100).toFixed(1)}%` : '-'} · {t('workbench.lookahead.buUtil')}: {item.buUtilization !== null ? `${(item.buUtilization * 100).toFixed(1)}%` : '-'}
+                          </div>
+                          {item.hasShortage && (
+                            <div style={{ fontSize: 11, color: '#ff4d4f', marginBottom: 4 }}>{t('workbench.riskRadar.shortage')}</div>
+                          )}
+                          <Space size={4} style={{ marginTop: 4 }}>
+                            <Button size="small" type="link" style={{ padding: 0, fontSize: 11 }} onClick={() => navigate('/capacity')}>
+                              {t('workbench.riskRadar.viewCapacity')}
+                            </Button>
+                            <Button size="small" type="link" style={{ padding: 0, fontSize: 11 }} onClick={() => navigate('/scenario')}>
+                              {t('workbench.riskRadar.runScenario')}
+                            </Button>
+                          </Space>
+                        </div>
+                      </Col>
+                    ))}
+                  </Row>
+                </div>
+              )}
+
+              {/* D. Collapsible detail table */}
+              <div>
+                <Button
+                  type="link"
+                  size="small"
+                  style={{ padding: 0, fontSize: 11 }}
+                  onClick={() => setShowRiskDetails(!showRiskDetails)}
+                >
+                  {showRiskDetails ? t('workbench.riskRadar.hideDetails') : t('workbench.riskRadar.viewDetails')}
+                </Button>
+                {showRiskDetails && (
+                  <div style={{ marginTop: 8 }}>
+                    <Table
+                      columns={lookAheadColumns}
+                      dataSource={vm.lookAhead.map((item, idx) => ({ ...item, key: idx }))}
+                      size="small"
+                      pagination={false}
+                      scroll={{ x: 480 }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* SECTION 5B: Scenario v2 Shortcuts (v1.44) — Designbyte db-card */}
       <div className="twk-card" style={{ marginBottom: 16 }}>

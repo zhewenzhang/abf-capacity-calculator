@@ -1347,6 +1347,27 @@ export const en: Record<string, string> = {
   'workbench.lookahead.bottleneck': 'Bottleneck',
   'workbench.lookahead.shortage': 'Shortage',
 
+  // Risk Radar (v1.57.2)
+  'workbench.riskRadar.title': 'Next 6-Month Operations Risk Radar',
+  'workbench.riskRadar.conclusion.safe': 'No critical shortages detected in the next 6 months. Core/BU utilization below 80%, maintain observation.',
+  'workbench.riskRadar.conclusion.hasRisk': 'Next 6 months have {shortageCount} shortage month(s), main bottleneck in {bottleneck}, max utilization {maxUtil}%. Recommend checking {bottleneck} capacity for {riskMonths}.',
+  'workbench.riskRadar.level.safe': 'Safe',
+  'workbench.riskRadar.level.watch': 'Watch',
+  'workbench.riskRadar.level.risk': 'Risk',
+  'workbench.riskRadar.level.overload': 'Overload',
+  'workbench.riskRadar.highestRisk': 'Highest Risk',
+  'workbench.riskRadar.top3Title': 'Top 3 Risk Months',
+  'workbench.riskRadar.viewCapacity': 'View Capacity Plan',
+  'workbench.riskRadar.runScenario': 'Run Scenario',
+  'workbench.riskRadar.viewDetails': 'View Details',
+  'workbench.riskRadar.hideDetails': 'Hide Details',
+  'workbench.riskRadar.noRisk': 'No significant shortages detected in the next 6 months.',
+  'workbench.riskRadar.coreBottleneck': 'Core Bottleneck',
+  'workbench.riskRadar.buBottleneck': 'BU Bottleneck',
+  'workbench.riskRadar.noBottleneck': 'No Bottleneck',
+  'workbench.riskRadar.shortage': 'Shortage',
+  'workbench.riskRadar.noShortage': 'No Shortage',
+
   // Revenue / BP summary
   'workbench.revenue.title': 'Revenue vs BP Target',
   'workbench.revenue.current': 'Current Forecast',
