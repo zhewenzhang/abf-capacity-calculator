@@ -56,8 +56,7 @@ import { useAppPrefs } from '../context/AppPreferencesContext';
 import { formatCurrency, convertFromUsd, DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
 import { formatAttainment, formatBpAmount } from '../core/bpTargets';
 import { formatPlainMoney, formatDelta } from '../core/formatters';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Line as AntLine } from '@ant-design/charts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import TimeMatrixTable from '../components/analytics/TimeMatrixTable';
 import type { ProjectScope, SKU, Forecast, CapacityPlan, ProjectParameters } from '../types';
 
@@ -979,35 +978,199 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
       })()}
 
       {/* SECTION 1D: Capacity Analysis — migrated from Dashboard */}
-      {analyticsModel && analyticsModel.monthlyUtilization.length > 0 && (
-        <div className="twk-card" style={{ marginBottom: 16 }}>
-          <div className="twk-card-header">
-            <span className="twk-card-title"><CloudOutlined /> {t('dashboard.utilTrendTitle')}</span>
-          </div>
-          <div className="twk-card-body">
-            <div style={{ height: 200 }}>
-              <AntLine
-                data={(() => {
-                  const data: Array<{ month: string; type: string; value: number }> = [];
-                  analyticsModel.monthlyUtilization.forEach(u => {
-                    if (u.coreUtil !== null) data.push({ month: u.month, type: t('results.coreUtil'), value: u.coreUtil * 100 });
-                    if (u.buUtil !== null) data.push({ month: u.month, type: t('results.buUtil'), value: u.buUtil * 100 });
-                  });
-                  return data;
-                })()}
-                xField="month"
-                yField="value"
-                seriesField="type"
-                height={200}
-                autoFit
-                xAxis={{ label: { autoRotate: true } }}
-                yAxis={{ label: { formatter: (v: any) => `${v}%` } }}
-                color={['#1677ff', '#ff4d4f']}
-              />
+      {analyticsModel && analyticsModel.monthlyUtilization.length > 0 && (() => {
+        // Utilization chart color constants
+        const UTILIZATION_CHART_COLORS = {
+          core: '#2563eb',      // blue
+          bu: '#7c3aed',        // violet
+          warning: '#f59e0b',   // amber, 90%
+          critical: '#ef4444',  // red, 100%
+          grid: '#e5e7eb',
+          axis: '#94a3b8',
+        };
+
+        // Build chart data with semantic keys
+        const utilChartData: Array<{
+          month: string;
+          year: number;
+          monthNumber: number;
+          coreUtilization: number | null;
+          buUtilization: number | null;
+        }> = [];
+
+        // Filter to only include months with data (not empty future months)
+        const bpYearSet = new Set(Object.keys(bpTargets));
+        for (const u of analyticsModel.monthlyUtilization) {
+          const year = parseInt(u.month.substring(0, 4), 10);
+          const monthNum = parseInt(u.month.substring(5, 7), 10);
+          // Include if has data or is within BP year range
+          const hasData = (u.coreUtil !== null && u.coreUtil > 0) || (u.buUtil !== null && u.buUtil > 0);
+          const inBpRange = bpYearSet.has(String(year));
+          if (hasData || inBpRange) {
+            utilChartData.push({
+              month: u.month,
+              year,
+              monthNumber: monthNum,
+              coreUtilization: u.coreUtil !== null ? u.coreUtil * 100 : null,
+              buUtilization: u.buUtil !== null ? u.buUtil * 100 : null,
+            });
+          }
+        }
+
+        // X-axis formatter
+        const formatUtilMonthTick = (v: string): string => {
+          const month = parseInt(v.substring(5, 7), 10);
+          const year = v.substring(0, 4);
+          if (month === 1) return `${year}年1月`;
+          if (month === 4 || month === 7 || month === 10) return `${month}月`;
+          return '';
+        };
+
+        // Y-axis formatter
+        const formatUtilYAxisTick = (v: number): string => {
+          return `${v}%`;
+        };
+
+        // Custom tooltip
+        const UtilizationTooltip = ({ active, payload }: any) => {
+          if (!active || !payload || payload.length === 0) return null;
+          const data = payload[0]?.payload;
+          if (!data) return null;
+
+          const year = data.year;
+          const monthNum = data.monthNumber;
+          const coreVal = data.coreUtilization;
+          const buVal = data.buUtilization;
+
+          // Determine risk status
+          let statusText = '';
+          let statusColor = '';
+          if (buVal !== null && buVal >= 100) {
+            statusText = t('dashboard.utilOverloaded');
+            statusColor = UTILIZATION_CHART_COLORS.critical;
+          } else if (coreVal !== null && coreVal >= 100) {
+            statusText = t('dashboard.utilOverloaded');
+            statusColor = UTILIZATION_CHART_COLORS.critical;
+          } else if (buVal !== null && buVal >= 90) {
+            statusText = t('dashboard.utilWarning');
+            statusColor = UTILIZATION_CHART_COLORS.warning;
+          } else if (coreVal !== null && coreVal >= 90) {
+            statusText = t('dashboard.utilWarning');
+            statusColor = UTILIZATION_CHART_COLORS.warning;
+          }
+
+          return (
+            <div style={{
+              background: '#fff',
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              padding: '10px 14px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              fontSize: 12,
+            }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>{year}年{monthNum}月</div>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 3 }}>
+                <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: UTILIZATION_CHART_COLORS.core, marginRight: 6 }} />
+                <span>{t('results.coreUtil')}：{coreVal !== null ? `${coreVal.toFixed(1)}%` : '-'}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: UTILIZATION_CHART_COLORS.bu, marginRight: 6 }} />
+                <span>{t('results.buUtil')}：{buVal !== null ? `${buVal.toFixed(1)}%` : '-'}</span>
+              </div>
+              {statusText && (
+                <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 4, marginTop: 4, color: statusColor, fontWeight: 600 }}>
+                  {statusText}
+                </div>
+              )}
+            </div>
+          );
+        };
+
+        // Find max values for labels
+        const maxCore = Math.max(...utilChartData.map(d => d.coreUtilization ?? 0));
+        const maxBu = Math.max(...utilChartData.map(d => d.buUtilization ?? 0));
+        const maxCoreIdx = utilChartData.findIndex(d => d.coreUtilization === maxCore);
+        const maxBuIdx = utilChartData.findIndex(d => d.buUtilization === maxBu);
+        const lastIdx = utilChartData.length - 1;
+
+        // Custom label for key points
+        const UtilCustomLabel = ({ x, y, value, index, dataKey }: any) => {
+          if (value === null || value === undefined) return null;
+          const isMaxPoint = (dataKey === 'coreUtilization' && index === maxCoreIdx) ||
+                             (dataKey === 'buUtilization' && index === maxBuIdx);
+          const isLastPoint = index === lastIdx;
+          if (isMaxPoint || isLastPoint) {
+            return (
+              <text x={x} y={y - 10} textAnchor="middle" fontSize={10} fill="#666">
+                {Number(value).toFixed(1)}%
+              </text>
+            );
+          }
+          return null;
+        };
+
+        return (
+          <div className="twk-card" style={{ marginBottom: 16 }}>
+            <div className="twk-card-header">
+              <span className="twk-card-title"><CloudOutlined /> {t('dashboard.utilTrendTitle')}</span>
+            </div>
+            <div className="twk-card-body">
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={utilChartData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={UTILIZATION_CHART_COLORS.grid} />
+                  <XAxis
+                    dataKey="month"
+                    tickFormatter={formatUtilMonthTick}
+                    tick={{ fontSize: 11, fill: UTILIZATION_CHART_COLORS.axis }}
+                    interval={0}
+                  />
+                  <YAxis
+                    tickFormatter={formatUtilYAxisTick}
+                    tick={{ fontSize: 11, fill: UTILIZATION_CHART_COLORS.axis }}
+                    domain={[0, 'auto']}
+                  />
+                  <Tooltip content={<UtilizationTooltip />} />
+                  <Legend
+                    formatter={(value: string) => {
+                      if (value === 'coreUtilization') return t('results.coreUtil');
+                      if (value === 'buUtilization') return t('results.buUtil');
+                      return value;
+                    }}
+                    wrapperStyle={{ fontSize: 11 }}
+                  />
+                  <ReferenceLine y={90} stroke={UTILIZATION_CHART_COLORS.warning} strokeDasharray="5 5" label={{ value: '90%', position: 'right', fontSize: 10, fill: UTILIZATION_CHART_COLORS.warning }} />
+                  <ReferenceLine y={100} stroke={UTILIZATION_CHART_COLORS.critical} strokeDasharray="5 5" label={{ value: '100%', position: 'right', fontSize: 10, fill: UTILIZATION_CHART_COLORS.critical }} />
+                  <Line
+                    type="monotone"
+                    dataKey="coreUtilization"
+                    name="coreUtilization"
+                    stroke={UTILIZATION_CHART_COLORS.core}
+                    strokeWidth={2.5}
+                    dot={false}
+                    activeDot={{ r: 5, fill: UTILIZATION_CHART_COLORS.core }}
+                    connectNulls={false}
+                    label={<UtilCustomLabel />}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="buUtilization"
+                    name="buUtilization"
+                    stroke={UTILIZATION_CHART_COLORS.bu}
+                    strokeWidth={2.5}
+                    dot={false}
+                    activeDot={{ r: 5, fill: UTILIZATION_CHART_COLORS.bu }}
+                    connectNulls={false}
+                    label={<UtilCustomLabel />}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+              <Text type="secondary" style={{ fontSize: 10, display: 'block', marginTop: 4 }}>
+                {t('dashboard.utilChartNote')}
+              </Text>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* SECTION 1E: Top Driver Snapshots — migrated from Dashboard */}
       {analyticsModel && (
