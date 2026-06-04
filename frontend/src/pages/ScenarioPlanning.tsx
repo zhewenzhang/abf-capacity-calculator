@@ -370,7 +370,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
 
     const metrics: { key: string; labelKey: string; format: (v: number | null) => string; deltaFormat: (b: number | null, s: number | null) => string }[] = [
       {
-        key: 'revenue',
+        key: 'totalRevenueUsd',
         labelKey: 'scenario.metric.totalRevenue',
         format: v => v !== null ? `${(v / 1e6).toFixed(1)}M` : '—',
         deltaFormat: (b, s) => {
@@ -380,7 +380,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
         },
       },
       {
-        key: 'bpAttainment',
+        key: 'bpAttainmentPct',
         labelKey: 'scenario.metric.bpAttainment',
         format: v => v !== null ? `${v.toFixed(1)}%` : '—',
         deltaFormat: (b, s) => {
@@ -390,7 +390,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
         },
       },
       {
-        key: 'bpGap',
+        key: 'bpGapMillionTwd',
         labelKey: 'scenario.metric.bpGap',
         format: v => v !== null ? `${v.toFixed(1)}M` : '—',
         deltaFormat: (b, s) => {
@@ -400,7 +400,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
         },
       },
       {
-        key: 'forecastPcs',
+        key: 'totalForecastPcs',
         labelKey: 'scenario.metric.forecastPcs',
         format: v => v !== null ? formatNumber(v) : '—',
         deltaFormat: (b, s) => {
@@ -410,7 +410,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
         },
       },
       {
-        key: 'maxCoreUtil',
+        key: 'maxCoreUtilization',
         labelKey: 'scenario.metric.maxCoreUtil',
         format: v => v !== null ? `${v.toFixed(1)}%` : '—',
         deltaFormat: (b, s) => {
@@ -420,7 +420,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
         },
       },
       {
-        key: 'maxBuUtil',
+        key: 'maxBuUtilization',
         labelKey: 'scenario.metric.maxBuUtil',
         format: v => v !== null ? `${v.toFixed(1)}%` : '—',
         deltaFormat: (b, s) => {
@@ -430,7 +430,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
         },
       },
       {
-        key: 'shortage',
+        key: 'shortageMonthCount',
         labelKey: 'scenario.metric.shortage',
         format: v => v !== null ? String(v) : '—',
         deltaFormat: (b, s) => {
