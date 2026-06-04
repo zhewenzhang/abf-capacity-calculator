@@ -53,11 +53,10 @@ import EmptyState from '../components/common/EmptyState';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
 import { useAppPrefs } from '../context/AppPreferencesContext';
-import { formatCurrency, convertFromUsd, DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
+import { convertFromUsd, DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
 import { formatAttainment, formatBpAmount } from '../core/bpTargets';
 import { formatPlainMoney, formatDelta } from '../core/formatters';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
-import TimeMatrixTable from '../components/analytics/TimeMatrixTable';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from 'recharts';
 import type { ProjectScope, SKU, Forecast, CapacityPlan, ProjectParameters } from '../types';
 
 const { Text } = Typography;
@@ -160,6 +159,8 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   const [scenarioV2Result, setScenarioV2Result] = useState<OperationalScenarioResult | null>(null);
   const [showActionDetails, setShowActionDetails] = useState(false);
   const [bpSelectedYear, setBpSelectedYear] = useState<string>('2026');
+  const [driverTab, setDriverTab] = useState<string>('customer');
+  const [driverYear, setDriverYear] = useState<string>('2027');
 
   // ---- Aggregate abnormalities into action recommendations ----
   interface ActionRecommendation {
@@ -1172,53 +1173,212 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
         );
       })()}
 
-      {/* SECTION 1E: Top Driver Snapshots — migrated from Dashboard */}
-      {analyticsModel && (
-        <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
-          <Col xs={24} lg={8}>
-            <div className="twk-card">
-              <div className="twk-card-header">
-                <span className="twk-card-title" style={{ fontSize: 13 }}>{t('dashboard.revByCustomer')}</span>
-              </div>
-              <div className="twk-card-body">
-                <TimeMatrixTable
-                  rows={analyticsModel.revenueByCustomer.slice(0, 5)}
-                  timeColumns={analyticsModel.yearlyHealth.map(y => y.year)}
-                  formatValue={(v) => formatCurrency(v, currencySettings, analyticsModel.yearlyHealth[0]?.year)}
+      {/* SECTION 1E: Operational Drivers — v1.57 redesign */}
+      {analyticsModel && (() => {
+        // Driver analysis helper functions
+        const DRIVER_COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
+
+        // Get available years from yearlyHealth
+        const availableYears = analyticsModel.yearlyHealth.map(y => y.year);
+
+        // Ensure driverYear is valid
+        const selectedYear = availableYears.includes(driverYear) ? driverYear : availableYears[availableYears.length - 1] || '2026';
+        const prevYear = String(parseInt(selectedYear, 10) - 1);
+
+        // Customer revenue data for selected year
+        const customerData = analyticsModel.revenueByCustomer.map(row => {
+          const currentVal = row.values[selectedYear] ?? 0;
+          const prevVal = row.values[prevYear] ?? 0;
+          const totalRevenue = analyticsModel.revenueByCustomer.reduce((s, r) => s + (r.values[selectedYear] ?? 0), 0);
+          const share = totalRevenue > 0 ? (currentVal / totalRevenue * 100) : 0;
+          const change = currentVal - prevVal;
+          const yoy = prevVal > 0 ? ((currentVal - prevVal) / prevVal * 100) : (currentVal > 0 ? null : 0);
+          return { label: row.label, current: currentVal, prev: prevVal, share, change, yoy };
+        }).sort((a, b) => b.current - a.current);
+
+        // Core demand by size for selected year
+        const sizeData = analyticsModel.coreDemandBySize.map(row => {
+          const currentVal = row.values[selectedYear] ?? 0;
+          const prevVal = row.values[prevYear] ?? 0;
+          const totalDemand = analyticsModel.coreDemandBySize.reduce((s, r) => s + (r.values[selectedYear] ?? 0), 0);
+          const share = totalDemand > 0 ? (currentVal / totalDemand * 100) : 0;
+          const change = currentVal - prevVal;
+          const yoy = prevVal > 0 ? ((currentVal - prevVal) / prevVal * 100) : (currentVal > 0 ? null : 0);
+          return { label: row.label, current: currentVal, prev: prevVal, share, change, yoy };
+        }).sort((a, b) => b.current - a.current);
+
+        // Application revenue data for selected year
+        const appData = analyticsModel.revenueByApplication.map(row => {
+          const currentVal = row.values[selectedYear] ?? 0;
+          const prevVal = row.values[prevYear] ?? 0;
+          const totalRevenue = analyticsModel.revenueByApplication.reduce((s, r) => s + (r.values[selectedYear] ?? 0), 0);
+          const share = totalRevenue > 0 ? (currentVal / totalRevenue * 100) : 0;
+          const change = currentVal - prevVal;
+          const yoy = prevVal > 0 ? ((currentVal - prevVal) / prevVal * 100) : (currentVal > 0 ? null : 0);
+          return { label: row.label, current: currentVal, prev: prevVal, share, change, yoy };
+        }).sort((a, b) => b.current - a.current);
+
+        // Get current tab data
+        const getCurrentData = () => {
+          switch (driverTab) {
+            case 'customer': return customerData;
+            case 'coreSize': return sizeData;
+            case 'application': return appData;
+            default: return customerData;
+          }
+        };
+
+        const currentData = getCurrentData();
+        const topItem = currentData[0];
+        const fastestGrowth = currentData.filter(d => d.yoy !== null && d.yoy > 0).sort((a, b) => (b.yoy ?? 0) - (a.yoy ?? 0))[0];
+        const top3Share = currentData.slice(0, 3).reduce((s, d) => s + d.share, 0);
+
+        // Format value based on tab
+        const formatDriverValue = (val: number) => {
+          if (driverTab === 'coreSize') return val.toLocaleString();
+          return formatPlainMoney(val, 'USD', { alreadyMillions: false });
+        };
+
+        // Chart data for horizontal bar
+        const chartData = currentData.slice(0, 8).map((d, i) => ({
+          label: d.label,
+          value: d.current,
+          color: DRIVER_COLORS[i % DRIVER_COLORS.length],
+        }));
+
+        return (
+          <div className="twk-card" style={{ marginBottom: 16 }}>
+            <div className="twk-card-header">
+              <Space>
+                <BarChartOutlined />
+                <span className="twk-card-title">{t('dashboard.drivers.title')}</span>
+              </Space>
+              <Space>
+                <Text type="secondary" style={{ fontSize: 11 }}>{t('dashboard.drivers.selectYear')}:</Text>
+                <Segmented
+                  size="small"
+                  value={selectedYear}
+                  onChange={v => setDriverYear(v as string)}
+                  options={availableYears.map(y => ({ label: y, value: y }))}
                 />
+              </Space>
+            </div>
+            <div className="twk-card-body">
+              <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
+                {t('dashboard.drivers.subtitle')}
+              </Text>
+
+              {/* Tabs */}
+              <Segmented
+                value={driverTab}
+                onChange={v => setDriverTab(v as string)}
+                options={[
+                  { label: t('dashboard.drivers.customer'), value: 'customer' },
+                  { label: t('dashboard.drivers.coreSize'), value: 'coreSize' },
+                  { label: t('dashboard.drivers.application'), value: 'application' },
+                ]}
+                style={{ marginBottom: 16 }}
+              />
+
+              {/* Insight Strip */}
+              <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                <Col xs={24} sm={8}>
+                  <div style={{ padding: '10px 12px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0' }}>
+                    <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>{t('dashboard.drivers.topContributor')}</Text>
+                    <Text strong style={{ fontSize: 14 }}>{topItem?.label ?? '-'}</Text>
+                    <div style={{ fontSize: 11, color: '#6b7280' }}>
+                      {topItem ? `${formatDriverValue(topItem.current)} · ${topItem.share.toFixed(1)}%` : '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col xs={24} sm={8}>
+                  <div style={{ padding: '10px 12px', background: '#eff6ff', borderRadius: 8, border: '1px solid #bfdbfe' }}>
+                    <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>{t('dashboard.drivers.fastestGrowth')}</Text>
+                    <Text strong style={{ fontSize: 14 }}>{fastestGrowth?.label ?? '-'}</Text>
+                    <div style={{ fontSize: 11, color: '#6b7280' }}>
+                      {fastestGrowth?.yoy !== null && fastestGrowth?.yoy !== undefined
+                        ? `+${fastestGrowth.yoy.toFixed(1)}% YoY`
+                        : '-'}
+                    </div>
+                  </div>
+                </Col>
+                <Col xs={24} sm={8}>
+                  <div style={{ padding: '10px 12px', background: top3Share > 70 ? '#fef3c7' : '#f5f5f5', borderRadius: 8, border: top3Share > 70 ? '1px solid #fcd34d' : '1px solid #e5e7eb' }}>
+                    <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>{t('dashboard.drivers.concentration')}</Text>
+                    <Text strong style={{ fontSize: 14 }}>{top3Share.toFixed(1)}%</Text>
+                    <div style={{ fontSize: 11, color: top3Share > 70 ? '#b45309' : '#6b7280' }}>
+                      {t('dashboard.drivers.top3Share')}
+                      {top3Share > 70 && ` · ${t('dashboard.drivers.concentrationWarning')}`}
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+
+              {/* Chart */}
+              <div style={{ marginBottom: 16 }}>
+                <ResponsiveContainer width="100%" height={Math.max(200, chartData.length * 36)}>
+                  <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 60, left: 10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis type="number" tickFormatter={(v: number) => driverTab === 'coreSize' ? v.toLocaleString() : `${(v / 1e6).toFixed(0)}M`} tick={{ fontSize: 10 }} />
+                    <YAxis type="category" dataKey="label" width={80} tick={{ fontSize: 11 }} />
+                    <Tooltip
+                      formatter={(value: any) => [
+                        driverTab === 'coreSize'
+                          ? `${Number(value).toLocaleString()} pcs`
+                          : `${(Number(value) / 1e6).toFixed(1)} M NTD`,
+                        t('dashboard.drivers.revenue'),
+                      ]}
+                      contentStyle={{ borderRadius: 8, fontSize: 12 }}
+                    />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                      {chartData.map((entry, index) => (
+                        <Cell key={index} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                <Text type="secondary" style={{ fontSize: 10, display: 'block', marginTop: 4 }}>
+                  {t('dashboard.drivers.chartNote')}
+                </Text>
+              </div>
+
+              {/* Compact Table */}
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                      <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 600 }}>{driverTab === 'customer' ? t('dashboard.drivers.customer') : driverTab === 'coreSize' ? t('dashboard.drivers.coreSize') : t('dashboard.drivers.application')}</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px', fontWeight: 600 }}>{selectedYear}</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px', fontWeight: 600 }}>{prevYear}</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px', fontWeight: 600 }}>{t('dashboard.drivers.change')}</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px', fontWeight: 600 }}>{t('dashboard.drivers.share')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentData.slice(0, 10).map((row, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                        <td style={{ padding: '6px 8px', fontWeight: 500 }}>{row.label}</td>
+                        <td style={{ textAlign: 'right', padding: '6px 8px' }}>{driverTab === 'coreSize' ? row.current.toLocaleString() : formatPlainMoney(row.current, 'USD', { alreadyMillions: false })}</td>
+                        <td style={{ textAlign: 'right', padding: '6px 8px' }}>{driverTab === 'coreSize' ? row.prev.toLocaleString() : formatPlainMoney(row.prev, 'USD', { alreadyMillions: false })}</td>
+                        <td style={{ textAlign: 'right', padding: '6px 8px' }}>
+                          {row.yoy === null ? (
+                            <Tag color="blue">{t('dashboard.drivers.new')}</Tag>
+                          ) : (
+                            <Text style={{ color: row.change >= 0 ? '#059669' : '#dc2626', fontSize: 12 }}>
+                              {row.change >= 0 ? '+' : ''}{driverTab === 'coreSize' ? row.change.toLocaleString() : formatPlainMoney(row.change, 'USD', { alreadyMillions: false })}
+                            </Text>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '6px 8px' }}>{row.share.toFixed(1)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
-          </Col>
-          <Col xs={24} lg={8}>
-            <div className="twk-card">
-              <div className="twk-card-header">
-                <span className="twk-card-title" style={{ fontSize: 13 }}>{t('dashboard.coreBySize')}</span>
-              </div>
-              <div className="twk-card-body">
-                <TimeMatrixTable
-                  rows={analyticsModel.coreDemandBySize}
-                  timeColumns={analyticsModel.yearlyHealth.map(y => y.year)}
-                  formatValue={(v) => v.toLocaleString()}
-                />
-              </div>
-            </div>
-          </Col>
-          <Col xs={24} lg={8}>
-            <div className="twk-card">
-              <div className="twk-card-header">
-                <span className="twk-card-title" style={{ fontSize: 13 }}>{t('dashboard.revByApp')}</span>
-              </div>
-              <div className="twk-card-body">
-                <TimeMatrixTable
-                  rows={analyticsModel.revenueByApplication}
-                  timeColumns={analyticsModel.yearlyHealth.map(y => y.year)}
-                  formatValue={(v) => formatCurrency(v, currencySettings, analyticsModel.yearlyHealth[0]?.year)}
-                />
-              </div>
-            </div>
-          </Col>
-        </Row>
-      )}
+          </div>
+        );
+      })()}
 
       {/* SECTION 2B: Actionable Intelligence — v1.56.2 redesign */}
       <div className="twk-card" style={{ marginBottom: 16 }}>
