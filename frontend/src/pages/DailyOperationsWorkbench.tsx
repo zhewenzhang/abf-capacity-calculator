@@ -56,7 +56,8 @@ import { useAppPrefs } from '../context/AppPreferencesContext';
 import { formatCurrency, convertFromUsd, DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
 import { formatAttainment, formatBpAmount } from '../core/bpTargets';
 import { formatPlainMoney, formatDelta } from '../core/formatters';
-import { Line } from '@ant-design/charts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Line as AntLine } from '@ant-design/charts';
 import TimeMatrixTable from '../components/analytics/TimeMatrixTable';
 import type { ProjectScope, SKU, Forecast, CapacityPlan, ProjectParameters } from '../types';
 
@@ -814,27 +815,47 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
               {/* Revenue Trend Chart with BP Monthly Target Line */}
               {chartMonths.length > 0 && (() => {
                 // Chart color constants
-                const CHART_COLORS = {
-                  target: '#f59e0b',   // amber
-                  revenue: '#10b981',  // emerald
+                const REVENUE_BP_CHART_COLORS = {
+                  forecastRevenue: '#10b981', // emerald green
+                  monthlyBpTarget: '#f59e0b', // amber orange
+                  grid: '#e5e7eb',
+                  axis: '#94a3b8',
                 };
 
-                // Build chart data with proper currency conversion
-                // Use flat structure: each row has month, revenue, target
-                const chartData: Array<{ month: string; revenue: number; target: number }> = [];
+                // Build chart data with semantic keys
+                const chartData: Array<{
+                  month: string;
+                  year: number;
+                  monthNumber: number;
+                  forecastRevenueMillionNtd: number;
+                  monthlyBpTargetMillionNtd: number;
+                  gapMillionNtd: number;
+                  attainment: number;
+                }> = [];
+
                 for (const r of chartMonths) {
-                  const year = r.month.substring(0, 4);
-                  const revenueTwd = convertFromUsd(r.revenue, 'TWD', currencySettings, year);
-                  const yearlyTarget = bpTargets[year] ?? 0;
+                  const year = parseInt(r.month.substring(0, 4), 10);
+                  const monthNum = parseInt(r.month.substring(5, 7), 10);
+                  const revenueTwd = convertFromUsd(r.revenue, 'TWD', currencySettings, String(year));
+                  const yearlyTarget = bpTargets[String(year)] ?? 0;
+                  const monthlyTarget = yearlyTarget / 12;
+                  const revenueM = revenueTwd / 1e6;
+                  const gap = revenueM - monthlyTarget;
+                  const attainment = monthlyTarget > 0 ? (revenueM / monthlyTarget * 100) : 0;
+
                   chartData.push({
                     month: r.month,
-                    revenue: revenueTwd / 1e6,
-                    target: yearlyTarget / 12,
+                    year,
+                    monthNumber: monthNum,
+                    forecastRevenueMillionNtd: revenueM,
+                    monthlyBpTargetMillionNtd: monthlyTarget,
+                    gapMillionNtd: gap,
+                    attainment,
                   });
                 }
 
-                // X-axis formatter: show year for Jan, month number for Apr/Jul/Oct
-                const formatMonthTick = (v: string): string => {
+                // X-axis formatter
+                const formatRevenueBpMonthTick = (v: string): string => {
                   const month = parseInt(v.substring(5, 7), 10);
                   const year = v.substring(0, 4);
                   if (month === 1) return `${year}年1月`;
@@ -843,73 +864,109 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                 };
 
                 // Y-axis formatter
-                const formatMoneyTick = (v: any): string => {
-                  return `${Number(v).toLocaleString()} M`;
+                const formatRevenueBpYAxisTick = (v: number): string => {
+                  return `${v.toLocaleString()} M`;
                 };
 
-                // Custom tooltip formatter
-                const formatTooltip = (title: string, items: any[]) => {
-                  const revenueItem = items.find((i: any) => i.name === t('dashboard.forecastRevenue'));
-                  const targetItem = items.find((i: any) => i.name === t('dashboard.monthlyBpTarget'));
-                  const revenueVal = revenueItem?.value ?? 0;
-                  const targetVal = targetItem?.value ?? 0;
-                  const gap = revenueVal - targetVal;
-                  const attainment = targetVal > 0 ? (revenueVal / targetVal * 100) : 0;
+                // Custom tooltip
+                const CustomTooltip = ({ active, payload }: any) => {
+                  if (!active || !payload || payload.length === 0) return null;
+                  const data = payload[0]?.payload;
+                  if (!data) return null;
 
-                  return {
-                    name: title,
-                    value: [
-                      `${t('dashboard.monthlyBpTarget')}: ${targetVal.toLocaleString(undefined, { maximumFractionDigits: 1 })} M NTD`,
-                      `${t('dashboard.forecastRevenue')}: ${revenueVal.toLocaleString(undefined, { maximumFractionDigits: 1 })} M NTD`,
-                      `${t('bp.gap')}: ${gap >= 0 ? '+' : ''}${gap.toLocaleString(undefined, { maximumFractionDigits: 1 })} M NTD`,
-                      `${t('bp.attainment')}: ${attainment.toFixed(1)}%`,
-                    ].join('\n'),
-                  };
+                  const year = data.year;
+                  const monthNum = data.monthNumber;
+                  const revVal = data.forecastRevenueMillionNtd;
+                  const targetVal = data.monthlyBpTargetMillionNtd;
+                  const gapVal = data.gapMillionNtd;
+                  const attVal = data.attainment;
+
+                  return (
+                    <div style={{
+                      background: '#fff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 8,
+                      padding: '10px 14px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                      fontSize: 12,
+                    }}>
+                      <div style={{ fontWeight: 600, marginBottom: 6 }}>{year}年{monthNum}月</div>
+                      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 3 }}>
+                        <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: REVENUE_BP_CHART_COLORS.monthlyBpTarget, marginRight: 6 }} />
+                        <span>{t('dashboard.monthlyBpTarget')}：{targetVal.toLocaleString(undefined, { maximumFractionDigits: 1 })} M NTD</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: REVENUE_BP_CHART_COLORS.forecastRevenue, marginRight: 6 }} />
+                        <span>{t('dashboard.forecastRevenue')}：{revVal.toLocaleString(undefined, { maximumFractionDigits: 1 })} M NTD</span>
+                      </div>
+                      <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 4, marginTop: 4 }}>
+                        <div>{t('bp.gap')}：{gapVal >= 0 ? '+' : ''}{gapVal.toLocaleString(undefined, { maximumFractionDigits: 1 })} M NTD</div>
+                        <div>{t('bp.attainment')}：{attVal.toFixed(1)}%</div>
+                      </div>
+                    </div>
+                  );
+                };
+
+                // Custom label for last point
+                const CustomLabel = ({ x, y, value, index }: any) => {
+                  const lastIdx = chartData.length - 1;
+                  if (index === lastIdx && value !== undefined) {
+                    return (
+                      <text x={x} y={y - 10} textAnchor="middle" fontSize={10} fill="#666">
+                        {Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })} M
+                      </text>
+                    );
+                  }
+                  return null;
                 };
 
                 return (
                   <div>
                     <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{t('dashboard.revenueTrendTitle')}</Text>
-                    <div style={{ height: 200 }}>
-                      <Line
-                        data={chartData}
-                        xField="month"
-                        yField={['revenue', 'target']}
-                        height={200}
-                        autoFit
-                        xAxis={{
-                          label: {
-                            autoRotate: false,
-                            formatter: formatMonthTick,
-                          },
-                        }}
-                        yAxis={{ label: { formatter: formatMoneyTick } }}
-                        tooltip={{
-                          formatter: formatTooltip,
-                        }}
-                        color={[CHART_COLORS.revenue, CHART_COLORS.target]}
-                        point={{ size: 3 }}
-                        legend={{
-                          itemName: {
-                            formatter: (text: string) => {
-                              if (text === 'revenue') return t('dashboard.forecastRevenue');
-                              if (text === 'target') return t('dashboard.monthlyBpTarget');
-                              return text;
-                            },
-                          },
-                        }}
-                        label={{
-                          formatter: (datum: any) => {
-                            // Only show label for last point
-                            const lastMonth = chartData[chartData.length - 1]?.month;
-                            if (datum.month === lastMonth) {
-                              return datum.revenue?.toLocaleString(undefined, { maximumFractionDigits: 1 }) ?? '';
-                            }
-                            return '';
-                          },
-                        }}
-                      />
-                    </div>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <LineChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={REVENUE_BP_CHART_COLORS.grid} />
+                        <XAxis
+                          dataKey="month"
+                          tickFormatter={formatRevenueBpMonthTick}
+                          tick={{ fontSize: 11, fill: REVENUE_BP_CHART_COLORS.axis }}
+                          interval={0}
+                        />
+                        <YAxis
+                          tickFormatter={formatRevenueBpYAxisTick}
+                          tick={{ fontSize: 11, fill: REVENUE_BP_CHART_COLORS.axis }}
+                        />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Legend
+                          formatter={(value: string) => {
+                            if (value === 'monthlyBpTargetMillionNtd') return t('dashboard.monthlyBpTarget');
+                            if (value === 'forecastRevenueMillionNtd') return t('dashboard.forecastRevenue');
+                            return value;
+                          }}
+                          wrapperStyle={{ fontSize: 11 }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="monthlyBpTargetMillionNtd"
+                          name="monthlyBpTargetMillionNtd"
+                          stroke={REVENUE_BP_CHART_COLORS.monthlyBpTarget}
+                          strokeWidth={2.5}
+                          dot={false}
+                          activeDot={{ r: 5, fill: REVENUE_BP_CHART_COLORS.monthlyBpTarget }}
+                          label={<CustomLabel />}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="forecastRevenueMillionNtd"
+                          name="forecastRevenueMillionNtd"
+                          stroke={REVENUE_BP_CHART_COLORS.forecastRevenue}
+                          strokeWidth={2.5}
+                          dot={false}
+                          activeDot={{ r: 5, fill: REVENUE_BP_CHART_COLORS.forecastRevenue }}
+                          label={<CustomLabel />}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
                     <Text type="secondary" style={{ fontSize: 10, display: 'block', marginTop: 4 }}>
                       {t('dashboard.chartNote')}
                     </Text>
@@ -929,7 +986,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
           </div>
           <div className="twk-card-body">
             <div style={{ height: 200 }}>
-              <Line
+              <AntLine
                 data={(() => {
                   const data: Array<{ month: string; type: string; value: number }> = [];
                   analyticsModel.monthlyUtilization.forEach(u => {
