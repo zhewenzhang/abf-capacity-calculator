@@ -1242,7 +1242,7 @@ export const en: Record<string, string> = {
   'scenario.kpi.capacityImpact': 'Capacity Impact',
   'scenario.kpi.maxBuUtil': 'Max BU Util',
   'scenario.charts.title': 'Annual Impact Trends',
-  'scenario.chart.revenue': 'Revenue (M USD)',
+  'scenario.chart.revenue': 'Revenue (M NTD)',
   'scenario.chart.bpAttainment': 'BP Attainment (%)',
   'scenario.chart.utilization': 'Max Utilization (%)',
   'scenario.table.title': 'Annual Impact Results',

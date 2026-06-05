@@ -540,7 +540,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                 <div style={{ textAlign: 'center', padding: '8px 0' }}>
                   <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.totalRevenue')}</Text>
                   <Text strong style={{ fontSize: 18 }}>
-                    {formatPlainMoney(analyticsModel.totalRevenue, 'USD')}
+                    {formatPlainMoney(convertFromUsd(analyticsModel.totalRevenue, 'TWD', currencySettings), 'TWD')}
                   </Text>
                 </div>
               </Col>
@@ -1134,7 +1134,8 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
         // Format value based on tab
         const formatDriverValue = (val: number) => {
           if (driverTab === 'coreSize') return val.toLocaleString();
-          return formatPlainMoney(val, 'USD', { alreadyMillions: false });
+          const valTwd = convertFromUsd(val, 'TWD', currencySettings);
+          return formatPlainMoney(valTwd, 'TWD', { alreadyMillions: false });
         };
 
         // Chart data for horizontal bar
@@ -1253,23 +1254,28 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                     </tr>
                   </thead>
                   <tbody>
-                    {currentData.slice(0, 10).map((row, idx) => (
+                    {currentData.slice(0, 10).map((row, idx) => {
+                      const currentTwd = driverTab === 'coreSize' ? row.current : convertFromUsd(row.current, 'TWD', currencySettings);
+                      const prevTwd = driverTab === 'coreSize' ? row.prev : convertFromUsd(row.prev, 'TWD', currencySettings);
+                      const changeTwd = driverTab === 'coreSize' ? row.change : convertFromUsd(row.change, 'TWD', currencySettings);
+                      return (
                       <tr key={idx} style={{ borderBottom: '1px solid #f0f0f0' }}>
                         <td style={{ padding: '6px 8px', fontWeight: 500 }}>{row.label}</td>
-                        <td style={{ textAlign: 'right', padding: '6px 8px' }}>{driverTab === 'coreSize' ? row.current.toLocaleString() : formatPlainMoney(row.current, 'USD', { alreadyMillions: false })}</td>
-                        <td style={{ textAlign: 'right', padding: '6px 8px' }}>{driverTab === 'coreSize' ? row.prev.toLocaleString() : formatPlainMoney(row.prev, 'USD', { alreadyMillions: false })}</td>
+                        <td style={{ textAlign: 'right', padding: '6px 8px' }}>{driverTab === 'coreSize' ? currentTwd.toLocaleString() : formatPlainMoney(currentTwd, 'TWD', { alreadyMillions: false })}</td>
+                        <td style={{ textAlign: 'right', padding: '6px 8px' }}>{driverTab === 'coreSize' ? prevTwd.toLocaleString() : formatPlainMoney(prevTwd, 'TWD', { alreadyMillions: false })}</td>
                         <td style={{ textAlign: 'right', padding: '6px 8px' }}>
                           {row.yoy === null ? (
                             <Tag color="blue">{t('dashboard.drivers.new')}</Tag>
                           ) : (
                             <Text style={{ color: row.change >= 0 ? '#059669' : '#dc2626', fontSize: 12 }}>
-                              {row.change >= 0 ? '+' : ''}{driverTab === 'coreSize' ? row.change.toLocaleString() : formatPlainMoney(row.change, 'USD', { alreadyMillions: false })}
+                              {row.change >= 0 ? '+' : ''}{driverTab === 'coreSize' ? changeTwd.toLocaleString() : formatPlainMoney(changeTwd, 'TWD', { alreadyMillions: false })}
                             </Text>
                           )}
                         </td>
                         <td style={{ textAlign: 'right', padding: '6px 8px' }}>{row.share.toFixed(1)}%</td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1498,7 +1504,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
                         color: scenarioV2Result.comparison.deltas.totalRevenueUsd.delta >= 0
                           ? token.colorSuccess : token.colorError,
                       }}>
-                        {formatDelta(scenarioV2Result.comparison.deltas.totalRevenueUsd.delta, { currency: 'USD' })}
+                        {formatDelta(convertFromUsd(scenarioV2Result.comparison.deltas.totalRevenueUsd.delta, 'TWD', currencySettings), { suffix: ' M NTD' })}
                       </Text>
                     </Text>
                   )}

@@ -49,6 +49,7 @@ import {
   type YearlyResult,
 } from '../core/scenarioEngine';
 import { formatNumber } from '../core/formatters';
+import { convertFromUsd, normalizeCurrencySettings, DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
 import PageHeader from '../components/common/PageHeader';
 
 const { Text, Title } = Typography;
@@ -153,6 +154,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
   const [computing, setComputing] = useState(false);
   const [resultMode, setResultMode] = useState<'original' | 'simulated' | 'delta'>('simulated');
   const [dqDismissed, setDqDismissed] = useState(false);
+  const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(DEFAULT_CURRENCY_SETTINGS);
 
   // Years management
   const [years, setYears] = useState<string[]>([]);
@@ -198,6 +200,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
       setCapacityPlans(cpData);
       setParams(paramData);
       if (paramData) {
+        setCurrencySettings(normalizeCurrencySettings(paramData.currencySettings));
         setBaselineDq(buildDataQualitySummary({
           skus: skuData, forecasts: fcData, capacityPlans: cpData, params: paramData,
         }));
@@ -290,9 +293,11 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
     const base = comparison.baseline.yearly;
     const scen = comparison.scenario.yearly;
 
-    // Total revenue delta across all years
-    const totalBaseRev = base.reduce((s, y) => s + y.totalRevenueUsd, 0);
-    const totalScenRev = scen.reduce((s, y) => s + y.totalRevenueUsd, 0);
+    // Total revenue delta across all years (convert USD to TWD)
+    const totalBaseRevUsd = base.reduce((s, y) => s + y.totalRevenueUsd, 0);
+    const totalScenRevUsd = scen.reduce((s, y) => s + y.totalRevenueUsd, 0);
+    const totalBaseRev = convertFromUsd(totalBaseRevUsd, 'TWD', currencySettings);
+    const totalScenRev = convertFromUsd(totalScenRevUsd, 'TWD', currencySettings);
     const revDelta = totalScenRev - totalBaseRev;
 
     // Max BP attainment change
@@ -318,7 +323,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
     }
 
     return { revDelta, worstBpDelta, worstBpYear, maxBuUtil, maxBuYear };
-  }, [comparison, displayYears]);
+  }, [comparison, displayYears, currencySettings]);
 
   // Chart data
   const revenueChartData = useMemo(() => {
@@ -326,13 +331,15 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
     return displayYears.map(y => {
       const b = comparison.baseline.yearly.find(r => r.year === y);
       const s = comparison.scenario.yearly.find(r => r.year === y);
+      const baseRevTwd = b ? convertFromUsd(b.totalRevenueUsd, 'TWD', currencySettings) / 1e6 : 0;
+      const scenRevTwd = s ? convertFromUsd(s.totalRevenueUsd, 'TWD', currencySettings) / 1e6 : 0;
       return {
         year: y,
-        baseline: b ? b.totalRevenueUsd / 1e6 : 0,
-        scenario: s ? s.totalRevenueUsd / 1e6 : 0,
+        baseline: baseRevTwd,
+        scenario: scenRevTwd,
       };
     });
-  }, [comparison, displayYears]);
+  }, [comparison, displayYears, currencySettings]);
 
   const bpChartData = useMemo(() => {
     if (!comparison) return [];
@@ -372,11 +379,17 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
       {
         key: 'totalRevenueUsd',
         labelKey: 'scenario.metric.totalRevenue',
-        format: v => v !== null ? `${(v / 1e6).toFixed(1)}M` : '—',
+        format: v => {
+          if (v === null) return '—';
+          const vTwd = convertFromUsd(v, 'TWD', currencySettings);
+          return `${(vTwd / 1e6).toFixed(1)} M NTD`;
+        },
         deltaFormat: (b, s) => {
           if (b === null || s === null) return '—';
-          const d = (s - b) / 1e6;
-          return `${d >= 0 ? '+' : ''}${d.toFixed(1)}M`;
+          const bTwd = convertFromUsd(b, 'TWD', currencySettings);
+          const sTwd = convertFromUsd(s, 'TWD', currencySettings);
+          const d = (sTwd - bTwd) / 1e6;
+          return `${d >= 0 ? '+' : ''}${d.toFixed(1)} M NTD`;
         },
       },
       {
@@ -454,7 +467,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
         return m.deltaFormat(bVal, sVal);
       }),
     }));
-  }, [comparison, displayYears, resultMode, t]);
+  }, [comparison, displayYears, resultMode, t, currencySettings]);
 
   // ---- Loading ----
   if (loading) {
@@ -678,9 +691,8 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
               <Card style={{ ...S.cardCompact, borderLeft: `4px solid ${S.accent}` }}>
                 <Text type="secondary" style={{ fontSize: 12 }}>{t('scenario.kpi.revenueImpact')}</Text>
                 <div style={{ fontSize: 24, fontWeight: 700, color: kpi && kpi.revDelta >= 0 ? S.positive : S.negative, marginTop: 4 }}>
-                  {kpi ? `${kpi.revDelta >= 0 ? '+' : ''}${(kpi.revDelta / 1e6).toFixed(1)}M` : '—'}
+                  {kpi ? `${kpi.revDelta >= 0 ? '+' : ''}${(kpi.revDelta / 1e6).toFixed(1)} M NTD` : '—'}
                 </div>
-                <Text type="secondary" style={{ fontSize: 11 }}>USD</Text>
               </Card>
             </Col>
             <Col xs={24} sm={8}>
