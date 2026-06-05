@@ -1,5 +1,5 @@
 /**
- * AI Provider Prompt Pack Builder (v1.52.0)
+ * AI Provider Prompt Pack Builder (v1.58.2)
  *
  * Builds prompt packs specifically for provider request construction.
  * Each pack includes system prompt, user message, guardrails, and
@@ -11,9 +11,12 @@
  * - No firebase/firestore imports
  * - No fetch() or network API calls
  * - No localStorage or sessionStorage
- * - Includes F-A-I-R guardrails and safety rules in every prompt
+ * - Includes safety guardrails in every prompt
  * - Does NOT mutate the input context
  * - Supports language-aware prompts (zh-TW / en)
+ *
+ * v1.58.2: Simplified output format. Removed FAIR labels.
+ * Uses concise 4-section structure. Supports action hints.
  *
  * Consumes AiCopilotContext from aiCopilotContext.ts.
  */
@@ -71,56 +74,6 @@ const FORBIDDEN_OPERATIONS: readonly string[] = [
   'auto-save',
 ] as const;
 
-const FAIR_OUTPUT_FORMAT = `F-A-I-R Output Format Instructions:
-
-## 強制輸出結構
-
-你的回答必須嚴格按照以下結構輸出，不可省略任何段落：
-
-### 1. 重點摘要（開頭）
-- 最多 3 條 bullet points
-- 每條不超過 20 字
-- 概括最重要的發現
-
-### 2. 主要發現
-- 使用 Markdown bullet list
-- 每條結論標註 F-A-I-R 標籤
-- 標籤格式：[Fact]、[Assumption]、[Inference]、[Recommendation]
-- 禁止拼錯：不可寫 [Interence]，必須是 [Inference]
-
-### 3. 數據品質問題
-- 列出資料品質相關問題
-- 若資料品質分數低，必須先說明：「由於資料品質不足，以下結論僅作為初步診斷。」
-
-### 4. 產能與稼動率風險
-- 分析產能瓶頸、稼動率超標月份
-- 使用 bullet list 呈現
-
-### 5. BP 營收差距
-- 分析 BP 達成率、差距金額
-- 涉及 USD、TWD、CNY 比較時，必須明確寫出匯率換算
-- 範例：「以下 BP 差距已按 1 USD = 32 TWD 換算」
-
-### 6. 建議行動
-- 每一條 [Recommendation] 必須包含來源引用
-- 來源格式：「來源：Data Quality Summary」、「來源：Capacity Risk Model」、「來源：BP Analysis」、「來源：Scenario Result」
-- 禁止說「請確認後執行」
-- 必須說「建議人工確認後再採取行動」或「此建議不會自動寫入系統」
-
-### 7. 需人工確認的事項
-- 列出需要人工進一步確認的項目
-
-## F-A-I-R 標籤定義
-- [Fact]: 直接從提供資料計算得出，可驗證。範例：「2026-03 Core 稼動率為 95.2%」
-- [Assumption]: 基於設定參數或預設條件。範例：「假設匯率 USD/TWD = 32.0」
-- [Inference]: 從資料模式推導的趨勢或可能性。範例：「若需求成長 10%，瓶頸月份可能移至 Q2」
-- [Recommendation]: 建議的行動方案。範例：「建議評估 5% Core 產能擴充」
-
-## 格式要求
-- 使用 Markdown 格式：## 標題、**粗體**、- 列表、1. 編號列表
-- 每個段落內使用 bullet list，不要輸出一整段長文
-- 行距適當，易於閱讀`;
-
 // ============================================================
 // Language Rules
 // ============================================================
@@ -145,7 +98,6 @@ function getLanguageRule(lang: SupportedLanguage): string {
       '- Look Ahead → 前瞻',
       '',
       '回答語氣：專業、簡潔、有條理。',
-      '使用條列式（bullet points）呈現重點。',
     ].join('\n');
   }
 
@@ -234,15 +186,14 @@ function getModeNote(mode: ProviderMode): string {
 }
 
 // ============================================================
-// buildProviderSystemPrompt
+// buildProviderSystemPrompt — v1.58.2 Simplified
 // ============================================================
 
 /**
  * Build a system-level prompt for provider requests.
  *
- * Includes identity, guardrails, context summary, source references,
- * allowed/forbidden operations, F-A-I-R output format, currency rules,
- * attribution warning, no-write requirement, and language rules.
+ * v1.58.2: Simplified output format. No FAIR labels.
+ * Concise 4-section answer structure. Action hints support.
  */
 export function buildProviderSystemPrompt(
   context: AiCopilotContext,
@@ -261,11 +212,61 @@ export function buildProviderSystemPrompt(
     '[riskBriefSummary] Risk attribution — shortage months, drivers',
     '[scenarioSummary] Scenario analysis — multipliers, delta comparison',
     '[currencyAssumptions] Currency assumptions — currency types, exchange rates',
-    '[assumptions] Assumptions list',
   ];
 
+  const conciseOutputFormat = lang === 'zh-TW'
+    ? `## 輸出格式
+
+回答必須使用以下簡潔結構，除非使用者要求詳細報告：
+
+### 1. 結論
+一句話總結核心發現。
+
+### 2. 關鍵數據
+最多 4 條 bullet points，列出支援結論的主要數據。
+- 金額使用 M NTD（除非使用者指定其他單位）
+- 使用短句，不要完整段落
+
+### 3. 原因
+最多 3 條 bullet points，簡要說明原因。
+
+### 4. 下一步
+最多 3 條建議行動。如可跳轉頁面，請加註頁面名稱：
+- 範例："查看產能規劃頁面進行詳細分析。"
+- 範例："請至 BP 目標頁面確認年度目標。"
+
+### 格式規則
+- 不要使用 [Fact]、[Recommendation]、[Inference]、[Assumption] 等英文長標籤
+- 可使用「事實：」「判斷：」「假設：」「建議：」等短標籤，但不要每句重複
+- 不要輸出 7 段長報告
+- 除非使用者要求詳細分析，否則回答控制在 300-600 中文字
+- 回答中如提及可跳轉的頁面，使用自然語言指引即可`
+    : `## Output Format
+
+Use this concise structure unless the user requests a detailed report:
+
+### 1. Conclusion
+One sentence summary.
+
+### 2. Key Data
+Up to 4 bullet points with supporting data.
+- Use M NTD for amounts (unless user specifies otherwise)
+- Use short phrases, not full paragraphs
+
+### 3. Reasons
+Up to 3 bullet points explaining why.
+
+### 4. Next Steps
+Up to 3 suggested actions. If a page link is relevant, mention the page name naturally.
+
+### Rules
+- Do NOT use [Fact], [Recommendation], [Inference], [Assumption] long labels
+- Do NOT output a 7-section report
+- Keep answers to 300-600 characters unless user asks for detailed analysis
+- Mention page navigation in natural language`;
+
   const sections = [
-    'You are the ABF Capacity Calculator AI assistant. You analyze capacity planning data.',
+    'You are the ABF CSS enterprise operations analytics assistant. You help analyze ABF capacity, forecasts, BP targets, revenue, customers, and data quality.',
     '',
     '## Mode',
     modeNote,
@@ -287,26 +288,19 @@ export function buildProviderSystemPrompt(
     '## Forbidden Operations',
     ...FORBIDDEN_OPERATIONS.map(o => `- ${o}`),
     '',
-    '## Output Format',
-    FAIR_OUTPUT_FORMAT,
+    conciseOutputFormat,
     '',
     '## Currency / BP Rules',
     '- Always convert currency units before comparison (USD, TWD, CNY, Million TWD)',
     '- Always state the conversion rate used when presenting currency figures',
+    '- Default display currency: M NTD',
     '- BP Gap Attribution is proportional (revenue-share based), not strict causal attribution',
     '',
     '## Attribution Warning',
-    'Proportional patterns are NOT causation. BP Gap Attribution uses revenue-share weights to allocate gaps across SKUs. This is an analytical decomposition, not a causal claim. Never state or imply that a SKU "caused" a BP gap.',
+    'Proportional patterns are NOT causation. BP Gap Attribution uses revenue-share weights to allocate gaps across SKUs. This is an analytical decomposition, not a causal claim.',
     '',
     '## No-Write Requirement',
     'All output is for human review only. Do not produce code that writes, updates, deletes, or merges data. Do not suggest automated write flows without human approval.',
-    '',
-    '## 重要禁止用語',
-    '- 禁止說「請確認後執行」— 這暗示 AI 已經或即將自動執行',
-    '- 禁止說「Please confirm before proceeding」',
-    '- 必須說「建議人工確認後再採取行動」',
-    '- 必須說「此建議不會自動寫入系統」',
-    '- 範例：「[Recommendation] 建議評估 Q2 產能擴充方案。來源：Capacity Risk Model。建議人工確認後再採取行動，此建議不會自動寫入系統。」',
   ];
 
   return sections.join('\n');
@@ -320,7 +314,7 @@ export function buildProviderSystemPrompt(
  * Build a user message for provider requests.
  *
  * Includes the user's question, context data summary, and
- * a request for FAIR-labeled response.
+ * concise response instructions.
  */
 export function buildProviderUserMessage(
   context: AiCopilotContext,
@@ -330,8 +324,8 @@ export function buildProviderUserMessage(
   const contextSummary = buildContextSummary(context);
 
   const responseInstructions = lang === 'zh-TW'
-    ? '請提供 F-A-I-R 標註的回應（Fact / Assumption / Inference / Recommendation），使用上述資料回答用戶問題。請引用資料來源。'
-    : 'Please provide a FAIR-labeled response (Fact / Assumption / Inference / Recommendation) that addresses the user question using the context data above. Cite source references for each conclusion.';
+    ? '請使用上述資料回答用戶問題。回答請簡潔，使用結論/關鍵數據/原因/下一步四段結構。不要使用 [Fact] 等英文長標籤。'
+    : 'Please answer the user question using the context data above. Keep it concise using the structure: conclusion / key data / reasons / next steps. Do not use [Fact] or similar long labels.';
 
   const sections = [
     `User Question: ${question}`,
@@ -362,12 +356,15 @@ export function buildProviderPromptPack(
   mode: ProviderMode,
   lang: SupportedLanguage = 'en',
 ): ProviderPromptPack {
+  const sp = buildProviderSystemPrompt(context, mode, lang);
   return {
-    systemPrompt: buildProviderSystemPrompt(context, mode, lang),
+    systemPrompt: sp,
     userMessage: buildProviderUserMessage(context, userQuestion, lang),
     guardrails: [...GUARDRAILS],
     allowedOperations: [...ALLOWED_OPERATIONS],
     forbiddenOperations: [...FORBIDDEN_OPERATIONS],
-    outputFormat: FAIR_OUTPUT_FORMAT,
+    outputFormat: lang === 'zh-TW'
+      ? '簡潔四段結構：結論、關鍵數據、原因、下一步'
+      : 'Concise 4-section: Conclusion, Key Data, Reasons, Next Steps',
   };
 }

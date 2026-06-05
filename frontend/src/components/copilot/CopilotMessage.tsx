@@ -1,173 +1,199 @@
-import React from 'react';
-import { Card, Tag, Typography, Space, Alert, Collapse } from 'antd';
+import React, { useState } from 'react';
+import { Tag, Typography } from 'antd';
 import {
   WarningOutlined,
-  QuestionCircleOutlined,
-  RobotOutlined,
-  CheckCircleOutlined,
   InfoCircleOutlined,
+  DownOutlined,
+  RightOutlined,
 } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useNavigate } from 'react-router-dom';
 import { useI18n } from '../../i18n';
 import type { CopilotToolResult } from '../../core/aiCopilotTools';
 
-const { Text, Paragraph } = Typography;
+const { Text } = Typography;
 
 interface Props {
   result: CopilotToolResult;
-  showFixes?: boolean; // false for viewers
 }
 
-const CONFIDENCE_COLOR: Record<string, string> = {
-  high: 'green',
-  medium: 'orange',
-  low: 'red',
-  blocked: 'red',
+// --- Action chip type ---
+type AssistantAction = {
+  label: string;
+  to: string;
+  kind: 'navigate';
 };
 
-// F-A-I-R 標籤顏色配置
-const FAIR_BADGE_CONFIG: Record<string, { color: string; bg: string; border: string }> = {
-  Fact: { color: '#1890ff', bg: '#e6f7ff', border: '#91d5ff' },
-  Assumption: { color: '#8c8c8c', bg: '#fafafa', border: '#d9d9d9' },
-  Inference: { color: '#722ed1', bg: '#f9f0ff', border: '#d3adf7' },
-  Recommendation: { color: '#52c41a', bg: '#f6ffed', border: '#b7eb8f' },
+// Page routing map for action chips
+const NAV_MAP: Record<string, string> = {
+  '產能規劃': '/capacity',
+  '產能': '/capacity',
+  capacity: '/capacity',
+  'BP 目標': '/bp-targets',
+  'BP': '/bp-targets',
+  'bp-targets': '/bp-targets',
+  '預測': '/forecasts',
+  forecast: '/forecasts',
+  '情境': '/scenario',
+  scenario: '/scenario',
+  '營運': '/operations',
+  operations: '/operations',
+  '資料品質': '/operations',
+  '設定': '/parameters',
+  parameters: '/parameters',
+  '產品': '/products',
+  products: '/products',
+  '結果': '/results',
+  results: '/results',
 };
 
 /**
- * Determine the answer status for the status tag.
- * Priority: blocked > mock > warning > needsExternalAi > deterministic
+ * Extract page navigation hints from AI summary text.
+ * Looks for patterns like "查看XXX頁面" or "至XXX頁面"
  */
-function getAnswerStatus(result: CopilotToolResult): {
-  i18nKey: string;
-  color: string;
-} {
-  if (result.confidence === 'blocked') {
-    return { i18nKey: 'copilot.status.blocked', color: 'red' };
+function extractActions(summary: string, lang: string): AssistantAction[] {
+  const actions: AssistantAction[] = [];
+  const seen = new Set<string>();
+
+  // zh-TW patterns
+  const zhPatterns = summary.match(/(?:查看|前往|至|於|在)\s*(產能規劃|產能|BP 目標|BP|預測|情境|營運|資料品質|設定|產品|結果)(?:頁面)?/g);
+  if (zhPatterns) {
+    for (const p of zhPatterns) {
+      for (const [key, path] of Object.entries(NAV_MAP)) {
+        if (p.includes(key) && !seen.has(path)) {
+          seen.add(path);
+          actions.push({
+            label: lang === 'zh-TW' ? `前往 ${key}` : `Go to ${key}`,
+            to: path,
+            kind: 'navigate',
+          });
+          break;
+        }
+      }
+    }
   }
-  if (result.isMockProvider) {
-    return { i18nKey: 'copilot.status.mock', color: 'blue' };
+
+  // EN patterns
+  const enPatterns = summary.match(/(?:go to|visit|check|open)\s+(capacity|bp-targets|forecasts|scenario|operations|parameters|products|results)/gi);
+  if (enPatterns) {
+    for (const p of enPatterns) {
+      const lower = p.toLowerCase();
+      for (const [key, path] of Object.entries(NAV_MAP)) {
+        if (lower.includes(key) && !seen.has(path)) {
+          seen.add(path);
+          actions.push({ label: `Go to ${key}`, to: path, kind: 'navigate' });
+          break;
+        }
+      }
+    }
   }
-  if (result.validationIssues && result.validationIssues.length > 0) {
-    return { i18nKey: 'copilot.status.warning', color: 'orange' };
-  }
-  if (result.toolName === 'unknown') {
-    return { i18nKey: 'copilot.status.needsExternalAi', color: 'default' };
-  }
-  return { i18nKey: 'copilot.status.deterministic', color: 'green' };
+
+  return actions.slice(0, 3);
 }
 
 /**
- * 判斷是否為 AI 回應（包含 Markdown）
+ * Action chips component — renders clickable navigation chips.
  */
-function isAiMarkdownResponse(result: CopilotToolResult): boolean {
-  return result.toolName === 'DeepSeek AI' || result.toolName === 'unknown';
-}
+const ActionChips: React.FC<{ actions: AssistantAction[] }> = ({ actions }) => {
+  const navigate = useNavigate();
+  if (actions.length === 0) return null;
 
-/**
- * F-A-I-R Badge 組件
- */
-const FairBadge: React.FC<{ label: string; text?: string }> = ({ label, text }) => {
-  const config = FAIR_BADGE_CONFIG[label] || FAIR_BADGE_CONFIG.Fact;
   return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        padding: '2px 8px',
-        borderRadius: 4,
-        fontSize: 12,
-        fontWeight: 600,
-        color: config.color,
-        backgroundColor: config.bg,
-        border: `1px solid ${config.border}`,
-        marginRight: 8,
-        marginBottom: 4,
-      }}
-    >
-      [{label}]
-      {text && <span style={{ fontWeight: 400, marginLeft: 4 }}>{text}</span>}
-    </span>
+    <div className="ai-action-chips" style={{
+      display: 'flex',
+      gap: 8,
+      flexWrap: 'wrap',
+      marginTop: 10,
+      paddingTop: 10,
+      borderTop: '1px solid #f0f0f0',
+    }}>
+      {actions.map((action, i) => (
+        <Tag
+          key={i}
+          style={{
+            cursor: 'pointer',
+            padding: '4px 14px',
+            borderRadius: 16,
+            fontSize: 13,
+            border: '1px solid #52c41a',
+            color: '#52c41a',
+            background: '#f6ffed',
+          }}
+          onClick={() => navigate(action.to)}
+        >
+          {action.label} →
+        </Tag>
+      ))}
+    </div>
   );
 };
 
 /**
- * Markdown 渲染器組件 — 安全渲染 AI 回應
+ * Markdown renderer with clean prose styling.
  */
 const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
   return (
-    <div className="copilot-markdown-content">
+    <div className="copilot-markdown-content" style={{
+      fontSize: 15,
+      lineHeight: 1.65,
+      color: '#1a1a1a',
+    }}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          // 自定義 heading 樣式
           h1: ({ children }) => (
-            <h3 style={{ fontSize: 18, fontWeight: 700, marginTop: 16, marginBottom: 8, color: '#262626' }}>
+            <h3 style={{ fontSize: 17, fontWeight: 600, marginTop: 14, marginBottom: 6, color: '#1a1a1a' }}>
               {children}
             </h3>
           ),
           h2: ({ children }) => (
-            <h4 style={{ fontSize: 16, fontWeight: 600, marginTop: 14, marginBottom: 6, color: '#262626' }}>
+            <h4 style={{ fontSize: 15, fontWeight: 600, marginTop: 12, marginBottom: 5, color: '#1a1a1a' }}>
               {children}
             </h4>
           ),
           h3: ({ children }) => (
-            <h5 style={{ fontSize: 14, fontWeight: 600, marginTop: 12, marginBottom: 6, color: '#262626' }}>
+            <h5 style={{ fontSize: 14, fontWeight: 600, marginTop: 10, marginBottom: 4, color: '#1a1a1a' }}>
               {children}
             </h5>
           ),
-          // 自定義 list 樣式
+          p: ({ children }) => (
+            <p style={{ marginBottom: 8, lineHeight: 1.65 }}>{children}</p>
+          ),
           ul: ({ children }) => (
-            <ul style={{ paddingLeft: 20, margin: '8px 0', lineHeight: 1.8 }}>
-              {children}
-            </ul>
+            <ul style={{ paddingLeft: 20, margin: '4px 0 8px', lineHeight: 1.65 }}>{children}</ul>
           ),
           ol: ({ children }) => (
-            <ol style={{ paddingLeft: 20, margin: '8px 0', lineHeight: 1.8 }}>
-              {children}
-            </ol>
+            <ol style={{ paddingLeft: 20, margin: '4px 0 8px', lineHeight: 1.65 }}>{children}</ol>
           ),
           li: ({ children }) => (
-            <li style={{ marginBottom: 4 }}>{children}</li>
+            <li style={{ marginBottom: 3 }}>{children}</li>
           ),
-          // 自定義段落樣式
-          p: ({ children }) => (
-            <p style={{ marginBottom: 8, lineHeight: 1.8 }}>{children}</p>
-          ),
-          // 自定義 bold 樣式
           strong: ({ children }) => (
-            <strong style={{ fontWeight: 600, color: '#262626' }}>{children}</strong>
+            <strong style={{ fontWeight: 600 }}>{children}</strong>
           ),
-          // 自定義 code 樣式
           code: ({ children, className }) => {
             const isInline = !className;
-            if (isInline) {
-              return (
-                <code
-                  style={{
-                    padding: '2px 6px',
-                    borderRadius: 4,
-                    backgroundColor: '#f5f5f5',
-                    border: '1px solid #e8e8e8',
-                    fontSize: 13,
-                    fontFamily: 'monospace',
-                  }}
-                >
-                  {children}
-                </code>
-              );
-            }
-            return (
-              <pre
-                style={{
-                  padding: 12,
-                  borderRadius: 8,
-                  backgroundColor: '#f5f5f5',
-                  border: '1px solid #e8e8e8',
-                  overflow: 'auto',
-                }}
-              >
+            return isInline ? (
+              <code style={{
+                padding: '2px 6px',
+                borderRadius: 4,
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #e8e8e8',
+                fontSize: 13,
+                fontFamily: 'monospace',
+              }}>
+                {children}
+              </code>
+            ) : (
+              <pre style={{
+                padding: 12,
+                borderRadius: 8,
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #e8e8e8',
+                overflow: 'auto',
+                fontSize: 13,
+              }}>
                 <code>{children}</code>
               </pre>
             );
@@ -181,289 +207,240 @@ const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
 };
 
 /**
- * 品質提示區域 — 可摺疊的警告區塊
+ * Source references — collapsible, minimal.
  */
-const QualityHints: React.FC<{ issues: string[]; t: (key: string) => string }> = ({ issues, t }) => {
-  if (issues.length === 0) return null;
+const SourceLine: React.FC<{ sources: string[]; t: (key: string) => string }> = ({ sources, t }) => {
+  const [expanded, setExpanded] = useState(false);
+  if (sources.length === 0) return null;
+
+  if (!expanded) {
+    return (
+      <div
+        onClick={() => setExpanded(true)}
+        style={{
+          marginTop: 6,
+          fontSize: 12,
+          color: '#8c8c8c',
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+        }}
+      >
+        <RightOutlined style={{ fontSize: 10 }} />
+        <span>{t('copilot.source')} ({sources.length})</span>
+      </div>
+    );
+  }
 
   return (
-    <Collapse
-      size="small"
-      style={{ marginTop: 12, marginBottom: 8 }}
-      items={[
-        {
-          key: 'quality-hints',
-          label: (
-            <Space>
-              <InfoCircleOutlined style={{ color: '#faad14' }} />
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                {t('copilot.qualityHint.title')} ({issues.length})
-              </Text>
-            </Space>
-          ),
-          children: (
-            <div style={{ fontSize: 12, color: '#8c8c8c' }}>
-              {issues.map((issue, i) => (
-                <div key={i} style={{ marginBottom: 4, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-                  <WarningOutlined style={{ color: '#faad14', marginTop: 3, fontSize: 11 }} />
-                  <span>{issue}</span>
-                </div>
-              ))}
-            </div>
-          ),
-        },
-      ]}
-    />
-  );
-};
-
-/**
- * 建議行動區域 — 淺色背景，不可點擊
- */
-const RecommendationBlock: React.FC<{ recommendations: string[]; t: (key: string) => string }> = ({
-  recommendations,
-  t,
-}) => {
-  if (recommendations.length === 0) return null;
-
-  return (
-    <div
-      style={{
-        marginTop: 12,
-        padding: '12px 16px',
-        backgroundColor: '#f6ffed',
-        border: '1px solid #b7eb8f',
-        borderRadius: 8,
-      }}
-    >
-      <Text strong style={{ fontSize: 13, color: '#52c41a', marginBottom: 8, display: 'block' }}>
-        {t('copilot.label.recommendation')}
-      </Text>
-      <ul style={{ margin: 0, paddingLeft: 20 }}>
-        {recommendations.map((rec, i) => (
-          <li key={i} style={{ marginBottom: 4, fontSize: 13, lineHeight: 1.6 }}>
-            {rec}
-          </li>
+    <div style={{ marginTop: 6, padding: '6px 10px', background: '#fafafa', borderRadius: 6, border: '1px solid #f0f0f0' }}>
+      <div
+        onClick={() => setExpanded(false)}
+        style={{
+          fontSize: 12,
+          color: '#8c8c8c',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          marginBottom: 4,
+        }}
+      >
+        <DownOutlined style={{ fontSize: 10 }} />
+        <span>{t('copilot.source')} ({sources.length})</span>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+        {sources.map((ref, i) => (
+          <Tag key={i} style={{ fontSize: 11, margin: 0 }}>{ref}</Tag>
         ))}
-      </ul>
-      <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #d9f7be' }}>
-        <Text type="secondary" style={{ fontSize: 11 }}>
-          <CheckCircleOutlined style={{ marginRight: 4 }} />
-          {t('copilot.qualityHint.humanConfirm')} · {t('copilot.qualityHint.noAutoWrite')}
-        </Text>
       </div>
     </div>
   );
 };
 
-const CopilotMessage: React.FC<Props> = ({ result, showFixes = true }) => {
-  const { t } = useI18n();
+/**
+ * Validation notice — collapsible, minimal.
+ */
+const ValidationNotice: React.FC<{ issues: string[]; blockedReason?: string; t: (key: string) => string }> = ({
+  issues,
+  blockedReason,
+  t,
+}) => {
+  const [expanded, setExpanded] = useState(false);
 
-  const facts = result.facts;
-  const assumptions = result.assumptions;
-  const inferences = result.inferences;
-  const recommendations = showFixes ? result.recommendations : [];
+  if (blockedReason) {
+    return <div style={{ marginTop: 8, fontSize: 13, color: '#ff4d4f', padding: '6px 10px', background: '#fff2f0', borderRadius: 8, border: '1px solid #ffccc7' }}>{blockedReason}</div>;
+  }
 
-  const answerStatus = getAnswerStatus(result);
-  const hasValidationIssues =
-    result.validationIssues && result.validationIssues.length > 0;
+  if (issues.length === 0) return null;
 
-  const isAiResponse = isAiMarkdownResponse(result);
-
-  // 分離 validation issues 為「品質提示」和「嚴重問題」
-  const qualityHints = (result.validationIssues ?? []).filter(
-    (issue) =>
-      !issue.includes('blocked') &&
-      !issue.includes('禁止') &&
-      !issue.includes('不能')
-  );
+  if (!expanded) {
+    return (
+      <div
+        onClick={() => setExpanded(true)}
+        style={{
+          marginTop: 6,
+          fontSize: 12,
+          color: '#8c8c8c',
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+        }}
+      >
+        <InfoCircleOutlined style={{ fontSize: 12 }} />
+        <span>{t('copilot.qualityHint.title')} ({issues.length})</span>
+      </div>
+    );
+  }
 
   return (
-    <Card
-      size="small"
-      bordered
-      style={{
-        marginBottom: 12,
-        borderRadius: 12,
-        border: '1px solid #f0f0f0',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-      }}
-      title={
-        <Space direction="vertical" size={4} style={{ width: '100%' }}>
-          <Space wrap>
-            {isAiResponse ? (
-              <RobotOutlined style={{ color: '#2563eb', fontSize: 16 }} />
-            ) : (
-              <Tag color="geekblue">{result.toolName}</Tag>
-            )}
-            <Text strong>{result.title}</Text>
-            <Tag color={CONFIDENCE_COLOR[result.confidence] ?? 'default'}>
-              {t(`copilot.confidence.${result.confidence}`)}
-            </Tag>
-            <Tag
-              color={answerStatus.color}
-              data-testid="answer-status-tag"
-            >
-              {t(answerStatus.i18nKey)}
-            </Tag>
-          </Space>
-        </Space>
-      }
-    >
-      {/* 主要內容 — Markdown 渲染 */}
+    <div style={{ marginTop: 6, padding: '6px 10px', background: '#fffbe6', borderRadius: 6, border: '1px solid #ffe58f' }}>
+      <div
+        onClick={() => setExpanded(false)}
+        style={{
+          fontSize: 12,
+          color: '#8c8c8c',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          marginBottom: 4,
+        }}
+      >
+        <WarningOutlined style={{ color: '#faad14', fontSize: 12 }} />
+        <span>{t('copilot.qualityHint.title')} ({issues.length})</span>
+      </div>
+      {issues.map((issue, i) => (
+        <div key={i} style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 2, paddingLeft: 4 }}>
+          · {issue}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ============================================================
+// Artifact container (v1.58.2)
+// ============================================================
+
+type AssistantArtifact =
+  | { type: 'kpi'; data: Record<string, string | number> }
+  | { type: 'line-chart'; title: string }
+  | { type: 'bar-chart'; title: string }
+  | { type: 'table'; title: string };
+
+/**
+ * ArtifactContainer — reserved container for future chart/table artifacts.
+ * Currently renders a collapsible section for when artifacts are present.
+ * Default collapsed unless there's a clear reason to expand.
+ */
+const ArtifactContainer: React.FC<{ artifacts: AssistantArtifact[] }> = ({ artifacts }) => {
+  const [expanded, setExpanded] = useState(false);
+  if (artifacts.length === 0) return null;
+
+  return (
+    <div className="ai-artifact-container" style={{ marginTop: 10 }}>
+      <div
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          fontSize: 13,
+          color: '#1677ff',
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+        }}
+      >
+        {expanded ? <DownOutlined style={{ fontSize: 10 }} /> : <RightOutlined style={{ fontSize: 10 }} />}
+        <span>{expanded ? '收起圖表分析' : '查看圖表分析'}</span>
+      </div>
+      {expanded && (
+        <div style={{
+          marginTop: 8,
+          padding: 16,
+          background: '#fafafa',
+          borderRadius: 8,
+          border: '1px solid #f0f0f0',
+          minHeight: 120,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#8c8c8c',
+          fontSize: 13,
+        }}>
+          圖表容器 — 待後續版本實現
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ============================================================
+// Main CopilotMessage Component
+// ============================================================
+
+const CopilotMessage: React.FC<Props> = ({ result }) => {
+  const { t, lang } = useI18n();
+  const isAiResponse = result.toolName === 'DeepSeek AI' || result.toolName === 'unknown';
+  const hasBlocked = result.confidence === 'blocked';
+
+  // Extract action chips from summary
+  const actions = extractActions(result.summary, lang);
+
+  // Reserved artifact container (empty for now)
+  const artifacts: AssistantArtifact[] = [];
+
+  return (
+    <div className="ai-message-content" style={{ marginBottom: 4 }}>
+      {/* Blocked status */}
+      {hasBlocked && (
+        <div style={{ marginBottom: 6 }}>
+          <Tag color="red" style={{ borderRadius: 4, fontSize: 12 }}>
+            {t('copilot.status.blocked')}
+          </Tag>
+        </div>
+      )}
+
+      {/* Main content */}
       {isAiResponse ? (
         <MarkdownRenderer content={result.summary} />
       ) : (
-        <Paragraph style={{ marginBottom: 12 }}>{result.summary}</Paragraph>
-      )}
-
-      {/* F-A-I-R 標籤 Badge 區域 */}
-      {(facts.length > 0 || assumptions.length > 0 || inferences.length > 0) && (
-        <div style={{ marginTop: 12, marginBottom: 8 }}>
-          <Text strong style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 6, display: 'block' }}>
-            F-A-I-R 分類
-          </Text>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-            {facts.map((text, i) => (
-              <FairBadge key={`fact-${i}`} label="Fact" text={text} />
-            ))}
-            {assumptions.map((text, i) => (
-              <FairBadge key={`assumption-${i}`} label="Assumption" text={text} />
-            ))}
-            {inferences.map((text, i) => (
-              <FairBadge key={`inference-${i}`} label="Inference" text={text} />
-            ))}
-          </div>
+        <div style={{ fontSize: 15, lineHeight: 1.65, color: '#1a1a1a' }}>
+          {result.summary}
         </div>
       )}
 
-      {/* 建議行動 — 獨立淺色區塊 */}
-      <RecommendationBlock recommendations={recommendations} t={t} />
+      {/* Validation / blocked notice */}
+      <ValidationNotice
+        issues={result.validationIssues ?? []}
+        blockedReason={result.blockedReason}
+        t={t}
+      />
 
-      {/* Viewer notice when fixes are hidden */}
-      {!showFixes && result.recommendations.length > 0 && (
-        <Alert
-          type="info"
-          showIcon
-          message={t('copilot.viewer.noFixes')}
-          style={{ marginTop: 8 }}
-        />
-      )}
-
-      {/* Source References — 更易讀的樣式 */}
-      {result.sourceReferences.length > 0 && (
-        <div
-          style={{
-            marginTop: 12,
-            padding: '8px 12px',
-            backgroundColor: '#fafafa',
-            borderRadius: 6,
-            border: '1px solid #f0f0f0',
-          }}
-        >
-          <Text type="secondary" style={{ fontSize: 11, marginBottom: 4, display: 'block' }}>
-            {t('copilot.source')} ({result.sourceReferences.length})
-          </Text>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-            {result.sourceReferences.map((ref, i) => (
-              <Tag key={`src-${i}`} style={{ fontSize: 11, margin: 0 }}>
-                {ref}
-              </Tag>
-            ))}
-          </div>
-        </div>
+      {/* Source references */}
+      {!hasBlocked && result.sourceReferences.length > 0 && (
+        <SourceLine sources={result.sourceReferences} t={t} />
       )}
 
       {/* Caveats */}
-      {result.caveats.length > 0 && (
-        <div style={{ marginTop: 8 }}>
+      {result.caveats.length > 0 && !hasBlocked && (
+        <div style={{ marginTop: 6 }}>
           {result.caveats.map((caveat, i) => (
-            <Alert
-              key={i}
-              type="warning"
-              showIcon
-              message={caveat}
-              style={{ marginBottom: 4, fontSize: 12 }}
-              banner
-            />
+            <Text key={i} type="secondary" style={{ fontSize: 12, display: 'block' }}>
+              · {caveat}
+            </Text>
           ))}
         </div>
       )}
 
-      {/* 品質提示 — 收斂式警告 */}
-      <QualityHints issues={qualityHints} t={t} />
+      {/* Action chips */}
+      {!hasBlocked && <ActionChips actions={actions} />}
 
-      {/* Blocked Reason */}
-      {result.confidence === 'blocked' && result.blockedReason && (
-        <Alert
-          type="error"
-          showIcon
-          message={result.blockedReason}
-          style={{ marginTop: 8 }}
-        />
-      )}
-
-      {/* "Why this answer?" collapsible — 視覺弱化 */}
-      <Collapse
-        size="small"
-        style={{ marginTop: 12, backgroundColor: '#fafafa' }}
-        items={[
-          {
-            key: 'why',
-            label: (
-              <Text type="secondary" style={{ fontSize: 11 }}>
-                <QuestionCircleOutlined style={{ marginRight: 4 }} />
-                {t('copilot.whyThisAnswer')}
-              </Text>
-            ),
-            children: (
-              <div style={{ fontSize: 11, color: '#8c8c8c' }}>
-                <div style={{ marginBottom: 4 }}>
-                  <Text type="secondary">{t('copilot.why.toolUsed')}</Text>{' '}
-                  <Tag color="geekblue">{result.toolName}</Tag>
-                </div>
-                <div style={{ marginBottom: 4 }}>
-                  <Text type="secondary">{t('copilot.why.dataAnalyzed')}</Text>
-                  <div style={{ marginTop: 2 }}>
-                    {facts.length > 0 ? (
-                      facts.map((f, i) => (
-                        <Tag key={`why-f-${i}`} color="blue" style={{ marginBottom: 2, fontSize: 10 }}>
-                          {f}
-                        </Tag>
-                      ))
-                    ) : (
-                      <Text type="secondary">-</Text>
-                    )}
-                  </div>
-                </div>
-                <div style={{ marginBottom: 4 }}>
-                  <Text type="secondary">{t('copilot.why.caveats')}</Text>
-                  <div style={{ marginTop: 2 }}>
-                    {result.caveats.length > 0 ? (
-                      result.caveats.map((c, i) => (
-                        <Tag key={`why-c-${i}`} color="orange" style={{ marginBottom: 2, fontSize: 10 }}>
-                          {c}
-                        </Tag>
-                      ))
-                    ) : (
-                      <Text type="secondary">-</Text>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <Text type="secondary">{t('copilot.why.validationStatus')}</Text>{' '}
-                  {hasValidationIssues ? (
-                    <Tag color="orange">{t('copilot.why.validationWarning')}</Tag>
-                  ) : (
-                    <Tag color="green">{t('copilot.why.validationPassed')}</Tag>
-                  )}
-                </div>
-              </div>
-            ),
-          },
-        ]}
-      />
-    </Card>
+      {/* Artifact container */}
+      {!hasBlocked && <ArtifactContainer artifacts={artifacts} />}
+    </div>
   );
 };
 

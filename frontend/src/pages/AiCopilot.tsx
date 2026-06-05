@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Alert, Spin } from 'antd';
-import { RobotOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { useI18n } from '../i18n';
 import type { ProjectScope } from '../types';
@@ -79,7 +78,6 @@ const AiCopilotPage: React.FC<AiCopilotPageProps> = ({ scope }) => {
         );
         setContext(ctx);
 
-        // Check for deep-link tool query param
         const toolParam = searchParams.get('tool');
         if (toolParam && VALID_TOOL_IDS.has(toolParam)) {
           setPendingToolId(toolParam);
@@ -100,7 +98,7 @@ const AiCopilotPage: React.FC<AiCopilotPageProps> = ({ scope }) => {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 64px)' }}>
         <Spin size="large" tip={t('common.loading')} />
       </div>
     );
@@ -115,11 +113,13 @@ const AiCopilotPage: React.FC<AiCopilotPageProps> = ({ scope }) => {
   }
 
   return (
-    <div className="twk-page" style={{ maxWidth: 800, margin: '0 auto' }}>
-      <div className="twk-page-header">
-        <h1 className="twk-page-title"><RobotOutlined style={{ marginRight: 8 }} />{t('copilot.title')}</h1>
-        <p className="twk-page-subtitle">{t('copilot.description')}</p>
-      </div>
+    <div className="ai-chat-page" style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: 'calc(100vh - 64px)',
+      background: '#ffffff',
+      position: 'relative',
+    }}>
       <CopilotChat
         context={context}
         pendingToolId={pendingToolId}

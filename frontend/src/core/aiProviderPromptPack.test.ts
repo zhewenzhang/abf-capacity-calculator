@@ -169,7 +169,6 @@ describe('buildProviderPromptPack', () => {
     expect(pack.systemPrompt).toContain('[riskBriefSummary]');
     expect(pack.systemPrompt).toContain('[scenarioSummary]');
     expect(pack.systemPrompt).toContain('[currencyAssumptions]');
-    expect(pack.systemPrompt).toContain('[assumptions]');
   });
 
   it('system prompt contains no-write instruction', () => {
@@ -177,17 +176,16 @@ describe('buildProviderPromptPack', () => {
     const pack = buildProviderPromptPack(ctx, 'test question', 'local');
     expect(pack.systemPrompt).toContain('No-Write Requirement');
     expect(pack.systemPrompt).toContain('human review only');
-    expect(pack.systemPrompt).toContain('Please confirm before proceeding');
   });
 
-  it('system prompt contains FAIR format instructions', () => {
+  it('system prompt contains concise output format', () => {
     const ctx = makeContext();
     const pack = buildProviderPromptPack(ctx, 'test question', 'local');
-    expect(pack.systemPrompt).toContain('F-A-I-R');
-    expect(pack.systemPrompt).toContain('[Fact]');
-    expect(pack.systemPrompt).toContain('[Assumption]');
-    expect(pack.systemPrompt).toContain('[Inference]');
-    expect(pack.systemPrompt).toContain('[Recommendation]');
+    expect(pack.systemPrompt).toContain('Conclusion');
+    expect(pack.systemPrompt).toContain('Key Data');
+    expect(pack.systemPrompt).toContain('Reasons');
+    expect(pack.systemPrompt).toContain('Next Steps');
+    expect(pack.systemPrompt).toContain('Do NOT');
   });
 
   it('system prompt contains currency rules', () => {
@@ -203,7 +201,7 @@ describe('buildProviderPromptPack', () => {
     const pack = buildProviderPromptPack(ctx, 'test question', 'local');
     expect(pack.systemPrompt).toContain('Attribution Warning');
     expect(pack.systemPrompt).toContain('Proportional patterns are NOT causation');
-    expect(pack.systemPrompt).toContain('Never state or imply that a SKU');
+    expect(pack.systemPrompt).toContain('analytical decomposition');
   });
 
   it('user message contains the question', () => {
@@ -292,21 +290,18 @@ describe('buildProviderPromptPack', () => {
     expect(pack.forbiddenOperations).toContain('auto-save');
   });
 
-  it('output format field contains FAIR instructions', () => {
+  it('output format field contains concise instructions', () => {
     const ctx = makeContext();
     const pack = buildProviderPromptPack(ctx, 'test question', 'local');
-    expect(pack.outputFormat).toContain('F-A-I-R');
-    expect(pack.outputFormat).toContain('[Fact]');
-    expect(pack.outputFormat).toContain('[Assumption]');
-    expect(pack.outputFormat).toContain('[Inference]');
-    expect(pack.outputFormat).toContain('[Recommendation]');
+    expect(pack.outputFormat).toContain('4-section');
+    expect(pack.outputFormat).toContain('Conclusion');
   });
 
   it('system prompt contains identity declaration', () => {
     const ctx = makeContext();
     const pack = buildProviderPromptPack(ctx, 'test question', 'local');
-    expect(pack.systemPrompt).toContain('ABF Capacity Calculator AI assistant');
-    expect(pack.systemPrompt).toContain('analyze capacity planning data');
+    expect(pack.systemPrompt).toContain('ABF CSS enterprise operations analytics assistant');
+    expect(pack.systemPrompt).toContain('analyze');
   });
 
   it('system prompt contains context data from the input', () => {
@@ -333,7 +328,7 @@ describe('buildProviderSystemPrompt', () => {
   it('contains identity and mode', () => {
     const ctx = makeContext();
     const result = buildProviderSystemPrompt(ctx, 'mock');
-    expect(result).toContain('ABF Capacity Calculator');
+    expect(result).toContain('ABF CSS');
     expect(result).toContain('mock provider mode');
   });
 });
@@ -356,11 +351,11 @@ describe('buildProviderUserMessage', () => {
     expect(result).toContain('What is the bottleneck?');
   });
 
-  it('contains FAIR response request', () => {
+  it('contains concise response instructions', () => {
     const ctx = makeContext();
     const result = buildProviderUserMessage(ctx, 'test');
-    expect(result).toContain('FAIR-labeled response');
-    expect(result).toContain('source references');
+    expect(result).toContain('using the context data');
+    expect(result).toContain('conclusion');
   });
 
   it('contains context data', () => {
