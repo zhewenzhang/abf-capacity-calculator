@@ -1,30 +1,21 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { Input, Button, Space, Typography, Spin, Tag, Tooltip, Card, Row, Col } from 'antd';
+import { Input, Button, Typography, Spin, Tag } from 'antd';
 import {
   SendOutlined,
-  DownloadOutlined,
-  SettingOutlined,
-  RobotOutlined,
+  StopOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
-  DollarOutlined,
-  CloudOutlined,
-  WarningOutlined,
-  QuestionCircleOutlined,
 } from '@ant-design/icons';
 import { useI18n } from '../../i18n';
 import type { AiCopilotContext } from '../../core/aiCopilotContext';
 import type { CopilotToolResult } from '../../core/aiCopilotTools';
 import { routeQuestion, runTool } from '../../core/aiCopilotTools';
-import { copyAiCopilotPrompt } from '../../core/aiCopilotExport';
 import { validateProviderOutput as validateOutputText } from '../../core/aiCopilotOutputValidation';
 import { getProviderById, type ProviderConfig, type ProviderMode } from '../../core/aiProviderAdapter';
 import { buildProviderSystemPrompt, buildProviderUserMessage, type SupportedLanguage } from '../../core/aiProviderPromptPack';
 import CopilotMessage from './CopilotMessage';
-import AiProviderSettingsDrawer from './AiProviderSettingsDrawer';
-import AiProviderStatusTag from './AiProviderStatusTag';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 const { TextArea } = Input;
 
 interface Props {
@@ -33,34 +24,36 @@ interface Props {
   onPendingToolConsumed?: () => void;
 }
 
-// Example questions for empty state
-const EXAMPLE_QUESTIONS_ZH = [
-  { icon: <DollarOutlined />, text: '2026 年 BP 為什麼沒有達標？', tool: 'bpGap' },
-  { icon: <CloudOutlined />, text: '未來 6 個月最大的產能風險是什麼？', tool: 'capacityRisk' },
-  { icon: <WarningOutlined />, text: '哪些客戶貢獻最多營收？', tool: 'dataProblems' },
-  { icon: <QuestionCircleOutlined />, text: '目前資料品質有哪些問題？', tool: 'dataProblems' },
+// Suggestion prompts for empty state
+const SUGGESTIONS_ZH = [
+  '2026 年 BP 為什麼沒有達標？',
+  '未來 6 個月最大的產能風險是什麼？',
+  '哪些客戶貢獻最多營收？',
+  '目前資料品質會影響哪些分析？',
 ];
 
-const EXAMPLE_QUESTIONS_EN = [
-  { icon: <DollarOutlined />, text: 'Why did BP miss target in 2026?', tool: 'bpGap' },
-  { icon: <CloudOutlined />, text: 'What is the biggest capacity risk in the next 6 months?', tool: 'capacityRisk' },
-  { icon: <WarningOutlined />, text: 'Which customers contribute the most revenue?', tool: 'dataProblems' },
-  { icon: <QuestionCircleOutlined />, text: 'What data quality issues exist?', tool: 'dataProblems' },
+const SUGGESTIONS_EN = [
+  'Why did BP miss target in 2026?',
+  'What is the biggest capacity risk in the next 6 months?',
+  'Which customers contribute the most revenue?',
+  'What data quality issues exist?',
 ];
 
 const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolConsumed }) => {
-  const { t, lang } = useI18n();
+  const { lang } = useI18n();
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<CopilotToolResult[]>([]);
+  const [userQuestions, setUserQuestions] = useState<string[]>([]);
   const [processing, setProcessing] = useState(false);
-  const [providerMode, setProviderMode] = useState<ProviderMode>('deepseek-proxy');
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [providerMode] = useState<ProviderMode>('deepseek-proxy');
   const [proxyHealth, setProxyHealth] = useState<'checking' | 'healthy' | 'unhealthy'>('checking');
+  const [showSettingsDrawer, setShowSettingsDrawer] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
 
   const isViewer = context.role === 'viewer';
   const currentLang: SupportedLanguage = lang === 'zh-TW' ? 'zh-TW' : 'en';
-  const exampleQuestions = currentLang === 'zh-TW' ? EXAMPLE_QUESTIONS_ZH : EXAMPLE_QUESTIONS_EN;
+  const suggestions = currentLang === 'zh-TW' ? SUGGESTIONS_ZH : SUGGESTIONS_EN;
 
   // Check proxy health
   useEffect(() => {
@@ -76,10 +69,10 @@ const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolCon
     checkHealth();
   }, []);
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom when history changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [history]);
+  }, [history, userQuestions]);
 
   const applyOutputValidation = useCallback(
     (result: CopilotToolResult): CopilotToolResult => {
@@ -126,13 +119,12 @@ const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolCon
     }
   }, [pendingToolId, context, applyOutputValidation, onPendingToolConsumed]);
 
-  const handleModeChange = useCallback((mode: ProviderMode) => {
-    setProviderMode(mode);
-  }, []);
-
-  const handleSubmit = useCallback(async () => {
-    const q = input.trim();
+  const handleSubmit = useCallback(async (question?: string) => {
+    const q = (question || input).trim();
     if (!q || processing) return;
+
+    setInput('');
+    setUserQuestions((prev) => [...prev, q]);
     setProcessing(true);
 
     // Always run deterministic tool as base
@@ -172,9 +164,7 @@ const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolCon
             recommendations: [],
             sourceReferences: ['DeepSeek v4 Flash (Managed)'],
             confidence: 'high',
-            caveats: [currentLang === 'zh-TW'
-              ? 'AI 生成的回應 — 請以資料驗證'
-              : 'AI-generated response — verify with data'],
+            caveats: [],
             data: { tokensUsed: response.tokensUsed },
           };
           const validated = applyOutputValidation(aiResult);
@@ -194,13 +184,12 @@ const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolCon
       setHistory((prev) => [...prev, validated]);
     }
 
-    setInput('');
     setProcessing(false);
   }, [input, context, processing, providerMode, currentLang, applyOutputValidation]);
 
-  const handleExportPrompt = useCallback(async () => {
-    await copyAiCopilotPrompt(context);
-  }, [context]);
+  const handleSuggestionClick = useCallback((question: string) => {
+    handleSubmit(question);
+  }, [handleSubmit]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -220,226 +209,360 @@ const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolCon
 
     if (currentLang === 'zh-TW') {
       return [
-        '查看 2026 年 BP 差距來源',
-        '用圖表比較 2026-2030',
-        '模擬單價 +5% 會怎樣',
+        '查看 BP 差距來源',
+        '比較 2026-2030',
+        '模擬單價 +5%',
       ];
     }
     return [
-      'View 2026 BP gap source',
-      'Compare 2026-2030 with chart',
+      'View BP gap source',
+      'Compare 2026-2030',
       'Simulate price +5%',
     ];
   }, [history, currentLang]);
 
+  // Provider status label
+  const statusLabel = useMemo(() => {
+    if (currentLang === 'zh-TW') {
+      if (proxyHealth === 'checking') return '正在檢查連線⋯';
+      if (proxyHealth === 'healthy') return 'DeepSeek v4 Flash · 已連線';
+      return 'AI 服務暫時不可用，將使用本地分析回答';
+    }
+    if (proxyHealth === 'checking') return 'Checking connection...';
+    if (proxyHealth === 'healthy') return 'DeepSeek v4 Flash · Connected';
+    return 'AI service unavailable, using local analysis';
+  }, [proxyHealth, currentLang]);
+
   return (
-    <div style={{
+    <div className="ai-chat-layout" style={{
       display: 'flex',
       flexDirection: 'column',
       height: '100%',
-      maxWidth: 960,
+      maxWidth: 820,
       margin: '0 auto',
+      width: '100%',
+      background: '#fff',
+      borderRadius: 0,
+      boxShadow: '0 0 0 1px rgba(0,0,0,0.04)',
     }}>
-      {/* Header */}
-      <div style={{
-        padding: '12px 20px',
-        borderBottom: '1px solid #f0f0f0',
+      {/* Thin top bar */}
+      <div className="ai-chat-topbar" style={{
+        padding: '8px 20px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        borderBottom: '1px solid #f0f0f0',
         background: '#fff',
+        minHeight: 44,
+        flexShrink: 0,
       }}>
-        <Space>
-          <RobotOutlined style={{ fontSize: 20, color: '#2563eb' }} />
-          <Text strong style={{ fontSize: 15 }}>{t('copilot.title')}</Text>
-          <AiProviderStatusTag mode={providerMode} />
-        </Space>
-        <Space>
-          <Tooltip title={currentLang === 'zh-TW' ? 'AI 服務狀態' : 'AI Service Status'}>
-            {proxyHealth === 'healthy' ? (
-              <Tag icon={<CheckCircleOutlined />} color="success">
-                {currentLang === 'zh-TW' ? '已連線' : 'Connected'}
-              </Tag>
-            ) : proxyHealth === 'unhealthy' ? (
-              <Tag icon={<ExclamationCircleOutlined />} color="warning">
-                {currentLang === 'zh-TW' ? '無法使用' : 'Unavailable'}
-              </Tag>
-            ) : (
-              <Tag color="processing">
-                {currentLang === 'zh-TW' ? '檢查中...' : 'Checking...'}
-              </Tag>
-            )}
-          </Tooltip>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Text style={{ fontSize: 13, color: '#8c8c8c' }}>
+            {statusLabel}
+          </Text>
+          {proxyHealth === 'checking' && (
+            <Spin size="small" style={{ fontSize: 10 }} />
+          )}
+          {proxyHealth === 'healthy' && (
+            <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 12 }} />
+          )}
+          {proxyHealth === 'unhealthy' && (
+            <ExclamationCircleOutlined style={{ color: '#faad14', fontSize: 12 }} />
+          )}
+        </div>
+        {!isViewer && (
           <Button
-            icon={<SettingOutlined />}
-            onClick={() => setSettingsOpen(true)}
-            disabled={isViewer}
+            type="text"
             size="small"
+            onClick={() => setShowSettingsDrawer(true)}
+            style={{ fontSize: 12, color: '#8c8c8c' }}
           >
-            {t('copilot.provider.settings')}
+            {currentLang === 'zh-TW' ? '設定' : 'Settings'}
           </Button>
-        </Space>
+        )}
       </div>
 
-      {/* Messages area */}
-      <div style={{
+      {/* Messages area — scrollable */}
+      <div className="ai-chat-thread" style={{
         flex: 1,
         overflowY: 'auto',
-        padding: '20px',
+        padding: '16px 0',
+        background: '#fff',
       }}>
         {/* Empty state */}
         {history.length === 0 && (
-          <div style={{
+          <div className="ai-empty" style={{
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            minHeight: 300,
-            textAlign: 'center',
+            minHeight: '60%',
+            padding: '0 20px',
           }}>
-            <RobotOutlined style={{ fontSize: 48, color: '#d9d9d9', marginBottom: 16 }} />
-            <Title level={4} style={{ color: '#8c8c8c', marginBottom: 8 }}>
+            <h2 style={{
+              fontSize: 22,
+              fontWeight: 600,
+              color: '#1a1a1a',
+              marginBottom: 8,
+              textAlign: 'center',
+            }}>
               {currentLang === 'zh-TW' ? '今天想分析什麼？' : 'What would you like to analyze?'}
-            </Title>
-            <Text type="secondary" style={{ marginBottom: 24, maxWidth: 480 }}>
-              {t('copilot.description')}
-            </Text>
+            </h2>
+            <p style={{
+              fontSize: 14,
+              color: '#8c8c8c',
+              marginBottom: 32,
+              textAlign: 'center',
+              maxWidth: 420,
+            }}>
+              {currentLang === 'zh-TW'
+                ? '詢問營收、BP、產能、預測或資料品質'
+                : 'Ask about revenue, BP, capacity, forecast, or data quality'}
+            </p>
 
-            {/* Example question cards */}
-            <Row gutter={[12, 12]} style={{ maxWidth: 600 }}>
-              {exampleQuestions.map((q, idx) => (
-                <Col xs={12} key={idx}>
-                  <Card
-                    size="small"
-                    hoverable
-                    onClick={() => {
-                      setInput(q.text);
-                      // Auto-submit after a short delay
-                      setTimeout(() => {
-                        const toolResult = runTool(q.tool, context);
-                        const validated = applyOutputValidation(toolResult);
-                        setHistory((prev) => [...prev, validated]);
-                      }, 100);
-                    }}
-                    style={{ cursor: 'pointer', borderRadius: 10 }}
-                  >
-                    <Space>
-                      {q.icon}
-                      <Text style={{ fontSize: 12 }}>{q.text}</Text>
-                    </Space>
-                  </Card>
-                </Col>
+            <div className="ai-suggestion-grid" style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 10,
+              maxWidth: 520,
+              width: '100%',
+            }}>
+              {suggestions.map((q, idx) => (
+                <div
+                  key={idx}
+                  className="ai-suggestion-card"
+                  onClick={() => handleSuggestionClick(q)}
+                  style={{
+                    padding: '12px 16px',
+                    border: '1px solid #e8e8e8',
+                    borderRadius: 12,
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    color: '#333',
+                    lineHeight: 1.5,
+                    background: '#fafafa',
+                    transition: 'background 0.15s, border-color 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#f0f0f0';
+                    e.currentTarget.style.borderColor = '#d9d9d9';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#fafafa';
+                    e.currentTarget.style.borderColor = '#e8e8e8';
+                  }}
+                >
+                  {q}
+                </div>
               ))}
-            </Row>
+            </div>
           </div>
         )}
 
         {/* Message list */}
-        {history.map((result, idx) => (
-          <div key={idx} style={{ marginBottom: 16 }}>
-            <CopilotMessage result={result} showFixes={!isViewer} />
-            {/* Fallback CTA */}
-            {(result.confidence === 'blocked' || result.confidence === 'low') && (
-              <div style={{ marginTop: 8, textAlign: 'right' }}>
-                <Button
-                  size="small"
-                  icon={<DownloadOutlined />}
-                  onClick={handleExportPrompt}
+        {history.length > 0 && (
+          <div style={{ maxWidth: 760, margin: '0 auto', width: '100%' }}>
+            {userQuestions.map((q, idx) => (
+              <React.Fragment key={idx}>
+                {/* User message bubble */}
+                <div
+                  className="ai-message-user"
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    marginBottom: 12,
+                    padding: '0 20px',
+                  }}
                 >
-                  Export Prompt Pack
-                </Button>
+                  <div style={{
+                    maxWidth: '70%',
+                    padding: '10px 16px',
+                    borderRadius: 18,
+                    borderBottomRightRadius: 4,
+                    background: '#e8f5e9',
+                    color: '#1a1a1a',
+                    fontSize: 15,
+                    lineHeight: 1.6,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                  }}>
+                    {q}
+                  </div>
+                </div>
+
+                {/* AI answer message */}
+                {history[idx] && (
+                  <div
+                    className="ai-message-assistant"
+                    style={{
+                      marginBottom: 16,
+                      padding: '0 20px',
+                    }}
+                  >
+                    <div style={{
+                      maxWidth: 760,
+                    }}>
+                      <CopilotMessage
+                        result={history[idx]}
+                        isLastMessage={idx === history.length - 1}
+                      />
+                    </div>
+
+                    {/* Follow-up chips (only after last message) */}
+                    {idx === history.length - 1 && !processing && followUps.length > 0 && (
+                      <div style={{
+                        display: 'flex',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                        marginTop: 8,
+                        marginBottom: 4,
+                      }}>
+                        {followUps.map((fu, fi) => (
+                          <Tag
+                            key={fi}
+                            style={{
+                              cursor: 'pointer',
+                              padding: '4px 12px',
+                              borderRadius: 16,
+                              fontSize: 13,
+                              border: '1px solid #d9d9d9',
+                              background: '#fafafa',
+                              color: '#555',
+                            }}
+                            onClick={() => handleSuggestionClick(fu)}
+                          >
+                            {fu}
+                          </Tag>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </React.Fragment>
+            ))}
+
+            {/* Loading indicator */}
+            {processing && (
+              <div className="ai-message-assistant" style={{ padding: '0 20px', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0' }}>
+                  <Spin size="small" />
+                  <Text type="secondary" style={{ fontSize: 14 }}>
+                    {currentLang === 'zh-TW' ? '分析中⋯' : 'Analyzing...'}
+                  </Text>
+                </div>
               </div>
             )}
-          </div>
-        ))}
 
-        {/* Follow-up chips */}
-        {history.length > 0 && !processing && followUps.length > 0 && (
-          <div style={{ marginBottom: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {followUps.map((fu: string, idx: number) => (
-              <Tag
-                key={idx}
-                color="blue"
-                style={{ cursor: 'pointer', padding: '4px 12px', borderRadius: 16 }}
-                onClick={() => {
-                  setInput(fu);
-                  setTimeout(() => {
-                    const localResult = routeQuestion(fu, context);
-                    const validated = applyOutputValidation(localResult);
-                    setHistory((prev) => [...prev, validated]);
-                    setInput('');
-                  }, 100);
-                }}
-              >
-                {fu}
-              </Tag>
-            ))}
+            <div ref={messagesEndRef} />
           </div>
         )}
-
-        {/* Loading state */}
-        {processing && (
-          <div style={{ textAlign: 'center', padding: 20 }}>
-            <Spin />
-            <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
-              {currentLang === 'zh-TW' ? '分析中...' : 'Analyzing...'}
-            </Text>
-          </div>
-        )}
-
-        <div ref={messagesEndRef} />
       </div>
 
-      {/* Input area */}
-      <div style={{
-        padding: '12px 20px',
-        borderTop: '1px solid #f0f0f0',
-        background: '#fff',
-      }}>
-        <div style={{ display: 'flex', gap: 8 }}>
+      {/* Composer — fixed at bottom */}
+      <div
+        ref={composerRef}
+        className="ai-composer-shell"
+        style={{
+          borderTop: '1px solid #f0f0f0',
+          background: '#fff',
+          padding: '12px 20px',
+          paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 8px))',
+          flexShrink: 0,
+        }}
+      >
+        <div className="ai-composer" style={{
+          maxWidth: 760,
+          margin: '0 auto',
+          display: 'flex',
+          gap: 8,
+          alignItems: 'flex-end',
+        }}>
           <TextArea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={t('copilot.input.placeholder')}
+            placeholder={
+              currentLang === 'zh-TW'
+                ? '詢問營收、BP、產能、預測或資料品質...'
+                : 'Ask about revenue, BP, capacity, forecast, or data quality...'
+            }
             disabled={processing}
-            autoSize={{ minRows: 1, maxRows: 4 }}
+            autoSize={{ minRows: 1, maxRows: 5 }}
             style={{
               borderRadius: 12,
               resize: 'none',
+              fontSize: 15,
+              padding: '10px 14px',
+              border: '1px solid #d9d9d9',
+              background: '#fafafa',
             }}
           />
           <Button
             type="primary"
-            icon={<SendOutlined />}
-            onClick={handleSubmit}
-            disabled={!input.trim() || processing}
+            icon={processing ? <StopOutlined /> : <SendOutlined />}
+            onClick={() => handleSubmit()}
+            disabled={(!input.trim() || processing) && !processing}
             style={{
               borderRadius: 12,
-              width: 48,
-              height: 48,
+              width: 44,
+              height: 44,
+              flexShrink: 0,
+              background: input.trim() && !processing ? '#52c41a' : '#d9d9d9',
+              borderColor: input.trim() && !processing ? '#52c41a' : '#d9d9d9',
             }}
           />
         </div>
-        <div style={{ marginTop: 6, textAlign: 'center' }}>
-          <Text type="secondary" style={{ fontSize: 11 }}>
-            {currentLang === 'zh-TW'
-              ? 'DeepSeek v4 Flash · 伺服器託管金鑰 · 無需 API 金鑰'
-              : 'DeepSeek v4 Flash · Server-Managed Key · No API key required'}
-          </Text>
-        </div>
+        {proxyHealth === 'unhealthy' && (
+          <div style={{ maxWidth: 760, margin: '4px auto 0' }}>
+            <Text style={{ fontSize: 11, color: '#faad14' }}>
+              {currentLang === 'zh-TW'
+                ? 'AI 服務暫時不可用，將使用本地分析回答'
+                : 'AI service temporarily unavailable, using local analysis'}
+            </Text>
+          </div>
+        )}
       </div>
 
-      {/* Settings Drawer */}
-      <AiProviderSettingsDrawer
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        currentMode={providerMode}
-        onModeChange={handleModeChange}
-        isViewer={isViewer}
-        proxyHealth={proxyHealth}
-      />
+      {/* Settings Drawer (lazy import triggers) */}
+      {showSettingsDrawer && (
+        <LazySettingsDrawer
+          open={showSettingsDrawer}
+          onClose={() => setShowSettingsDrawer(false)}
+          proxyHealth={proxyHealth}
+          isViewer={isViewer}
+          currentLang={currentLang}
+        />
+      )}
     </div>
+  );
+};
+
+/** Lazy-loaded settings drawer to keep main bundle small */
+const LazySettingsDrawer: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  proxyHealth: 'checking' | 'healthy' | 'unhealthy';
+  isViewer: boolean;
+  currentLang: SupportedLanguage;
+}> = (props) => {
+  const [Component, setComponent] = React.useState<React.ComponentType<any> | null>(null);
+
+  React.useEffect(() => {
+    import('./AiProviderSettingsDrawer').then((mod) => {
+      setComponent(() => mod.default);
+    });
+  }, []);
+
+  if (!Component) return null;
+  return (
+    <Component
+      open={props.open}
+      onClose={props.onClose}
+      currentMode="deepseek-proxy"
+      onModeChange={() => {}}
+      isViewer={props.isViewer}
+      proxyHealth={props.proxyHealth}
+    />
   );
 };
 

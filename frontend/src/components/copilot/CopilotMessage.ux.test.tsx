@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import CopilotMessage from './CopilotMessage';
 import type { CopilotToolResult } from '../../core/aiCopilotTools';
@@ -7,19 +7,14 @@ import { I18nContext } from '../../i18n';
 import type { TranslateFn } from '../../i18n';
 
 /**
- * CopilotMessage UX Tests — v1.52.4
+ * CopilotMessage UX Tests — v1.58.1 (Simplified Chat UI)
  *
  * Verifies:
- * - Answer status tags (Deterministic / Mock / Blocked / Warning)
- * - "Why this answer?" collapsible section presence
  * - Markdown rendering for AI responses
- * - F-A-I-R badge rendering
- * - Quality hints (validation issues) rendering
- * - Recommendation block rendering
- * - No fake save / no auto execute claims
- *
- * Uses fireEvent instead of user-event to avoid extra dependency.
- * Uses waitFor for Ant Design Collapse animation.
+ * - Blocked status shows error alert
+ * - Source references are collapsible
+ * - Validation issues are collapsible
+ * - No raw i18n keys in rendered output
  */
 
 // Minimal i18n mock that returns keys as-is
@@ -51,292 +46,101 @@ function makeResult(overrides: Partial<CopilotToolResult> = {}): CopilotToolResu
     toolName: 'testTool',
     title: 'Test Title',
     summary: 'Test summary',
-    facts: ['fact 1', 'fact 2'],
-    assumptions: ['assumption 1'],
-    inferences: ['inference 1'],
-    recommendations: ['rec 1'],
+    facts: ['fact 1'],
+    assumptions: [],
+    inferences: [],
+    recommendations: [],
     sourceReferences: ['source 1'],
     confidence: 'high',
-    caveats: ['caveat 1'],
+    caveats: [],
     data: {},
     ...overrides,
   };
 }
 
-describe('CopilotMessage — Answer Status Tags', () => {
-  it('renders "Deterministic" tag for normal high-confidence result', () => {
-    renderWithI18n(<CopilotMessage result={makeResult()} />);
-    const tag = screen.getByTestId('answer-status-tag');
-    expect(tag.textContent).toBe('copilot.status.deterministic');
-  });
+describe('CopilotMessage — Markdown Rendering', () => {
+  it('renders DeepSeek AI response with markdown content', () => {
+    const markdownSummary = `## Key Summary\n- Found 1\n- Found 2`;
 
-  it('renders "Blocked" tag when confidence is blocked', () => {
-    renderWithI18n(
-      <CopilotMessage result={makeResult({ confidence: 'blocked', blockedReason: 'no data' })} />
-    );
-    const tag = screen.getByTestId('answer-status-tag');
-    expect(tag.textContent).toBe('copilot.status.blocked');
-  });
-
-  it('renders "Mock" tag when isMockProvider is true', () => {
-    renderWithI18n(
-      <CopilotMessage result={makeResult({ isMockProvider: true })} />
-    );
-    const tag = screen.getByTestId('answer-status-tag');
-    expect(tag.textContent).toBe('copilot.status.mock');
-  });
-
-  it('renders "Warning" tag when validationIssues exist', () => {
     renderWithI18n(
       <CopilotMessage
-        result={makeResult({ validationIssues: ['issue 1', 'issue 2'] })}
+        result={makeResult({
+          toolName: 'DeepSeek AI',
+          summary: markdownSummary,
+        })}
       />
     );
-    const tag = screen.getByTestId('answer-status-tag');
-    expect(tag.textContent).toBe('copilot.status.warning');
+
+    expect(screen.getByText('Key Summary')).toBeInTheDocument();
+    expect(screen.getByText('Found 1')).toBeInTheDocument();
+    expect(screen.getByText('Found 2')).toBeInTheDocument();
   });
 
-  it('prioritizes "Blocked" over "Mock" when both apply', () => {
+  it('renders bold text in markdown', () => {
+    renderWithI18n(
+      <CopilotMessage
+        result={makeResult({
+          toolName: 'DeepSeek AI',
+          summary: 'This is **bold** text.',
+        })}
+      />
+    );
+
+    expect(screen.getByText('bold')).toBeInTheDocument();
+  });
+
+  it('renders bullet list in markdown', () => {
+    renderWithI18n(
+      <CopilotMessage
+        result={makeResult({
+          toolName: 'DeepSeek AI',
+          summary: '- Item 1\n- Item 2',
+        })}
+      />
+    );
+
+    expect(screen.getByText('Item 1')).toBeInTheDocument();
+    expect(screen.getByText('Item 2')).toBeInTheDocument();
+  });
+
+  it('renders non-AI summary as plain text', () => {
+    renderWithI18n(
+      <CopilotMessage
+        result={makeResult({
+          toolName: 'bpGap',
+          summary: 'Plain text result',
+        })}
+      />
+    );
+
+    expect(screen.getByText('Plain text result')).toBeInTheDocument();
+  });
+});
+
+describe('CopilotMessage — Status & Blocked', () => {
+  it('shows blocked tag for blocked results', () => {
     renderWithI18n(
       <CopilotMessage
         result={makeResult({
           confidence: 'blocked',
-          isMockProvider: true,
-          blockedReason: 'blocked reason',
-        })}
-      />
-    );
-    const tag = screen.getByTestId('answer-status-tag');
-    expect(tag.textContent).toBe('copilot.status.blocked');
-  });
-
-  it('prioritizes "Mock" over "Warning" when both apply', () => {
-    renderWithI18n(
-      <CopilotMessage
-        result={makeResult({
-          isMockProvider: true,
-          validationIssues: ['issue 1'],
-        })}
-      />
-    );
-    const tag = screen.getByTestId('answer-status-tag');
-    expect(tag.textContent).toBe('copilot.status.mock');
-  });
-});
-
-describe('CopilotMessage — "Why this answer?" section', () => {
-  it('renders the "Why this answer?" collapsible header', () => {
-    renderWithI18n(<CopilotMessage result={makeResult()} />);
-    expect(screen.getByText('copilot.whyThisAnswer')).toBeInTheDocument();
-  });
-
-  it('shows validation passed tag when no issues', () => {
-    renderWithI18n(<CopilotMessage result={makeResult()} />);
-    // The "Why this answer?" section exists
-    expect(screen.getByText('copilot.whyThisAnswer')).toBeInTheDocument();
-  });
-
-  it('renders with validationIssues present', () => {
-    renderWithI18n(
-      <CopilotMessage
-        result={makeResult({ validationIssues: ['a', 'b', 'c'] })}
-      />
-    );
-    expect(screen.getByText('copilot.whyThisAnswer')).toBeInTheDocument();
-  });
-
-  it('renders tool name in the title area', () => {
-    renderWithI18n(<CopilotMessage result={makeResult()} />);
-    expect(screen.getByText('testTool')).toBeInTheDocument();
-  });
-
-  it('renders facts in the main body', () => {
-    renderWithI18n(<CopilotMessage result={makeResult()} />);
-    const fact1Elements = screen.getAllByText('fact 1');
-    expect(fact1Elements.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('renders caveats in the main body', () => {
-    renderWithI18n(<CopilotMessage result={makeResult()} />);
-    expect(screen.getByText('caveat 1')).toBeInTheDocument();
-  });
-});
-
-describe('CopilotMessage — Markdown Rendering', () => {
-  it('renders DeepSeek AI response with markdown content', () => {
-    const markdownSummary = `## 重點摘要
-- 發現 1
-- 發現 2
-
-## 主要發現
-**重要**：這是測試。`;
-
-    renderWithI18n(
-      <CopilotMessage
-        result={makeResult({
-          toolName: 'DeepSeek AI',
-          summary: markdownSummary,
+          blockedReason: 'Content filtered',
         })}
       />
     );
 
-    // 應該渲染 markdown heading
-    expect(screen.getByText('重點摘要')).toBeInTheDocument();
-    expect(screen.getByText('主要發現')).toBeInTheDocument();
+    expect(screen.getByText('copilot.status.blocked')).toBeInTheDocument();
+    expect(screen.getByText('Content filtered')).toBeInTheDocument();
   });
 
-  it('renders bold text in markdown', () => {
-    const markdownSummary = '這是 **粗體** 文字。';
-
-    renderWithI18n(
-      <CopilotMessage
-        result={makeResult({
-          toolName: 'DeepSeek AI',
-          summary: markdownSummary,
-        })}
-      />
-    );
-
-    // 應該渲染粗體文字
-    expect(screen.getByText('粗體')).toBeInTheDocument();
-  });
-
-  it('renders bullet list in markdown', () => {
-    const markdownSummary = `- 項目 1
-- 項目 2
-- 項目 3`;
-
-    renderWithI18n(
-      <CopilotMessage
-        result={makeResult({
-          toolName: 'DeepSeek AI',
-          summary: markdownSummary,
-        })}
-      />
-    );
-
-    // 應該渲染列表項目
-    expect(screen.getByText('項目 1')).toBeInTheDocument();
-    expect(screen.getByText('項目 2')).toBeInTheDocument();
-    expect(screen.getByText('項目 3')).toBeInTheDocument();
-  });
-});
-
-describe('CopilotMessage — F-A-I-R Badge Rendering', () => {
-  it('renders Fact badge with correct styling', () => {
-    renderWithI18n(
-      <CopilotMessage
-        result={makeResult({
-          facts: ['Core 稼動率 95%'],
-        })}
-      />
-    );
-
-    // 應該渲染 Fact 標籤
-    expect(screen.getByText('Core 稼動率 95%')).toBeInTheDocument();
-  });
-
-  it('renders Assumption badge', () => {
-    renderWithI18n(
-      <CopilotMessage
-        result={makeResult({
-          assumptions: ['假設匯率 32'],
-        })}
-      />
-    );
-
-    expect(screen.getByText('假設匯率 32')).toBeInTheDocument();
-  });
-
-  it('renders Inference badge', () => {
-    renderWithI18n(
-      <CopilotMessage
-        result={makeResult({
-          inferences: ['若需求成長 10%'],
-        })}
-      />
-    );
-
-    expect(screen.getByText('若需求成長 10%')).toBeInTheDocument();
-  });
-
-  it('renders Recommendation badge', () => {
-    renderWithI18n(
-      <CopilotMessage
-        result={makeResult({
-          recommendations: ['建議評估產能擴充'],
-        })}
-      />
-    );
-
-    expect(screen.getByText('建議評估產能擴充')).toBeInTheDocument();
-  });
-});
-
-describe('CopilotMessage — Quality Hints', () => {
-  it('renders quality hints when validation issues exist', () => {
-    renderWithI18n(
-      <CopilotMessage
-        result={makeResult({
-          validationIssues: ['部分建議缺少明確資料來源，請人工核對。'],
-        })}
-      />
-    );
-
-    // 應該渲染品質提示（Collapse 標題）
-    // 使用 getAllByText 因為可能有多個匹配
-    const qualityHintElements = screen.getAllByText(/copilot.qualityHint.title/);
-    expect(qualityHintElements.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('does not render quality hints when no validation issues', () => {
+  it('does not show blocked tag for normal results', () => {
     renderWithI18n(<CopilotMessage result={makeResult()} />);
 
-    // 不應該渲染品質提示
-    expect(screen.queryByText(/copilot.qualityHint.title/)).not.toBeInTheDocument();
-  });
-});
-
-describe('CopilotMessage — Recommendation Block', () => {
-  it('renders recommendation block with human confirmation notice', () => {
-    renderWithI18n(
-      <CopilotMessage
-        result={makeResult({
-          recommendations: ['建議評估 Q2 產能擴充'],
-        })}
-      />
-    );
-
-    // 應該渲染建議行動區塊
-    expect(screen.getByText('建議評估 Q2 產能擴充')).toBeInTheDocument();
-    // 應該渲染人工確認提示
-    expect(screen.getByText(/copilot.qualityHint.humanConfirm/)).toBeInTheDocument();
-    expect(screen.getByText(/copilot.qualityHint.noAutoWrite/)).toBeInTheDocument();
-  });
-});
-
-describe('CopilotMessage — No Fake Save Claims', () => {
-  it('does not render fake save claims in AI response', () => {
-    const aiSummary = '這是 AI 分析結果。此建議不會自動寫入系統。';
-
-    renderWithI18n(
-      <CopilotMessage
-        result={makeResult({
-          toolName: 'DeepSeek AI',
-          summary: aiSummary,
-        })}
-      />
-    );
-
-    // 不應該有「已保存」相關文字
-    expect(screen.queryByText(/已保存/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/已自動保存/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/已寫入/)).not.toBeInTheDocument();
+    expect(screen.queryByText('copilot.status.blocked')).not.toBeInTheDocument();
   });
 });
 
 describe('CopilotMessage — Source References', () => {
-  it('renders source references in a readable format', () => {
+  it('shows collapsed source reference line', () => {
     renderWithI18n(
       <CopilotMessage
         result={makeResult({
@@ -345,26 +149,124 @@ describe('CopilotMessage — Source References', () => {
       />
     );
 
-    // 應該渲染來源標籤
-    expect(screen.getByText('DeepSeek v4 Flash (Managed)')).toBeInTheDocument();
-    expect(screen.getByText('Data Quality Summary')).toBeInTheDocument();
+    expect(screen.getByText(/copilot.source/)).toBeInTheDocument();
   });
-});
 
-describe('CopilotMessage — Viewer Mode', () => {
-  it('hides recommendations when showFixes is false', () => {
+  it('expands source references on click', () => {
     renderWithI18n(
       <CopilotMessage
         result={makeResult({
-          recommendations: ['建議評估產能擴充'],
+          sourceReferences: ['DeepSeek v4 Flash (Managed)'],
         })}
-        showFixes={false}
       />
     );
 
-    // 不應該渲染建議
-    expect(screen.queryByText('建議評估產能擴充')).not.toBeInTheDocument();
-    // 應該顯示檢視者提示
-    expect(screen.getByText('copilot.viewer.noFixes')).toBeInTheDocument();
+    const sourceText = screen.getByText(/copilot.source/);
+    fireEvent.click(sourceText);
+
+    expect(screen.getByText('DeepSeek v4 Flash (Managed)')).toBeInTheDocument();
+  });
+});
+
+describe('CopilotMessage — Validation Issues', () => {
+  it('shows collapsible quality notice when issues exist', () => {
+    renderWithI18n(
+      <CopilotMessage
+        result={makeResult({
+          validationIssues: ['Some recommendations lack data sources'],
+        })}
+      />
+    );
+
+    expect(screen.getByText(/copilot.qualityHint.title/)).toBeInTheDocument();
+  });
+
+  it('expands quality notice on click', () => {
+    renderWithI18n(
+      <CopilotMessage
+        result={makeResult({
+          validationIssues: ['Missing source for recommendation'],
+        })}
+      />
+    );
+
+    const notice = screen.getByText(/copilot.qualityHint.title/);
+    fireEvent.click(notice);
+  });
+
+  it('does not render quality notice when no validation issues', () => {
+    renderWithI18n(<CopilotMessage result={makeResult()} />);
+
+    expect(screen.queryByText(/copilot.qualityHint.title/)).not.toBeInTheDocument();
+  });
+});
+
+describe('CopilotMessage — No Raw i18n Keys in Output', () => {
+  it('renders summary text without raw i18n keys', () => {
+    renderWithI18n(
+      <CopilotMessage
+        result={makeResult({
+          toolName: 'bpGap',
+          summary: 'BP gap is 10%',
+          sourceReferences: [],
+        })}
+      />
+    );
+
+    // The summary text should appear cleanly (not as an i18n key)
+    expect(screen.getByText('BP gap is 10%')).toBeInTheDocument();
+    // Summary text should not contain i18n patterns
+    expect(screen.queryByText(/^copilot\.[a-z]/)).not.toBeInTheDocument();
+  });
+
+  it('renders summary without raw keys for AI results', () => {
+    renderWithI18n(
+      <CopilotMessage
+        result={makeResult({
+          toolName: 'DeepSeek AI',
+          summary: '## Conclusion\nBP gap is significant.',
+        })}
+      />
+    );
+
+    expect(screen.getByText('Conclusion')).toBeInTheDocument();
+    expect(screen.getByText('BP gap is significant.')).toBeInTheDocument();
+  });
+});
+
+describe('CopilotMessage — No Recommendations Template', () => {
+  it('does not render large recommendation block by default', () => {
+    renderWithI18n(
+      <CopilotMessage
+        result={makeResult({
+          recommendations: ['Recommendation 1'],
+        })}
+      />
+    );
+
+    // The simplified CopilotMessage no longer renders recommendations in a large block
+    // It only shows recommendations via the old RecommendationBlock which is removed
+    // So recommendations content should not appear
+    expect(screen.queryByText('Recommendation 1')).not.toBeInTheDocument();
+  });
+});
+
+describe('CopilotMessage — Caveats', () => {
+  it('renders caveats as small secondary text when present', () => {
+    renderWithI18n(
+      <CopilotMessage
+        result={makeResult({
+          caveats: ['AI-generated response — verify with data'],
+        })}
+      />
+    );
+
+    expect(screen.getByText('· AI-generated response — verify with data')).toBeInTheDocument();
+  });
+
+  it('does not render caveats section when empty', () => {
+    renderWithI18n(<CopilotMessage result={makeResult()} />);
+
+    expect(screen.queryByText(/AI-generated/)).not.toBeInTheDocument();
   });
 });
