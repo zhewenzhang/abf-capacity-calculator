@@ -1,13 +1,16 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Input, Button, Space, Typography, Spin, Tag, Tooltip } from 'antd';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { Input, Button, Space, Typography, Spin, Tag, Tooltip, Card, Row, Col } from 'antd';
 import {
   SendOutlined,
   DownloadOutlined,
   SettingOutlined,
   RobotOutlined,
-  ThunderboltOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
+  DollarOutlined,
+  CloudOutlined,
+  WarningOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons';
 import { useI18n } from '../../i18n';
 import type { AiCopilotContext } from '../../core/aiCopilotContext';
@@ -18,7 +21,6 @@ import { validateProviderOutput as validateOutputText } from '../../core/aiCopil
 import { getProviderById, type ProviderConfig, type ProviderMode } from '../../core/aiProviderAdapter';
 import { buildProviderSystemPrompt, buildProviderUserMessage, type SupportedLanguage } from '../../core/aiProviderPromptPack';
 import CopilotMessage from './CopilotMessage';
-import CopilotQuickButtons from './CopilotQuickButtons';
 import AiProviderSettingsDrawer from './AiProviderSettingsDrawer';
 import AiProviderStatusTag from './AiProviderStatusTag';
 
@@ -27,11 +29,24 @@ const { TextArea } = Input;
 
 interface Props {
   context: AiCopilotContext;
-  /** Tool ID from deep-link query param to auto-execute once */
   pendingToolId?: string | null;
-  /** Called after pendingToolId has been consumed */
   onPendingToolConsumed?: () => void;
 }
+
+// Example questions for empty state
+const EXAMPLE_QUESTIONS_ZH = [
+  { icon: <DollarOutlined />, text: '2026 年 BP 為什麼沒有達標？', tool: 'bpGap' },
+  { icon: <CloudOutlined />, text: '未來 6 個月最大的產能風險是什麼？', tool: 'capacityRisk' },
+  { icon: <WarningOutlined />, text: '哪些客戶貢獻最多營收？', tool: 'dataProblems' },
+  { icon: <QuestionCircleOutlined />, text: '目前資料品質有哪些問題？', tool: 'dataProblems' },
+];
+
+const EXAMPLE_QUESTIONS_EN = [
+  { icon: <DollarOutlined />, text: 'Why did BP miss target in 2026?', tool: 'bpGap' },
+  { icon: <CloudOutlined />, text: 'What is the biggest capacity risk in the next 6 months?', tool: 'capacityRisk' },
+  { icon: <WarningOutlined />, text: 'Which customers contribute the most revenue?', tool: 'dataProblems' },
+  { icon: <QuestionCircleOutlined />, text: 'What data quality issues exist?', tool: 'dataProblems' },
+];
 
 const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolConsumed }) => {
   const { t, lang } = useI18n();
@@ -45,8 +60,9 @@ const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolCon
 
   const isViewer = context.role === 'viewer';
   const currentLang: SupportedLanguage = lang === 'zh-TW' ? 'zh-TW' : 'en';
+  const exampleQuestions = currentLang === 'zh-TW' ? EXAMPLE_QUESTIONS_ZH : EXAMPLE_QUESTIONS_EN;
 
-  // 检查 proxy 健康状态
+  // Check proxy health
   useEffect(() => {
     const checkHealth = async () => {
       try {
@@ -60,7 +76,7 @@ const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolCon
     checkHealth();
   }, []);
 
-  // 自动滚动到底部
+  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [history]);
@@ -96,7 +112,7 @@ const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolCon
     []
   );
 
-  // Auto-execute pending tool from deep-link query param
+  // Auto-execute pending tool from deep-link
   useEffect(() => {
     if (pendingToolId && context) {
       setProcessing(true);
@@ -114,25 +130,12 @@ const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolCon
     setProviderMode(mode);
   }, []);
 
-  const handleQuickSelect = useCallback(
-    (toolId: string) => {
-      setProcessing(true);
-      setTimeout(() => {
-        const result = runTool(toolId, context);
-        const validated = applyOutputValidation(result);
-        setHistory((prev) => [...prev, validated]);
-        setProcessing(false);
-      }, 300);
-    },
-    [context, applyOutputValidation]
-  );
-
   const handleSubmit = useCallback(async () => {
     const q = input.trim();
     if (!q || processing) return;
     setProcessing(true);
 
-    // 始终运行确定性工具作为基础
+    // Always run deterministic tool as base
     const localResult = routeQuestion(q, context);
 
     if (providerMode === 'deepseek-proxy') {
@@ -152,7 +155,6 @@ const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolCon
         const response = await provider.runCompletion(config, request);
 
         if (response.confidence === 'blocked' || response.isFallback) {
-          // 降级到确定性工具
           const fallbackResult: CopilotToolResult = {
             ...localResult,
             caveats: [...localResult.caveats, `AI: ${response.content}`],
@@ -160,7 +162,6 @@ const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolCon
           const validated = applyOutputValidation(fallbackResult);
           setHistory((prev) => [...prev, validated]);
         } else {
-          // AI 响应成功
           const aiResult: CopilotToolResult = {
             toolName: 'DeepSeek AI',
             title: currentLang === 'zh-TW' ? 'AI 分析' : 'AI Analysis',
@@ -189,7 +190,6 @@ const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolCon
         setHistory((prev) => [...prev, validated]);
       }
     } else {
-      // Local 或 Mock 模式
       const validated = applyOutputValidation(localResult);
       setHistory((prev) => [...prev, validated]);
     }
@@ -212,15 +212,46 @@ const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolCon
     [handleSubmit]
   );
 
+  // Generate follow-up suggestions based on last result
+  const followUps = useMemo(() => {
+    if (history.length === 0) return [];
+    const last = history[history.length - 1];
+    if (last.confidence === 'blocked') return [];
+
+    if (currentLang === 'zh-TW') {
+      return [
+        '查看 2026 年 BP 差距來源',
+        '用圖表比較 2026-2030',
+        '模擬單價 +5% 會怎樣',
+      ];
+    }
+    return [
+      'View 2026 BP gap source',
+      'Compare 2026-2030 with chart',
+      'Simulate price +5%',
+    ];
+  }, [history, currentLang]);
+
   return (
-    <div className="twk-chat" style={{ height: '100%' }}>
-      {/* 頂部欄 — Designbyte style */}
-      <div className="twk-chat-header">
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      maxWidth: 960,
+      margin: '0 auto',
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: '12px 20px',
+        borderBottom: '1px solid #f0f0f0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        background: '#fff',
+      }}>
         <Space>
-          <RobotOutlined style={{ fontSize: 24, color: 'var(--twk-text)' }} />
-          <Title level={5} style={{ margin: 0 }}>
-            {currentLang === 'zh-TW' ? 'AI 資料助手' : 'AI Data Copilot'}
-          </Title>
+          <RobotOutlined style={{ fontSize: 20, color: '#2563eb' }} />
+          <Text strong style={{ fontSize: 15 }}>{t('copilot.title')}</Text>
           <AiProviderStatusTag mode={providerMode} />
         </Space>
         <Space>
@@ -250,46 +281,62 @@ const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolCon
         </Space>
       </div>
 
-      {/* 消息區域 — Designbyte style */}
-      <div className="twk-chat-messages">
-        {/* 空狀態 */}
+      {/* Messages area */}
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        padding: '20px',
+      }}>
+        {/* Empty state */}
         {history.length === 0 && (
-          <div className="twk-empty" style={{ minHeight: 400 }}>
-            <RobotOutlined className="twk-empty-icon" />
-            <Title level={4} className="twk-empty-title">
-              {currentLang === 'zh-TW' ? '有什麼可以幫您的嗎？' : 'How can I help you today?'}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: 300,
+            textAlign: 'center',
+          }}>
+            <RobotOutlined style={{ fontSize: 48, color: '#d9d9d9', marginBottom: 16 }} />
+            <Title level={4} style={{ color: '#8c8c8c', marginBottom: 8 }}>
+              {currentLang === 'zh-TW' ? '今天想分析什麼？' : 'What would you like to analyze?'}
             </Title>
-            <Text className="twk-empty-description">
-              {currentLang === 'zh-TW'
-                ? '詢問您的產能資料，或嘗試下方的快捷操作。'
-                : 'Ask about your capacity data, or try a quick action below.'}
+            <Text type="secondary" style={{ marginBottom: 24, maxWidth: 480 }}>
+              {t('copilot.description')}
             </Text>
-            <div style={{ marginTop: 24, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-              <span
-                className="twk-pill"
-                onClick={() => handleQuickSelect('dataProblems')}
-              >
-                <ThunderboltOutlined /> {currentLang === 'zh-TW' ? '資料問題' : 'Data Problems'}
-              </span>
-              <span
-                className="twk-pill"
-                onClick={() => handleQuickSelect('capacityRisk')}
-              >
-                <ThunderboltOutlined /> {currentLang === 'zh-TW' ? '產能風險' : 'Capacity Risk'}
-              </span>
-              <span
-                className="twk-pill"
-                onClick={() => handleQuickSelect('bpGap')}
-              >
-                <ThunderboltOutlined /> {currentLang === 'zh-TW' ? 'BP 差距' : 'BP Gap'}
-              </span>
-            </div>
+
+            {/* Example question cards */}
+            <Row gutter={[12, 12]} style={{ maxWidth: 600 }}>
+              {exampleQuestions.map((q, idx) => (
+                <Col xs={12} key={idx}>
+                  <Card
+                    size="small"
+                    hoverable
+                    onClick={() => {
+                      setInput(q.text);
+                      // Auto-submit after a short delay
+                      setTimeout(() => {
+                        const toolResult = runTool(q.tool, context);
+                        const validated = applyOutputValidation(toolResult);
+                        setHistory((prev) => [...prev, validated]);
+                      }, 100);
+                    }}
+                    style={{ cursor: 'pointer', borderRadius: 10 }}
+                  >
+                    <Space>
+                      {q.icon}
+                      <Text style={{ fontSize: 12 }}>{q.text}</Text>
+                    </Space>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
           </div>
         )}
 
-        {/* 消息列表 */}
+        {/* Message list */}
         {history.map((result, idx) => (
-          <div key={idx} className="twk-chat-bubble">
+          <div key={idx} style={{ marginBottom: 16 }}>
             <CopilotMessage result={result} showFixes={!isViewer} />
             {/* Fallback CTA */}
             {(result.confidence === 'blocked' || result.confidence === 'low') && (
@@ -306,7 +353,31 @@ const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolCon
           </div>
         ))}
 
-        {/* 加載狀態 */}
+        {/* Follow-up chips */}
+        {history.length > 0 && !processing && followUps.length > 0 && (
+          <div style={{ marginBottom: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {followUps.map((fu: string, idx: number) => (
+              <Tag
+                key={idx}
+                color="blue"
+                style={{ cursor: 'pointer', padding: '4px 12px', borderRadius: 16 }}
+                onClick={() => {
+                  setInput(fu);
+                  setTimeout(() => {
+                    const localResult = routeQuestion(fu, context);
+                    const validated = applyOutputValidation(localResult);
+                    setHistory((prev) => [...prev, validated]);
+                    setInput('');
+                  }, 100);
+                }}
+              >
+                {fu}
+              </Tag>
+            ))}
+          </div>
+        )}
+
+        {/* Loading state */}
         {processing && (
           <div style={{ textAlign: 'center', padding: 20 }}>
             <Spin />
@@ -319,22 +390,18 @@ const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolCon
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 底部區域 — Designbyte style */}
-      <div className="twk-chat-input-area">
-        {/* 快捷按鈕 */}
-        <div style={{ marginBottom: 12 }}>
-          <CopilotQuickButtons onSelect={handleQuickSelect} />
-        </div>
-
-        {/* 輸入框 */}
-        <div className="twk-chat-input">
+      {/* Input area */}
+      <div style={{
+        padding: '12px 20px',
+        borderTop: '1px solid #f0f0f0',
+        background: '#fff',
+      }}>
+        <div style={{ display: 'flex', gap: 8 }}>
           <TextArea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={currentLang === 'zh-TW'
-              ? '詢問您的產能資料...'
-              : 'Ask about your capacity data...'}
+            placeholder={t('copilot.input.placeholder')}
             disabled={processing}
             autoSize={{ minRows: 1, maxRows: 4 }}
             style={{
@@ -354,10 +421,8 @@ const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolCon
             }}
           />
         </div>
-
-        {/* 底部信息 */}
-        <div style={{ marginTop: 8, textAlign: 'center' }}>
-          <Text type="secondary" style={{ fontSize: 12 }}>
+        <div style={{ marginTop: 6, textAlign: 'center' }}>
+          <Text type="secondary" style={{ fontSize: 11 }}>
             {currentLang === 'zh-TW'
               ? 'DeepSeek v4 Flash · 伺服器託管金鑰 · 無需 API 金鑰'
               : 'DeepSeek v4 Flash · Server-Managed Key · No API key required'}
@@ -365,7 +430,7 @@ const CopilotChat: React.FC<Props> = ({ context, pendingToolId, onPendingToolCon
         </div>
       </div>
 
-      {/* Provider Settings Drawer */}
+      {/* Settings Drawer */}
       <AiProviderSettingsDrawer
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}

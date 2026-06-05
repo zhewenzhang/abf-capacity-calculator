@@ -1131,9 +1131,11 @@ export const en: Record<string, string> = {
   // AI Copilot
   'menu.copilot': 'AI Copilot',
   'copilot.title': 'AI Data Copilot',
+  'copilot.subtitle': 'AI Assistant',
+  'copilot.description': 'Ask about revenue, BP, capacity, forecast, and data quality. The assistant answers with verifiable analysis from the current workspace.',
   'copilot.disclaimer': 'Deterministic local assistant — No external AI connected',
   'copilot.disclaimerDetail': 'All answers are computed locally. Suggestions require human confirmation.',
-  'copilot.input.placeholder': 'Ask about your data...',
+  'copilot.input.placeholder': 'Ask about revenue, BP, capacity, forecast, or data quality...',
   'copilot.quick.dataProblems': 'Data Problems',
   'copilot.quick.capacityRisk': 'Capacity Risk',
   'copilot.quick.bpGap': 'BP Gap',

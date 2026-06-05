@@ -1140,9 +1140,11 @@ export const zhTW: Record<string, string> = {
   // AI 助手
   'menu.copilot': 'AI 助手',
   'copilot.title': 'AI 資料助手',
+  'copilot.subtitle': 'AI 助手',
+  'copilot.description': '用自然語言詢問營收、BP、產能、預測與資料品質，AI 會基於目前工作區資料產生可驗證的分析。',
   'copilot.disclaimer': '本地確定性分析工具 — 未連接外部 AI',
   'copilot.disclaimerDetail': '所有回答均為本地計算結果。建議需人工確認後方可執行。',
-  'copilot.input.placeholder': '詢問您的資料問題...',
+  'copilot.input.placeholder': '詢問營收、BP、產能、預測或資料品質...',
   'copilot.quick.dataProblems': '資料問題',
   'copilot.quick.capacityRisk': '產能風險',
   'copilot.quick.bpGap': 'BP 差距',
