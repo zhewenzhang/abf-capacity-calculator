@@ -1251,7 +1251,7 @@ export const zhTW: Record<string, string> = {
   'scenario.kpi.capacityImpact': '產能影響',
   'scenario.kpi.maxBuUtil': '最大 BU 利用率',
   'scenario.charts.title': '年度影響趨勢',
-  'scenario.chart.revenue': '營收（百萬美元）',
+  'scenario.chart.revenue': '營收（M NTD）',
   'scenario.chart.bpAttainment': 'BP 達成率（%）',
   'scenario.chart.utilization': '最大利用率（%）',
   'scenario.table.title': '年度影響結果',
