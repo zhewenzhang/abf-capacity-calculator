@@ -536,12 +536,47 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
           </div>
           <div className="twk-card-body">
             <Row gutter={[12, 12]}>
+              {/* 5Y Revenue CAGR (replaces Total Revenue) */}
               <Col xs={12} sm={8} md={4}>
                 <div style={{ textAlign: 'center', padding: '8px 0' }}>
-                  <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.totalRevenue')}</Text>
-                  <Text strong style={{ fontSize: 18 }}>
-                    {formatPlainMoney(convertFromUsd(analyticsModel.totalRevenue, 'TWD', currencySettings), 'TWD')}
-                  </Text>
+                  <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.revenueCagr5y')}</Text>
+                  {(() => {
+                    // Compute CAGR from yearlyHealth (5-year window)
+                    const health = analyticsModel.yearlyHealth.filter(y => y.revenue > 0);
+                    if (health.length < 2) {
+                      return (
+                        <>
+                          <Text strong style={{ fontSize: 18 }}>—</Text>
+                          <Text type="secondary" style={{ fontSize: 9, display: 'block' }}>{t('common.noData')}</Text>
+                        </>
+                      );
+                    }
+                    // Use 5-year window: first available year to year+4
+                    const firstYear = health[0];
+                    const lastYear = health.length >= 5 ? health[4] : health[health.length - 1];
+                    const firstRev = convertFromUsd(firstYear.revenue, 'TWD', currencySettings);
+                    const lastRev = convertFromUsd(lastYear.revenue, 'TWD', currencySettings);
+                    const periods = parseInt(lastYear.year) - parseInt(firstYear.year);
+                    if (firstRev <= 0 || lastRev <= 0 || periods <= 0) {
+                      return (
+                        <>
+                          <Text strong style={{ fontSize: 18 }}>—</Text>
+                          <Text type="secondary" style={{ fontSize: 9, display: 'block' }}>{t('common.noData')}</Text>
+                        </>
+                      );
+                    }
+                    const cagr = Math.pow(lastRev / firstRev, 1 / periods) - 1;
+                    const cagrPct = (cagr * 100).toFixed(1);
+                    const label = `${firstYear.year}–${lastYear.year}`;
+                    return (
+                      <>
+                        <Text strong style={{ fontSize: 18, color: cagr >= 0 ? token.colorSuccess : token.colorError }}>
+                          {cagr >= 0 ? '+' : ''}{cagrPct}%
+                        </Text>
+                        <Text type="secondary" style={{ fontSize: 9, display: 'block' }}>{label}</Text>
+                      </>
+                    );
+                  })()}
                 </div>
               </Col>
               <Col xs={12} sm={8} md={4}>
