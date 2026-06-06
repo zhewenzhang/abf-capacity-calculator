@@ -43,22 +43,32 @@ Periods: 4 (2026→2030)
 ## 5. Test / Lint / Build
 
 ```
-<!-- Filled in -->
+Build:     ✅ tsc -b && vite build — success
+Lint:      ✅ eslint . --quiet — clean (0 errors)
+Tests:     ✅ 1531 passed, 1 pre-existing timeout (DailyOperationsWorkbench dynamic import), 61 test files
 ```
 
 ## 6. Redline
 
-- firestore.rules: Unchanged
-- calculationEngine.ts: Unchanged
+| File | Status |
+|------|--------|
+| `firestore.rules` | ✅ Unchanged |
+| `calculationEngine.ts` | ✅ Unchanged |
+| v1.52.0 references | ✅ Only in comments |
+| M TWD / M CNY / NT$ / ¥ | ✅ No new violations (existing i18n keys only) |
+| 問題摘要 / 今日行動建議 | ✅ Not modified |
 
 ## 7. Deploy
 
 ```
-<!-- Filled in -->
+Hosting URL: https://abf-capacity-calculator.web.app
+Status:      ✅ Deploy complete
+Functions:   Not modified
 ```
 
 ## 8. Commit
 
 ```
-<!-- Filled in -->
+Commit hash: 10145ea
+Branch: xiaomi/v1-58-5-operations-kpi-revenue-cagr
 ```
