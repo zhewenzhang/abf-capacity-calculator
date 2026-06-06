@@ -31,6 +31,8 @@ import type { DisplayCurrency } from './core/currency';
 import { tweakcnAntdTheme } from './theme/tweakcnAntdTheme';
 import enUS from 'antd/locale/en_US';
 import zhTW from 'antd/locale/zh_TW';
+import { CopilotDrawerProvider, useCopilotDrawer } from './components/copilot/CopilotDrawerContext';
+import GlobalCopilotDrawer from './components/copilot/GlobalCopilotDrawer';
 
 const DashboardPage = lazy(() => import('./pages/Dashboard'));
 const ProductsPage = lazy(() => import('./pages/Products'));
@@ -46,7 +48,7 @@ const ScenarioPlanningPage = lazy(() => import('./pages/ScenarioPlanning'));
 const AiCopilotPage = lazy(() => import('./pages/AiCopilot'));
 const DailyOperationsWorkbench = lazy(() => import('./pages/DailyOperationsWorkbench'));
 
-const APP_VERSION = 'v1.58.0';
+const APP_VERSION = 'v1.60.0';
 
 // --- High-frequency nav items (always visible) ---
 // Note: /dashboard redirects to /operations (consolidated in v1.56)
@@ -68,6 +70,35 @@ const MORE_NAV = [
   { key: 'forecasts-lab', icon: <ExperimentOutlined /> },
   { key: 'capacity-lab', icon: <ExperimentOutlined /> },
 ];
+
+// --- Global Copilot Drawer Button ---
+const CopilotDrawerButton: React.FC = () => {
+  const { open } = useCopilotDrawer();
+  const { t } = useI18n();
+  return (
+    <button
+      onClick={() => open()}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        padding: '4px 10px',
+        borderRadius: 999,
+        border: '1px solid var(--twk-border)',
+        background: 'transparent',
+        cursor: 'pointer',
+        fontSize: 11,
+        fontWeight: 500,
+        color: 'var(--twk-text)',
+        transition: 'all 0.15s',
+      }}
+      title={t('menu.copilot')}
+    >
+      <RobotOutlined style={{ fontSize: 13 }} />
+      <span className="twk-nav-label">{t('menu.copilot')}</span>
+    </button>
+  );
+};
 
 // --- Top Navigation Bar ---
 const TopNav: React.FC<{
@@ -199,6 +230,9 @@ const TopNav: React.FC<{
 
       {/* Right side: compact controls + user menu */}
       <div className="twk-userbar">
+        {/* Global AI Assistant button */}
+        <CopilotDrawerButton />
+
         {/* Language — compact */}
         <Radio.Group
           value={lang}
@@ -277,6 +311,7 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
   const routeKey = scope.mode === 'workspace' ? `ws:${scope.workspaceId}` : `user:${scope.userId}`;
 
   return (
+    <CopilotDrawerProvider>
     <div className="twk-shell">
       <TopNav
         current={current}
@@ -315,6 +350,8 @@ const AppContent: React.FC<{ user: User }> = ({ user }) => {
         ABF CSS · {APP_VERSION}
       </footer>
     </div>
+      <GlobalCopilotDrawer />
+    </CopilotDrawerProvider>
   );
 };
 

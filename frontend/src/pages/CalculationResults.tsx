@@ -21,7 +21,6 @@ import {
   Popconfirm,
   Statistic,
   Progress,
-  Drawer,
 } from 'antd';
 import {
   WarningOutlined,
@@ -98,7 +97,7 @@ import {
   SNAPSHOT_FILTER_OPTIONS,
 } from '../core/snapshotMetadata';
 import { buildAiCopilotContext } from '../core/aiCopilotContext';
-import CopilotChat from '../components/copilot/CopilotChat';
+import { useCopilotDrawer } from '../components/copilot/CopilotDrawerContext';
 
 const { Text } = Typography;
 
@@ -111,6 +110,7 @@ type ResultsView = 'risk' | 'change' | 'sales' | 'product' | 'capacity' | 'bp' |
 const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }) => {
   const { t } = useI18n();
   const { prefs } = useAppPrefs();
+  const { open: openCopilotDrawer } = useCopilotDrawer();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [skus, setSkus] = useState<SKU[]>([]);
@@ -140,7 +140,6 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
   const [newSnapshotPeriodLabel, setNewSnapshotPeriodLabel] = useState('');
   const [newSnapshotReviewStatus, setNewSnapshotReviewStatus] = useState<SnapshotReviewStatus | undefined>(undefined);
   const [newSnapshotNote, setNewSnapshotNote] = useState('');
-  const [copilotDrawerOpen, setCopilotDrawerOpen] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -854,32 +853,14 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
               />
             </div>
             <div className="twk-toolbar-group">
-              {copilotContext && (
-                <Button
-                  icon={<RobotOutlined />}
-                  onClick={() => setCopilotDrawerOpen(true)}
-                >
-                  {t('copilot.title')}
-                </Button>
-              )}
+              <Button
+                icon={<RobotOutlined />}
+                onClick={() => copilotContext && openCopilotDrawer(copilotContext)}
+              >
+                {t('copilot.title')}
+              </Button>
             </div>
           </div>
-
-          {/* AI Copilot Drawer */}
-          <Drawer
-            title={
-              <Space>
-                <RobotOutlined />
-                <span>{t('copilot.title')}</span>
-              </Space>
-            }
-            open={copilotDrawerOpen}
-            onClose={() => setCopilotDrawerOpen(false)}
-            width={480}
-            destroyOnClose
-          >
-            {copilotContext && <CopilotChat context={copilotContext} />}
-          </Drawer>
 
           {/* Risk Brief View — Designbyte Cards */}
           {view === 'risk' && riskBrief && analysisPayload && (
