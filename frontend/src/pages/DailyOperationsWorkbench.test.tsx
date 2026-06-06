@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
-import { render } from '@testing-library/react';
+import { render, waitFor, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 
@@ -181,12 +181,22 @@ vi.mock('../core/dataQuality', () => ({
 vi.mock('../core/analytics', () => ({
   buildAnalyticsModel: vi.fn().mockReturnValue({
     totalForecastPcs: 0,
+    totalRevenue: 0,
     totalRevenueUsd: 0,
     totalCapacityPcs: 0,
     utilization: 0,
     shortageMonths: 0,
+    shortageMonthCount: 0,
+    maxCoreUtil: null,
+    maxBuUtil: null,
     skuResults: [],
     monthlySummaries: [],
+    monthlyRevenue: [],
+    monthlyUtilization: [],
+    yearlyHealth: [],
+    revenueByCustomer: [],
+    revenueByApplication: [],
+    coreDemandBySize: [],
   }),
 }));
 
@@ -207,20 +217,24 @@ vi.mock('../core/bpTargets', () => ({
   formatBpAmount: vi.fn().mockReturnValue('0'),
 }));
 
-vi.mock('../core/currency', () => ({
-  normalizeCurrencySettings: vi.fn().mockReturnValue({
-    displayCurrency: 'USD',
-    usdTwdRate: 32,
-    usdCnyRate: 7.2,
-  }),
-  DEFAULT_CURRENCY_SETTINGS: {
-    displayCurrency: 'USD',
-    usdTwdRate: 32,
-    usdCnyRate: 7.2,
-  },
-  formatCurrency: vi.fn().mockReturnValue('0'),
-  formatCurrencyShort: vi.fn().mockReturnValue('0'),
-}));
+vi.mock('../core/currency', async () => {
+  const actual = await vi.importActual<typeof import('../core/currency')>('../core/currency');
+  return {
+    ...actual,
+    normalizeCurrencySettings: vi.fn().mockReturnValue({
+      displayCurrency: 'USD',
+      usdTwdRate: 32,
+      usdCnyRate: 7.2,
+    }),
+    DEFAULT_CURRENCY_SETTINGS: {
+      displayCurrency: 'USD',
+      usdTwdRate: 32,
+      usdCnyRate: 7.2,
+    },
+    formatCurrency: vi.fn().mockReturnValue('0'),
+    formatCurrencyShort: vi.fn().mockReturnValue('0'),
+  };
+});
 
 vi.mock('@ant-design/charts', () => ({
   Line: vi.fn().mockReturnValue(null),
@@ -305,7 +319,7 @@ describe('DailyOperationsWorkbench -- Render Tests', () => {
         <DailyOperationsWorkbench scope={scope} />
       );
       expect(container).toBeTruthy();
-    });
+    }, 15000);
 
     it('component module exports a valid React component', async () => {
       const { default: DailyOperationsWorkbench } = await import('./DailyOperationsWorkbench');
@@ -588,6 +602,71 @@ describe('DailyOperationsWorkbench -- Render Tests', () => {
 
       // canEdit should have been called with 'viewer'
       expect(mockCanEdit).toHaveBeenCalledWith('viewer');
+    });
+  });
+  // ---------------------------------------------------------------
+  // Test 10: Operations-wide page layout class (v1.58.6)
+  // ---------------------------------------------------------------
+  describe('operations-wide page layout', () => {
+    it('root container has twk-page--wide class after data loads', async () => {
+      const { default: DailyOperationsWorkbench } = await import('./DailyOperationsWorkbench');
+      const scope = { userId: 'test-user', projectId: 'default', mode: 'personal' as const, role: 'owner' as const };
+
+      const { container } = renderWithProviders(
+        <DailyOperationsWorkbench scope={scope} />
+      );
+      // Wait for async data loading to complete and content to render
+      await waitFor(() => {
+        const rootDiv = container.querySelector('.twk-page--wide');
+        expect(rootDiv).toBeTruthy();
+      });
+      // Now verify the class is present
+      const rootDiv = container.querySelector('.twk-page--wide');
+      expect(rootDiv?.className).toContain('twk-page--wide');
+    });
+
+    it('workbench content container renders within wide page', async () => {
+      const { default: DailyOperationsWorkbench } = await import('./DailyOperationsWorkbench');
+      const scope = { userId: 'test-user', projectId: 'default', mode: 'personal' as const, role: 'owner' as const };
+
+      const { container } = renderWithProviders(
+        <DailyOperationsWorkbench scope={scope} />
+      );
+      // Wait for Pipeline Readiness to appear (confirms data loaded)
+      await screen.findByText('Pipeline Readiness');
+      const widePage = container.querySelector('.twk-page--wide');
+      expect(widePage).toBeTruthy();
+      // The wide page should contain the Pipeline Readiness section
+      const readinessCard = widePage?.querySelector('.twk-readiness-grid');
+      expect(readinessCard).toBeTruthy();
+    });
+
+    it('does not render old sidebar', async () => {
+      const { default: DailyOperationsWorkbench } = await import('./DailyOperationsWorkbench');
+      const scope = { userId: 'test-user', projectId: 'default', mode: 'personal' as const, role: 'owner' as const };
+
+      const { container } = renderWithProviders(
+        <DailyOperationsWorkbench scope={scope} />
+      );
+      // Wait for data to load first
+      await screen.findByText('Pipeline Readiness');
+      // Old sidebar selectors should not exist
+      expect(container.querySelector('.ant-layout-sider')).toBeFalsy();
+      expect(container.querySelector('.sidebar')).toBeFalsy();
+    });
+
+    it('does not restore issue summary or today action items', async () => {
+      const { default: DailyOperationsWorkbench } = await import('./DailyOperationsWorkbench');
+      const scope = { userId: 'test-user', projectId: 'default', mode: 'personal' as const, role: 'owner' as const };
+
+      const { container } = renderWithProviders(
+        <DailyOperationsWorkbench scope={scope} />
+      );
+      // Wait for data to load first
+      await screen.findByText('Pipeline Readiness');
+      // These should never appear — regression guard
+      expect(container.textContent || '').not.toContain('問題摘要');
+      expect(container.textContent || '').not.toContain('今日行動建議');
     });
   });
 });

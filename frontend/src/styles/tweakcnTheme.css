@@ -323,6 +323,44 @@ code, pre, .twk-mono {
   animation: twk-fade-in 0.2s ease-out;
 }
 
+/* ============================================================
+   Wide Page — Operations width expansion (v1.58.6)
+   Override the global 1280px max-width ONLY when the
+   operations page uses .twk-page--wide via the :has() selector.
+   Non-goal pages (Dashboard, Scenario, AI Copilot, etc.) are
+   unaffected because they lack the --wide class.
+   ============================================================ */
+
+.twk-main:has(.twk-page--wide) {
+  max-width: 1560px;
+  width: min(100% - 48px, 1560px);
+}
+
+.twk-page--wide {
+  width: 100%;
+}
+
+/* Large desktop — slightly more inline padding */
+@media (min-width: 1600px) {
+  .twk-main:has(.twk-page--wide) {
+    padding-inline: 32px;
+  }
+}
+
+/* Tablet */
+@media (max-width: 768px) {
+  .twk-main:has(.twk-page--wide) {
+    padding-inline: 20px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .twk-main:has(.twk-page--wide) {
+    padding-inline: 12px;
+  }
+}
+
 @keyframes twk-fade-in {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
@@ -656,7 +694,7 @@ code, pre, .twk-mono {
 
 .twk-readiness-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: var(--twk-space-4);
 }
 

@@ -334,7 +334,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   // ---- Error state ----
   if (error) {
     return (
-      <div className="twk-page">
+      <div className="twk-page twk-page--wide">
         <Card>
           <Text type="danger">{error}</Text>
         </Card>
@@ -345,7 +345,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   // ---- Empty state ----
   if (!vm || !hasData) {
     return (
-      <div className="twk-page">
+      <div className="twk-page twk-page--wide">
         <EmptyState
           title={t('workbench.title')}
           description={t('workbench.subtitle')}
@@ -460,7 +460,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
 
   // ---- Render ----
   return (
-    <div className="twk-page">
+    <div className="twk-page twk-page--wide">
       {/* Viewer read-only warning — Designbyte Alert */}
       {!writable && (
         <div className="twk-alert twk-alert--info" style={{ marginBottom: 16 }}>
