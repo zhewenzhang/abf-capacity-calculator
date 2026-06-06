@@ -47,6 +47,7 @@ import { buildDataQualitySummary, type DataQualityIssue } from '../core/dataQual
 import { filterIssuesByDomain, findAllIssuesAffectingSku } from '../core/dataQualityVisibility';
 import { DataQualityBadge, DataQualityAlert } from '../components/common';
 import { SkuQuickFixDrawer } from '../components/common/DataQualityQuickFixDrawer';
+import PageShell from '../components/layout/PageShell';
 
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -651,7 +652,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
   ];
 
   return (
-    <div className="twk-page">
+    <PageShell variant="wide">
       {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       {!writable && (
         <Alert
@@ -865,7 +866,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ scope }) => {
         scope={scope}
         onSuccess={handleQuickFixSuccess}
       />
-    </div>
+    </PageShell>
   );
 };
 

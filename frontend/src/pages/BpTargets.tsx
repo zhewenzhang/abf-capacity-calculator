@@ -10,6 +10,7 @@ import type { ProjectScope, Forecast, SKU, ProjectParameters } from '../types';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
 import { PageLoading, ActionBar, DataQualityAlert } from '../components/common';
+import PageShell from '../components/layout/PageShell';
 import { buildDataQualitySummary } from '../core/dataQuality';
 import { filterIssuesByDomain } from '../core/dataQualityVisibility';
 import { normalizeCurrencySettings } from '../core/currency';
@@ -292,7 +293,7 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
   if (error) return <Alert message={error} type="error" showIcon style={{ margin: 16 }} />;
 
   return (
-    <div className="twk-page">
+    <PageShell variant="wide">
       {/* Viewer read-only warning */}
       {!writable && (
         <Alert
@@ -380,7 +381,7 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
           cellClassName={cellClassName}
         />
       </div>
-    </div>
+    </PageShell>
   );
 };
 

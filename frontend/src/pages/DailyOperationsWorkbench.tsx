@@ -49,6 +49,7 @@ import EmptyState from '../components/common/EmptyState';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
 import { useAppPrefs } from '../context/AppPreferencesContext';
+import PageShell from '../components/layout/PageShell';
 import { convertFromUsd, DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
 import { formatAttainment, formatBpAmount } from '../core/bpTargets';
 import { formatPlainMoney, formatDelta } from '../core/formatters';
@@ -334,23 +335,23 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   // ---- Error state ----
   if (error) {
     return (
-      <div className="twk-page">
+      <PageShell variant="wide">
         <Card>
           <Text type="danger">{error}</Text>
         </Card>
-      </div>
+      </PageShell>
     );
   }
 
   // ---- Empty state ----
   if (!vm || !hasData) {
     return (
-      <div className="twk-page">
+      <PageShell variant="wide">
         <EmptyState
           title={t('workbench.title')}
           description={t('workbench.subtitle')}
         />
-      </div>
+      </PageShell>
     );
   }
 
@@ -460,7 +461,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
 
   // ---- Render ----
   return (
-    <div className="twk-page">
+    <PageShell variant="wide">
       {/* Viewer read-only warning — Designbyte Alert */}
       {!writable && (
         <div className="twk-alert twk-alert--info" style={{ marginBottom: 16 }}>
@@ -1665,7 +1666,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
           </Space>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 };
 

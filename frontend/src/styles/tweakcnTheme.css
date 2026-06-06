@@ -323,6 +323,40 @@ code, pre, .twk-mono {
   animation: twk-fade-in 0.2s ease-out;
 }
 
+/* ============================================================
+   Page Shell (v1.58.7) — reusable page width variants
+   Applied via <PageShell variant="wide|standard|narrow|full">
+   ============================================================ */
+
+.abf-page-shell {
+  width: 100%;
+}
+
+/* Narrow — 960px, for text-heavy / form-only pages */
+.twk-main:has(.abf-page-shell--narrow) {
+  max-width: 960px;
+}
+
+/* Standard — 1280px, for settings / mixed pages (matches twk-main default) */
+/* No override needed because twk-main is already 1280px */
+
+/* Wide — 1560px+, for table / chart / dashboard pages */
+.twk-main:has(.abf-page-shell--wide) {
+  max-width: 1560px;
+}
+
+@media (min-width: 1800px) {
+  .twk-main:has(.abf-page-shell--wide) {
+    max-width: 1640px;
+    padding-inline: 32px;
+  }
+}
+
+/* Full — no constraint, for custom layouts (copilot, etc.) */
+.abf-page-shell--full {
+  max-width: none;
+}
+
 @keyframes twk-fade-in {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }

@@ -99,6 +99,7 @@ import {
 } from '../core/snapshotMetadata';
 import { buildAiCopilotContext } from '../core/aiCopilotContext';
 import CopilotChat from '../components/copilot/CopilotChat';
+import PageShell from '../components/layout/PageShell';
 
 const { Text } = Typography;
 
@@ -790,7 +791,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
   }
 
   return (
-    <div className="twk-page">
+    <PageShell variant="wide">
       {/* Page Header — Designbyte */}
       <div className="twk-page-header">
         <h2 className="twk-page-title">{t('results.title')}</h2>
@@ -2453,7 +2454,7 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
           )}
         </>
       )}
-    </div>
+    </PageShell>
   );
 };
 

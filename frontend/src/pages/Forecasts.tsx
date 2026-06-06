@@ -46,6 +46,7 @@ import { DEFAULT_YIELD_MATRIX, DEFAULT_PANEL_PARAMS, DEFAULT_WORKING_DAYS } from
 import { DEFAULT_CURRENCY_SETTINGS } from '../core/currency';
 import { findInvalidForecasts } from '../core/forecastMonthValidator';
 import { Segmented } from 'antd';
+import PageShell from '../components/layout/PageShell';
 
 const { Text } = Typography;
 
@@ -895,7 +896,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
         : handleYearlyGrowth;
 
   return (
-    <div className="twk-page">
+    <PageShell variant="wide">
       {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       {!writable && (
         <Alert message={t('common.readOnlyMode')} description={t('common.readOnlyDesc')} type="info" showIcon className="abf-alert-page" />
@@ -1297,7 +1298,7 @@ const ForecastsPage: React.FC<ForecastsPageProps> = ({ scope }) => {
         onSuccess={loadData}
         onEditForecast={handleGuidedFixEditForecast}
       />
-    </div>
+    </PageShell>
   );
 };
 
