@@ -54,6 +54,8 @@ export const en: Record<string, string> = {
   'dashboard.executiveKpi': 'Executive KPIs',
   'dashboard.totalSkus': 'Total SKUs',
   'dashboard.totalRevenue': 'Total Revenue',
+  'dashboard.annualRevenue': 'Annual Revenue',
+  'dashboard.yearlyMetricsNote': 'Metrics are calculated for the selected year. Amounts use M NTD.',
   'dashboard.revenueTrend': 'Revenue Trend',
   'dashboard.worstYear': 'Worst Year',
   'dashboard.maxCoreUtil': 'Max Core Util.',

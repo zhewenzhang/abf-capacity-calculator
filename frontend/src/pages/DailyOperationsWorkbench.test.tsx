@@ -84,7 +84,6 @@ function makeViewModel(overrides: Partial<WorkbenchViewModel> = {}): WorkbenchVi
       makeStage({ id: 'parameters', label: 'workbench.stage.parameters', status: 'ready', cta: '/parameters' }),
       makeStage({ id: 'bpTargets', label: 'workbench.stage.bpTargets', status: 'ready', cta: '/bp-targets' }),
       makeStage({ id: 'analysis', label: 'workbench.stage.analysis', status: 'warning', cta: null }),
-      makeStage({ id: 'scenario', label: 'workbench.stage.scenario', status: 'notStarted', cta: '/scenario' }),
     ],
     abnormalities: [
       {
@@ -305,7 +304,7 @@ describe('DailyOperationsWorkbench -- Render Tests', () => {
         <DailyOperationsWorkbench scope={scope} />
       );
       expect(container).toBeTruthy();
-    });
+    }, 15000);
 
     it('component module exports a valid React component', async () => {
       const { default: DailyOperationsWorkbench } = await import('./DailyOperationsWorkbench');
@@ -318,13 +317,13 @@ describe('DailyOperationsWorkbench -- Render Tests', () => {
   // Test 2: Workflow stages structure
   // ---------------------------------------------------------------
   describe('workflow stages', () => {
-    it('renders all 7 workflow stages', () => {
+    it('renders all 6 workflow stages (scenario removed in v1.60.2)', () => {
       const vm = makeViewModel();
-      expect(vm.stages).toHaveLength(7);
+      expect(vm.stages).toHaveLength(6);
 
       const stageIds = vm.stages.map(s => s.id);
       expect(stageIds).toEqual([
-        'products', 'forecasts', 'capacity', 'parameters', 'bpTargets', 'analysis', 'scenario',
+        'products', 'forecasts', 'capacity', 'parameters', 'bpTargets', 'analysis',
       ]);
     });
 

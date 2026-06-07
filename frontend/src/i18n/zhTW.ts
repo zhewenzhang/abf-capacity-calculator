@@ -63,6 +63,8 @@ export const zhTW: Record<string, string> = {
   'dashboard.executiveKpi': '營運指標',
   'dashboard.totalSkus': '總 SKU 數',
   'dashboard.totalRevenue': '總營收',
+  'dashboard.annualRevenue': '年度營收',
+  'dashboard.yearlyMetricsNote': '指標按所選年份計算，金額口徑為 M NTD。',
   'dashboard.revenueTrend': '營收趨勢',
   'dashboard.worstYear': '最差年度',
   'dashboard.maxCoreUtil': '最大 Core 稼動率',

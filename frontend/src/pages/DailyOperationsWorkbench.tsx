@@ -76,7 +76,6 @@ const STAGE_ICONS: Record<string, React.ReactNode> = {
   parameters: <SettingOutlined />,
   bpTargets: <DollarOutlined />,
   analysis: <CalculatorOutlined />,
-  scenario: <ExperimentOutlined />,
 };
 
 // ============================================================
@@ -152,6 +151,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   const [reportPreview, setReportPreview] = useState<string>('');
   const [scenarioV2Loading, setScenarioV2Loading] = useState<string | null>(null);
   const [scenarioV2Result, setScenarioV2Result] = useState<OperationalScenarioResult | null>(null);
+  const [metricsYear, setMetricsYear] = useState<string>('');
   const [bpSelectedYear, setBpSelectedYear] = useState<string>('2026');
   const [driverTab, setDriverTab] = useState<string>('customer');
   const [driverYear, setDriverYear] = useState<string>('2027');
@@ -237,6 +237,12 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
     if (!vm) return false;
     return vm.stages.some(s => s.status !== 'notStarted');
   }, [vm]);
+
+  // ---- Metric years (v1.60.2) ----
+  const metricYears = useMemo(() => {
+    if (!analyticsModel?.yearlyHealth) return [];
+    return analyticsModel.yearlyHealth.map(y => y.year).slice(0, 5);
+  }, [analyticsModel]);
 
   // ---- Generate management report ----
   const handleGenerateReport = useCallback((reportType: 'daily' | 'weekly') => {
@@ -528,70 +534,87 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
         </div>
       </div>
 
-      {/* SECTION 1B: Executive KPI Strip — from Dashboard consolidation */}
+      {/* SECTION 1B: Yearly Metrics Strip — v1.60.2 */}
       {analyticsModel && (
         <div className="twk-card" style={{ marginBottom: 16 }}>
           <div className="twk-card-header">
-            <span className="twk-card-title"><DollarOutlined /> {t('dashboard.executiveKpi') || 'Executive KPIs'}</span>
+            <Space>
+              <span className="twk-card-title"><DollarOutlined /> {t('dashboard.executiveKpi') || 'Operations Metrics'}</span>
+              {metricYears.length > 0 && (
+                <Segmented
+                  size="small"
+                  value={metricsYear || metricYears[0] || ''}
+                  onChange={v => setMetricsYear(v as string)}
+                  options={metricYears.map(y => ({ label: y, value: y }))}
+                />
+              )}
+            </Space>
           </div>
           <div className="twk-card-body">
-            <Row gutter={[12, 12]}>
-              <Col xs={12} sm={8} md={4}>
-                <div style={{ textAlign: 'center', padding: '8px 0' }}>
-                  <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.totalRevenue')}</Text>
-                  <Text strong style={{ fontSize: 18 }}>
-                    {formatPlainMoney(convertFromUsd(analyticsModel.totalRevenue, 'TWD', currencySettings), 'TWD')}
-                  </Text>
-                </div>
-              </Col>
-              <Col xs={12} sm={8} md={4}>
-                <div style={{ textAlign: 'center', padding: '8px 0' }}>
-                  <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.maxCoreUtil')}</Text>
-                  <Text strong style={{ fontSize: 18, color: (analyticsModel.maxCoreUtil === null || (analyticsModel.maxCoreUtil ?? 0) > 1) ? token.colorError : token.colorSuccess }}>
-                    {analyticsModel.maxCoreUtil === null ? '—' : `${((analyticsModel.maxCoreUtil ?? 0) * 100).toFixed(1)}%`}
-                  </Text>
-                </div>
-              </Col>
-              <Col xs={12} sm={8} md={4}>
-                <div style={{ textAlign: 'center', padding: '8px 0' }}>
-                  <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.maxBuUtil') || 'Max BU Util'}</Text>
-                  <Text strong style={{ fontSize: 18, color: (analyticsModel.maxBuUtil === null || (analyticsModel.maxBuUtil ?? 0) > 1) ? token.colorError : token.colorSuccess }}>
-                    {analyticsModel.maxBuUtil === null ? '—' : `${((analyticsModel.maxBuUtil ?? 0) * 100).toFixed(1)}%`}
-                  </Text>
-                </div>
-              </Col>
-              <Col xs={12} sm={8} md={4}>
-                <div style={{ textAlign: 'center', padding: '8px 0' }}>
-                  <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.shortageMonths')}</Text>
-                  <Text strong style={{ fontSize: 18, color: (analyticsModel.shortageMonthCount ?? 0) > 0 ? token.colorError : token.colorSuccess }}>
-                    {analyticsModel.shortageMonthCount ?? 0}
-                  </Text>
-                </div>
-              </Col>
-              {bpModel && bpModel.yearly.length > 0 && (() => {
-                const firstTarget = bpModel.yearly.find(r => r.status !== 'no-target');
-                return firstTarget ? (
-                  <Col xs={12} sm={8} md={4}>
-                    <div style={{ textAlign: 'center', padding: '8px 0' }}>
-                      <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('bp.kpi.overallAttainment')}</Text>
-                      <Text strong style={{ fontSize: 18, color: (firstTarget.attainment ?? 0) >= 1 ? token.colorSuccess : (firstTarget.attainment ?? 0) >= 0.8 ? token.colorWarning : token.colorError }}>
-                        {firstTarget.attainment !== null ? `${(firstTarget.attainment * 100).toFixed(1)}%` : '—'}
-                      </Text>
+            {(() => {
+              const year = metricsYear || metricYears[0] || '';
+              const yearly = analyticsModel.yearlyHealth.find(y => y.year === year);
+              const bpYearly = bpModel?.yearly.find(r => r.period === year);
+              return (
+                <>
+                  <Row gutter={[12, 12]}>
+                    <Col xs={12} sm={8} md={4}>
+                      <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                        <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.annualRevenue') || 'Annual Revenue'}</Text>
+                        <Text strong style={{ fontSize: 18 }}>
+                          {yearly ? formatPlainMoney(convertFromUsd(yearly.revenue, 'TWD', currencySettings, year), 'TWD') : '—'}
+                        </Text>
+                      </div>
+                    </Col>
+                    <Col xs={12} sm={8} md={4}>
+                      <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                        <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.maxCoreUtil')}</Text>
+                        <Text strong style={{ fontSize: 18, color: yearly?.coreUtil === null ? token.colorTextDisabled : (yearly?.coreUtil ?? 0) > 1 ? token.colorError : (yearly?.coreUtil ?? 0) >= 0.9 ? token.colorWarning : token.colorSuccess }}>
+                          {yearly?.coreUtil !== undefined && yearly?.coreUtil !== null ? `${(yearly.coreUtil * 100).toFixed(1)}%` : '—'}
+                        </Text>
+                      </div>
+                    </Col>
+                    <Col xs={12} sm={8} md={4}>
+                      <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                        <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.maxBuUtil') || 'Max BU Util'}</Text>
+                        <Text strong style={{ fontSize: 18, color: yearly?.buUtil === null ? token.colorTextDisabled : (yearly?.buUtil ?? 0) > 1 ? token.colorError : (yearly?.buUtil ?? 0) >= 0.9 ? token.colorWarning : token.colorSuccess }}>
+                          {yearly?.buUtil !== undefined && yearly?.buUtil !== null ? `${(yearly.buUtil * 100).toFixed(1)}%` : '—'}
+                        </Text>
+                      </div>
+                    </Col>
+                    <Col xs={12} sm={8} md={4}>
+                      <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                        <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.shortageMonths')}</Text>
+                        <Text strong style={{ fontSize: 18, color: (yearly?.shortageMonths.length ?? 0) > 0 ? token.colorError : token.colorSuccess }}>
+                          {yearly ? yearly.shortageMonths.length : '—'}
+                        </Text>
+                      </div>
+                    </Col>
+                    <Col xs={12} sm={8} md={4}>
+                      <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                        <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('bp.kpi.overallAttainment') || 'BP Attainment'}</Text>
+                        <Text strong style={{ fontSize: 18, color: bpYearly?.attainment !== null && (bpYearly?.attainment ?? 0) < 0.9 ? token.colorError : (bpYearly?.attainment ?? 0) >= 0.9 && (bpYearly?.attainment ?? 0) < 1 ? token.colorWarning : token.colorSuccess }}>
+                          {bpYearly?.attainment !== null && bpYearly?.attainment !== undefined ? `${(bpYearly.attainment * 100).toFixed(1)}%` : '—'}
+                        </Text>
+                      </div>
+                    </Col>
+                    <Col xs={12} sm={8} md={4}>
+                      <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                        <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.dataConfidence')}</Text>
+                        <Tag color={dqSummary?.confidence === 'high' ? 'green' : dqSummary?.confidence === 'medium' ? 'orange' : 'red'} style={{ fontSize: 14, padding: '2px 12px' }}>
+                          {dqSummary?.confidence ? dqSummary.confidence.toUpperCase() : '—'}
+                        </Tag>
+                      </div>
+                    </Col>
+                  </Row>
+                  {year && (
+                    <div style={{ marginTop: 8 }}>
+                      <Text type="secondary" style={{ fontSize: 10 }}>{t('dashboard.yearlyMetricsNote') || 'Metrics calculated for the selected year. Amounts in M NTD.'}</Text>
                     </div>
-                  </Col>
-                ) : null;
-              })()}
-              {dqSummary && (
-                <Col xs={12} sm={8} md={4}>
-                  <div style={{ textAlign: 'center', padding: '8px 0' }}>
-                    <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('dashboard.dataConfidence')}</Text>
-                    <Tag color={dqSummary.confidence === 'high' ? 'green' : dqSummary.confidence === 'medium' ? 'orange' : 'red'} style={{ fontSize: 14, padding: '2px 12px' }}>
-                      {dqSummary.confidence.toUpperCase()}
-                    </Tag>
-                  </div>
-                </Col>
-              )}
-            </Row>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

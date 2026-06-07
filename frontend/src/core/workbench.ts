@@ -352,9 +352,6 @@ function deriveWorkflowStages(
     analysisStatus = 'ready';
   }
 
-  // --- Scenario stage (always notStarted until user runs one) ---
-  const scenarioStatus: WorkflowStageStatus = 'notStarted';
-
   return [
     {
       id: 'products',
@@ -403,14 +400,6 @@ function deriveWorkflowStages(
       issues: [],
       cta: model === null ? '/products' : null,
       ctaLabel: 'workbench.stage.analysis.cta',
-    },
-    {
-      id: 'scenario',
-      label: 'workbench.stage.scenario',
-      status: scenarioStatus,
-      issues: [],
-      cta: '/scenario',
-      ctaLabel: 'workbench.stage.scenario.cta',
     },
   ];
 }

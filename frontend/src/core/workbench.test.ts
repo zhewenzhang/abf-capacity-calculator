@@ -167,10 +167,6 @@ describe('buildWorkbenchViewModel', () => {
       expect(findStage(vm, 'analysis').status).toBe('blocked');
     });
 
-    it('scenario stage is notStarted', () => {
-      expect(findStage(vm, 'scenario').status).toBe('notStarted');
-    });
-
     it('lookAhead is empty', () => {
       expect(vm.lookAhead).toEqual([]);
     });
@@ -243,10 +239,6 @@ describe('buildWorkbenchViewModel', () => {
       expect(findStage(vm, 'analysis').status).toBe('warning');
     });
 
-    it('scenario stage is notStarted', () => {
-      expect(findStage(vm, 'scenario').status).toBe('notStarted');
-    });
-
     it('revenueBp has no-target status', () => {
       expect(vm.revenueBp.status).toBe('no-target');
     });
@@ -295,10 +287,6 @@ describe('buildWorkbenchViewModel', () => {
 
     it('analysis stage is ready', () => {
       expect(findStage(vm, 'analysis').status).toBe('ready');
-    });
-
-    it('scenario stage is notStarted', () => {
-      expect(findStage(vm, 'scenario').status).toBe('notStarted');
     });
 
     it('revenueBp has a status derived from attainment', () => {
@@ -656,7 +644,7 @@ describe('buildWorkbenchViewModel', () => {
 
       const vm = buildWorkbenchViewModel(input);
       expect(vm).toBeDefined();
-      expect(vm.stages).toHaveLength(7);
+      expect(vm.stages).toHaveLength(6);
     });
 
     it('handles zero-capacity plans gracefully', () => {
