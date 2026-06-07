@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Table,
   Tag,
@@ -10,7 +11,6 @@ import {
   Typography,
   Segmented,
   Card,
-  List,
   Collapse,
   Button,
   Space,
@@ -21,16 +21,12 @@ import {
   Popconfirm,
   Statistic,
   Progress,
-  Drawer,
 } from 'antd';
 import {
   WarningOutlined,
-  InfoCircleOutlined,
-  CaretRightOutlined,
   CopyOutlined,
   DownloadOutlined,
   RobotOutlined,
-  SafetyOutlined,
   CameraOutlined,
   DeleteOutlined,
   SwapOutlined,
@@ -60,7 +56,6 @@ import BpAnalysisPanel from '../components/analytics/BpAnalysisPanel';
 import type { SkuCalculationResult, MonthlyCapacitySummary, SKU, Forecast, CapacityPlan, ProjectParameters } from '../types';
 import { buildAnalysisContractPayload } from '../core/analysisContract';
 import { buildRiskBrief } from '../core/riskBrief';
-import { METRIC_DEFINITIONS } from '../core/metricDefinitions';
 import type { ProjectScope } from '../types';
 import {
   buildSanitizedAnalysisContract,
@@ -98,7 +93,7 @@ import {
   SNAPSHOT_FILTER_OPTIONS,
 } from '../core/snapshotMetadata';
 import { buildAiCopilotContext } from '../core/aiCopilotContext';
-import CopilotChat from '../components/copilot/CopilotChat';
+import { useCopilotDrawer } from '../components/copilot/CopilotDrawerContext';
 
 const { Text } = Typography;
 
@@ -111,6 +106,8 @@ type ResultsView = 'risk' | 'change' | 'sales' | 'product' | 'capacity' | 'bp' |
 const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }) => {
   const { t } = useI18n();
   const { prefs } = useAppPrefs();
+  const navigate = useNavigate();
+  const { open: openCopilotDrawer } = useCopilotDrawer();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [skus, setSkus] = useState<SKU[]>([]);
@@ -140,7 +137,6 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
   const [newSnapshotPeriodLabel, setNewSnapshotPeriodLabel] = useState('');
   const [newSnapshotReviewStatus, setNewSnapshotReviewStatus] = useState<SnapshotReviewStatus | undefined>(undefined);
   const [newSnapshotNote, setNewSnapshotNote] = useState('');
-  const [copilotDrawerOpen, setCopilotDrawerOpen] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -234,7 +230,130 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
   }, [analysisPayload]);
 
   // ============================
-  // Phase 6: Snapshot handlers
+  // v1.59.0: Risk Brief Executive Summary — computed data
+  // ============================
+
+  const planStatus = useMemo<{ status: 'executable' | 'atRisk' | 'blocked'; labelKey: string; color: string }>(() => {
+    if (!model) {
+      return { status: 'blocked', labelKey: 'results.riskBrief.planStatus.blocked', color: 'red' };
+    }
+    const maxUtil = Math.max(model.maxCoreUtil ?? 0, model.maxBuUtil ?? 0);
+    const shortageCount = model.shortageMonthCount ?? 0;
+    if (maxUtil >= 1.2 || shortageCount >= 6) {
+      return { status: 'blocked', labelKey: 'results.riskBrief.planStatus.blocked', color: 'red' };
+    }
+    let lowestBpAttainment = 1;
+    if (bpAnalysisModel) {
+      for (const yr of bpAnalysisModel.yearly) {
+        if (yr.attainment !== null && yr.attainment < lowestBpAttainment) {
+          lowestBpAttainment = yr.attainment;
+        }
+      }
+    }
+    const confidence = riskBrief?.confidence ?? 'low';
+    if (maxUtil >= 0.9 || lowestBpAttainment < 0.9 || confidence !== 'high') {
+      return { status: 'atRisk', labelKey: 'results.riskBrief.planStatus.atRisk', color: 'orange' };
+    }
+    return { status: 'executable', labelKey: 'results.riskBrief.planStatus.executable', color: 'green' };
+  }, [model, bpAnalysisModel, riskBrief]);
+
+  const decisionKpis = useMemo(() => {
+    const maxCoreUtil = model?.maxCoreUtil ?? 0;
+    const maxBuUtil = model?.maxBuUtil ?? 0;
+    const maxUtilPct = Math.max(maxCoreUtil, maxBuUtil) * 100;
+    const isBuHigher = maxBuUtil > maxCoreUtil;
+    const shortageCount = model?.shortageMonthCount ?? 0;
+    const shortageMonths = riskBrief?.shortageMonths ?? [];
+    const shortageRange = shortageMonths.length >= 2
+      ? `${shortageMonths[0]} → ${shortageMonths[shortageMonths.length - 1]}`
+      : shortageMonths.length === 1 ? shortageMonths[0] : '';
+    let lowestAttainment: number | null = null;
+    let lowestYear = '';
+    if (bpAnalysisModel) {
+      for (const yr of bpAnalysisModel.yearly) {
+        if (yr.attainment !== null && (lowestAttainment === null || yr.attainment < lowestAttainment)) {
+          lowestAttainment = yr.attainment;
+          lowestYear = yr.period;
+        }
+      }
+    }
+    return {
+      maxBottleneckPct: maxUtilPct,
+      maxBottleneckLabel: isBuHigher ? 'BU' : 'Core',
+      maxBottleneckPeriod: model?.worstMonth ?? '',
+      shortageMonths: shortageCount,
+      shortageRange,
+      lowestBpAttainment: lowestAttainment,
+      lowestBpYear: lowestYear,
+    };
+  }, [model, riskBrief, bpAnalysisModel]);
+
+  const findings = useMemo(() => {
+    const items: Array<{
+      severity: 'critical' | 'warning' | 'info';
+      domain: string;
+      title: string;
+      detail: string;
+      actions: Array<{ label: string; onClick: () => void }>;
+    }> = [];
+    if (riskBrief && riskBrief.topRiskPeriods.length > 0) {
+      const w = riskBrief.topRiskPeriods[0];
+      items.push({
+        severity: w.severity === 'red' ? 'critical' : w.severity === 'orange' ? 'warning' : 'info',
+        domain: t('results.riskBrief.domain.capacity'),
+        title: `${w.period} ${w.bottleneck} ${t('results.riskBrief.domain.capacity')}`,
+        detail: t(w.reasonMessage),
+        actions: [
+          { label: t('results.riskBrief.action.viewCapacity'), onClick: () => setView('capacity') },
+          { label: t('results.riskBrief.action.runScenario'), onClick: () => navigate('/scenario') },
+        ],
+      });
+    }
+    if (riskBrief?.bpRisk?.statement) {
+      const gapStr = riskBrief.bpRisk.gapMillionTwd !== null ? `${riskBrief.bpRisk.gapMillionTwd.toFixed(1)} M NTD` : '';
+      items.push({
+        severity: 'critical',
+        domain: t('results.riskBrief.domain.bp'),
+        title: t(riskBrief.bpRisk.statement.titleMessage),
+        detail: gapStr,
+        actions: [
+          { label: t('results.riskBrief.action.viewBp'), onClick: () => setView('bp') },
+        ],
+      });
+    }
+    if (riskBrief && riskBrief.dataCaveats.total > 0) {
+      items.push({
+        severity: 'warning',
+        domain: t('results.riskBrief.domain.data'),
+        title: `${riskBrief.dataCaveats.total} ${t('results.riskBrief.dataConfidence')}`,
+        detail: riskBrief.dataCaveats.top[0] ? t(riskBrief.dataCaveats.top[0].titleMessage) : '',
+        actions: [],
+      });
+    }
+    if (riskBrief && riskBrief.skuHealthSignals.length > 0) {
+      items.push({
+        severity: 'info',
+        domain: t('results.riskBrief.domain.product'),
+        title: riskBrief.skuHealthSignals[0].skuCode,
+        detail: riskBrief.skuHealthSignals[0].reasonMessages.map(m => t(m)).join(' '),
+        actions: [],
+      });
+    }
+    if (analysisPayload && analysisPayload.keyFindings.length > 0) {
+      for (const kf of analysisPayload.keyFindings.slice(0, 2)) {
+        if (items.length >= 5) break;
+        items.push({
+          severity: kf.severity === 'critical' ? 'critical' : kf.severity === 'warning' ? 'warning' : 'info',
+          domain: t(`keyFindings.source.${kf.source}`),
+          title: t(kf.titleMessage),
+          detail: t(kf.detailMessage),
+          actions: [],
+        });
+      }
+    }
+    return items.slice(0, 5);
+  }, [riskBrief, analysisPayload, t, setView, navigate]);
+
   // ============================
 
   const loadSnapshots = useCallback(async () => {
@@ -854,803 +973,272 @@ const CalculationResultsPage: React.FC<CalculationResultsPageProps> = ({ scope }
               />
             </div>
             <div className="twk-toolbar-group">
-              {copilotContext && (
-                <Button
-                  icon={<RobotOutlined />}
-                  onClick={() => setCopilotDrawerOpen(true)}
-                >
-                  {t('copilot.title')}
-                </Button>
-              )}
+              <Button
+                icon={<RobotOutlined />}
+                onClick={() => copilotContext && openCopilotDrawer(copilotContext)}
+              >
+                {t('copilot.title')}
+              </Button>
             </div>
           </div>
 
-          {/* AI Copilot Drawer */}
-          <Drawer
-            title={
-              <Space>
-                <RobotOutlined />
-                <span>{t('copilot.title')}</span>
-              </Space>
-            }
-            open={copilotDrawerOpen}
-            onClose={() => setCopilotDrawerOpen(false)}
-            width={480}
-            destroyOnClose
-          >
-            {copilotContext && <CopilotChat context={copilotContext} />}
-          </Drawer>
-
-          {/* Risk Brief View — Designbyte Cards */}
+          {/* Risk Brief View — v1.59.0 Executive Summary Redesign */}
           {view === 'risk' && riskBrief && analysisPayload && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Executive Summary — Designbyte Card */}
-              <div className="twk-card">
+                            {/* ================================================================
+                  1. Executive Conclusion Card
+                  ================================================================ */}
+              <div className="twk-card" style={{ borderLeft: "4px solid " + (planStatus.color === 'red' ? '#dc2626' : planStatus.color === 'orange' ? '#f59e0b' : '#15803d') }}>
                 <div className="twk-card-header">
-                  <span className="twk-card-title">{t('results.riskBrief.executiveSummaryTitle')}</span>
+                  <Space>
+                    <span className="twk-card-title">{t('results.riskBrief.executiveConclusion')}</span>
+                    <Tag color={planStatus.color} style={{ fontSize: 12, padding: '2px 10px' }}>
+                      {t(planStatus.labelKey)}
+                    </Tag>
+                  </Space>
                 </div>
                 <div className="twk-card-body">
-                  <List
-                    dataSource={riskBrief.executiveSummaryMessages}
-                    renderItem={(item) => (
-                      <List.Item style={{ border: 'none', padding: '4px 0' }}>
-                        <Text style={{ fontSize: 14 }}>{t(item)}</Text>
-                      </List.Item>
-                    )}
-                  />
+                  <Text style={{ fontSize: 14, lineHeight: 1.6 }}>
+                    {(() => {
+                      const parts = [];
+                      const maxUtil = Math.max(model?.maxCoreUtil ?? 0, model?.maxBuUtil ?? 0) * 100;
+                      if (maxUtil >= 90) {
+                        const isBu = (model?.maxBuUtil ?? 0) > (model?.maxCoreUtil ?? 0);
+                        const label = isBu ? 'BU' : 'Core';
+                        const period = decisionKpis.maxBottleneckPeriod;
+                        parts.push(t('results.riskBrief.domain.capacity') + ' ' + label + ' ' + maxUtil.toFixed(1) + '%' + (period ? ' (' + period + ')' : ''));
+                      }
+                      if (decisionKpis.lowestBpAttainment !== null && decisionKpis.lowestBpAttainment < 0.9) {
+                        const yr = decisionKpis.lowestBpYear;
+                        parts.push('BP ' + yr + ' ' + t('results.riskBrief.lowestBpAttainment').replace(' :', '') + ' ' + (decisionKpis.lowestBpAttainment * 100).toFixed(1) + '%');
+                      }
+                      if (decisionKpis.shortageMonths > 0) {
+                        parts.push(t('results.riskBrief.shortageMonths').replace(' :', '') + ' ' + decisionKpis.shortageMonths.toString());
+                      }
+                      if (parts.length === 0) {
+                        return t('results.riskBrief.planStatus.executable') + ' - ' + t('results.keyFindings.subtitle');
+                      }
+                      return t('results.riskBrief.domain.capacity') + ' ' + parts.join('; ');
+                    })()}
+                  </Text>
                 </div>
               </div>
 
-              {/* Phase 5.4 — AI Brief Export */}
-              <Card
-                title={
-                  <Space>
-                    <RobotOutlined />
-                    <span>{t('aiBriefExport.title')}</span>
-                  </Space>
-                }
-                bordered={false}
-                size="small"
-                extra={
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    {t('aiBriefExport.subtitle')}
-                  </Text>
-                }
-              >
-                <Alert
-                  type="info"
-                  showIcon
-                  icon={<SafetyOutlined />}
-                  message={t('aiBriefExport.notice')}
-                  description={t('aiBriefExport.disclaimer')}
-                  style={{ marginBottom: 16 }}
-                />
-                <Space wrap>
-                  <Button
-                    type="primary"
-                    icon={<CopyOutlined />}
-                    onClick={async () => {
-                      if (!analysisPayload) return;
-                      const pack = buildCombinedAiBriefPack(analysisPayload);
-                      const success = await copyToClipboard(pack);
-                      if (success) {
-                        message.success(t('aiBriefExport.copied'));
-                      } else {
-                        message.error(t('aiBriefExport.copyFailed'));
-                      }
-                    }}
-                  >
-                    {t('aiBriefExport.copyPack')}
-                  </Button>
-                  <Button
-                    icon={<CopyOutlined />}
-                    onClick={async () => {
-                      if (!analysisPayload) return;
-                      const sanitized = buildSanitizedAnalysisContract(analysisPayload);
-                      const prompt = buildChineseAiBriefPrompt(sanitized);
-                      const success = await copyToClipboard(prompt);
-                      if (success) {
-                        message.success(t('aiBriefExport.copied'));
-                      } else {
-                        message.error(t('aiBriefExport.copyFailed'));
-                      }
-                    }}
-                  >
-                    {t('aiBriefExport.copyPrompt')}
-                  </Button>
-                  <Button
-                    icon={<CopyOutlined />}
-                    onClick={async () => {
-                      if (!analysisPayload) return;
-                      const sanitized = buildSanitizedAnalysisContract(analysisPayload);
-                      const json = JSON.stringify(sanitized, null, 2);
-                      const success = await copyToClipboard(json);
-                      if (success) {
-                        message.success(t('aiBriefExport.copied'));
-                      } else {
-                        message.error(t('aiBriefExport.copyFailed'));
-                      }
-                    }}
-                  >
-                    {t('aiBriefExport.copyJson')}
-                  </Button>
-                  <Button
-                    icon={<DownloadOutlined />}
-                    onClick={() => {
-                      if (!analysisPayload) return;
-                      const { dataUrl, filename } = downloadSanitizedContract(analysisPayload);
-                      const link = document.createElement('a');
-                      link.href = dataUrl;
-                      link.download = filename;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      revokeDownloadUrl(dataUrl);
-                      message.success(t('aiBriefExport.downloaded'));
-                    }}
-                  >
-                    {t('aiBriefExport.downloadJson')}
-                  </Button>
-                </Space>
-                <Collapse
-                  size="small"
-                  style={{ marginTop: 16 }}
-                  items={[
-                    {
-                      key: 'security',
-                      label: t('aiBriefExport.securityNote'),
-                      children: (
-                        <Text type="secondary" style={{ fontSize: 13 }}>
-                          {t('aiBriefExport.securityContent')}
-                        </Text>
-                      ),
-                    },
-                    {
-                      key: 'guardrails',
-                      label: t('aiBriefExport.guardrailsTitle'),
-                      children: (
-                        <div>
-                          <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 8 }}>
-                            {t('aiBriefExport.guardrails.note')}
-                          </Text>
-                          <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
-                            <li>{t('aiBriefExport.guardrails.modifyFormulas')}</li>
-                            <li>{t('aiBriefExport.guardrails.supplementData')}</li>
-                            <li>{t('aiBriefExport.guardrails.currencyMix')}</li>
-                            <li>{t('aiBriefExport.guardrails.attribution')}</li>
-                          </ul>
-                        </div>
-                      ),
-                    },
-                  ]}
-                />
-              </Card>
-
-              {/* Phase 5.3B — Key Findings */}
-              {analysisPayload.keyFindings.length > 0 && (
-                <Card title={t('results.keyFindings.title')} bordered={false} size="small"
-                  extra={<Text type="secondary" style={{ fontSize: 12 }}>{t('results.keyFindings.subtitle')}</Text>}
-                >
-                  <List
-                    dataSource={analysisPayload.keyFindings}
-                    renderItem={(f) => (
-                      <List.Item style={{ borderBottom: '1px solid #f0f0f0', padding: '8px 0' }}>
-                        <div style={{ width: '100%' }}>
-                          <Tag color={
-                            f.severity === 'critical' ? 'red' :
-                            f.severity === 'warning' ? 'orange' :
-                            f.severity === 'positive' ? 'green' : 'blue'
-                          } style={{ marginRight: 8 }}>
-                            {t(`keyFindings.severity.${f.severity}`)}
-                          </Tag>
-                          <Tag color="default" style={{ marginRight: 8 }}>{t(`keyFindings.source.${f.source}`)}</Tag>
-                          <Text strong>{t(f.titleMessage)}</Text>
-                          <div style={{ marginTop: 4 }}>
-                            <Text type="secondary" style={{ fontSize: 13 }}>{t(f.detailMessage)}</Text>
-                          </div>
-                        </div>
-                      </List.Item>
-                    )}
-                  />
-                </Card>
-              )}
-
-              {/* Phase 5.3B — BP Gap Attribution */}
-              {analysisPayload.bpAttribution.topDrivers.length > 0 && (
-                <Card title={t('results.bpAttr.title')} bordered={false} size="small"
-                  extra={<Text type="secondary" style={{ fontSize: 12 }}>{t('results.bpAttr.subtitle')}</Text>}
-                >
-                  <Table
-                    dataSource={analysisPayload.bpAttribution.topDrivers}
-                    rowKey={(r) => `${r.dimension}-${r.label}-${r.period}`}
-                    pagination={false}
-                    size="small"
-                    columns={[
-                      { title: t('results.bpAttr.period'), dataIndex: 'period', key: 'period', width: 120 },
-                      { title: t('results.bpAttr.dimension'), dataIndex: 'dimension', key: 'dimension', width: 130, render: (v: string) => t(`attr.dimension.${v}`) },
-                      { title: t('results.bpAttr.driver'), dataIndex: 'label', key: 'label', width: 220 },
-                      {
-                        title: t('results.bpAttr.shareOfGap'),
-                        dataIndex: 'shareOfGap',
-                        key: 'shareOfGap',
-                        width: 110,
-                        align: 'right',
-                        render: (v: number) => `${v.toFixed(1)}%`,
-                      },
-                      {
-                        title: t('results.bpAttr.gapContribution'),
-                        dataIndex: 'gapContributionMillionTwd',
-                        key: 'gapContributionMillionTwd',
-                        width: 160,
-                        align: 'right',
-                        render: (v: number) => `${v.toFixed(1)} M TWD`,
-                      },
-                      {
-                        title: t('results.riskBrief.reason'),
-                        dataIndex: 'reasonMessage',
-                        key: 'reasonMessage',
-                        render: (_v: unknown, record: typeof analysisPayload.bpAttribution.topDrivers[0]) => (
-                          <div style={{ whiteSpace: 'normal', fontSize: 13 }}>{t(record.reasonMessage)}</div>
-                        ),
-                      },
-                    ]}
-                  />
-                </Card>
-              )}
-
-              {/* Phase 5.3B — Price Impact */}
-              {analysisPayload.priceImpact.scenarios.length > 0 && (
-                <Card title={t('results.priceImpact.title')} bordered={false} size="small"
-                  extra={<Text type="secondary" style={{ fontSize: 12 }}>{t('results.priceImpact.subtitle')}</Text>}
-                >
-                  <Tabs
-                    size="small"
-                    items={analysisPayload.priceImpact.scenarios.map((sc) => ({
-                      key: sc.scenarioId,
-                      label: `${sc.priceDeltaPct > 0 ? '+' : ''}${(sc.priceDeltaPct * 100).toFixed(0)}%`,
-                      children: (
-                        <Table
-                          dataSource={sc.yearly}
-                          rowKey="year"
-                          pagination={false}
-                          size="small"
-                          columns={[
-                            { title: t('results.priceImpact.year'), dataIndex: 'year', key: 'year', width: 100 },
-                            {
-                              title: t('results.priceImpact.baseRevenue'),
-                              dataIndex: 'baseRevenueMillionTwd',
-                              key: 'baseRevenueMillionTwd',
-                              width: 150,
-                              align: 'right',
-                              render: (v: number) => `${v.toFixed(1)} M TWD`,
-                            },
-                            {
-                              title: t('results.priceImpact.scenarioRevenue'),
-                              dataIndex: 'scenarioRevenueMillionTwd',
-                              key: 'scenarioRevenueMillionTwd',
-                              width: 150,
-                              align: 'right',
-                              render: (v: number) => `${v.toFixed(1)} M TWD`,
-                            },
-                            {
-                              title: t('results.priceImpact.revenueDelta'),
-                              dataIndex: 'revenueDeltaMillionTwd',
-                              key: 'revenueDeltaMillionTwd',
-                              width: 160,
-                              align: 'right',
-                              render: (v: number) => (
-                                <Tag color={v > 0 ? 'green' : v < 0 ? 'red' : 'default'} style={{ margin: 0 }}>
-                                  {v > 0 ? '+' : ''}{v.toFixed(1)} M TWD
-                                </Tag>
-                              ),
-                            },
-                            {
-                              title: t('results.priceImpact.baseAttainment'),
-                              dataIndex: 'baseBpAttainment',
-                              key: 'baseBpAttainment',
-                              width: 130,
-                              align: 'right',
-                              render: (v: number | null) => v === null ? '-' : `${(v * 100).toFixed(1)}%`,
-                            },
-                            {
-                              title: t('results.priceImpact.scenarioAttainment'),
-                              dataIndex: 'scenarioBpAttainment',
-                              key: 'scenarioBpAttainment',
-                              width: 130,
-                              align: 'right',
-                              render: (v: number | null) => v === null ? '-' : `${(v * 100).toFixed(1)}%`,
-                            },
-                            {
-                              title: t('results.priceImpact.attainmentDelta'),
-                              dataIndex: 'bpAttainmentDelta',
-                              key: 'bpAttainmentDelta',
-                              width: 140,
-                              align: 'right',
-                              render: (v: number | null) => v === null ? '-' : (
-                                <Tag color={v > 0 ? 'green' : v < 0 ? 'red' : 'default'} style={{ margin: 0 }}>
-                                  {v > 0 ? '+' : ''}{(v * 100).toFixed(1)}pp
-                                </Tag>
-                              ),
-                            },
-                          ]}
-                        />
-                      ),
-                    }))}
-                  />
-                </Card>
-              )}
-
-              {/* Phase 5.3B — Capacity Improvement Impact */}
-              {analysisPayload.capacityImpact.scenarios.length > 0 && (
-                <Card title={t('results.capacityImpact.title')} bordered={false} size="small"
-                  extra={<Text type="secondary" style={{ fontSize: 12 }}>{t('results.capacityImpact.subtitle')}</Text>}
-                >
-                  <Table
-                    dataSource={analysisPayload.capacityImpact.scenarios}
-                    rowKey="scenarioId"
-                    pagination={false}
-                    size="small"
-                    columns={[
-                      {
-                        title: t('results.capacityImpact.scenario'),
-                        dataIndex: 'scenarioId',
-                        key: 'scenarioId',
-                        width: 220,
-                        render: (v: string) => t(`results.capacityImpact.scenarioName.${v}`),
-                      },
-                      {
-                        title: t('results.capacityImpact.shortageBefore'),
-                        dataIndex: 'shortageMonthsBefore',
-                        key: 'shortageMonthsBefore',
-                        width: 140,
-                        align: 'right',
-                      },
-                      {
-                        title: t('results.capacityImpact.shortageAfter'),
-                        dataIndex: 'shortageMonthsAfter',
-                        key: 'shortageMonthsAfter',
-                        width: 140,
-                        align: 'right',
-                        render: (v: number, r: typeof analysisPayload.capacityImpact.scenarios[0]) => (
-                          <Tag color={v < r.shortageMonthsBefore ? 'green' : 'default'} style={{ margin: 0 }}>{v}</Tag>
-                        ),
-                      },
-                      {
-                        title: t('results.capacityImpact.resolvedCount'),
-                        dataIndex: 'resolvedShortageMonths',
-                        key: 'resolvedShortageMonths',
-                        width: 110,
-                        align: 'right',
-                        render: (v: string[]) => v.length,
-                      },
-                      {
-                        title: t('results.capacityImpact.maxCoreUtilBefore'),
-                        dataIndex: 'maxCoreUtilBefore',
-                        key: 'maxCoreUtilBefore',
-                        width: 160,
-                        align: 'right',
-                        render: (v: number | null) => v === null ? t('results.capacityImpact.overflow') : `${(v * 100).toFixed(1)}%`,
-                      },
-                      {
-                        title: t('results.capacityImpact.maxCoreUtilAfter'),
-                        dataIndex: 'maxCoreUtilAfter',
-                        key: 'maxCoreUtilAfter',
-                        width: 160,
-                        align: 'right',
-                        render: (v: number | null) => v === null ? t('results.capacityImpact.overflow') : `${(v * 100).toFixed(1)}%`,
-                      },
-                      {
-                        title: t('results.capacityImpact.maxBuUtilBefore'),
-                        dataIndex: 'maxBuUtilBefore',
-                        key: 'maxBuUtilBefore',
-                        width: 160,
-                        align: 'right',
-                        render: (v: number | null) => v === null ? t('results.capacityImpact.overflow') : `${(v * 100).toFixed(1)}%`,
-                      },
-                      {
-                        title: t('results.capacityImpact.maxBuUtilAfter'),
-                        dataIndex: 'maxBuUtilAfter',
-                        key: 'maxBuUtilAfter',
-                        width: 160,
-                        align: 'right',
-                        render: (v: number | null) => v === null ? t('results.capacityImpact.overflow') : `${(v * 100).toFixed(1)}%`,
-                      },
-                    ]}
-                  />
-                </Card>
-              )}
-
-              {/* Top Risk Periods */}
-              {riskBrief.topRiskPeriods.length > 0 && (
-                <Card title={t('results.riskBrief.topRiskPeriodsTitle', { count: riskBrief.topRiskPeriods.length })} bordered={false} size="small">
-                  <Table
-                    dataSource={riskBrief.topRiskPeriods}
-                    rowKey="period"
-                    pagination={false}
-                    size="small"
-                    columns={[
-                      {
-                        title: t('results.riskBrief.period'),
-                        dataIndex: 'period',
-                        key: 'period',
-                        width: 80,
-                        render: (v: string) => <Text strong>{v}</Text>,
-                      },
-                      {
-                        title: t('results.riskBrief.severity'),
-                        dataIndex: 'severity',
-                        key: 'severity',
-                        width: 90,
-                        render: (v: string) => (
-                          <Tag color={v === 'red' ? 'red' : v === 'orange' ? 'orange' : 'green'}>
-                            {v.toUpperCase()}
-                          </Tag>
-                        ),
-                      },
-                      {
-                        title: t('results.riskBrief.bottleneckCol'),
-                        dataIndex: 'bottleneck',
-                        key: 'bottleneck',
-                        width: 90,
-                        render: (v: string) => (
-                          <Tag color={v === 'Core' ? 'orange' : v === 'BU' ? 'red' : 'default'}>{v}</Tag>
-                        ),
-                      },
-                      {
-                        title: t('results.riskBrief.reason'),
-                        dataIndex: 'reasonMessage',
-                        key: 'reasonMessage',
-                        render: (_v: unknown, record: typeof riskBrief.topRiskPeriods[0]) => t(record.reasonMessage),
-                      },
-                    ]}
-                  />
-                </Card>
-              )}
-
-              {/* Key Facts */}
-              {riskBrief.facts.length > 0 && (
-                <Card title={t('results.riskBrief.keyFactsTitle')} bordered={false} size="small">
-                  <List
-                    dataSource={riskBrief.facts}
-                    renderItem={(item) => (
-                      <List.Item style={{ border: 'none', padding: '4px 0' }}>
-                        <Tag
-                          color={
-                            item.severity === 'critical' ? 'red' :
-                            item.severity === 'warning' ? 'orange' :
-                            item.severity === 'positive' ? 'green' : 'blue'
-                          }
-                          style={{ marginRight: 8 }}
-                        >
-                          {item.severity.toUpperCase()}
-                        </Tag>
-                        <Text strong>{t(item.titleMessage)}:</Text>
-                        <Text style={{ marginLeft: 4 }}>{t(item.detailMessage)}</Text>
-                      </List.Item>
-                    )}
-                  />
-                </Card>
-              )}
-
-              {/* Risk Period Attribution — shortage-month drivers */}
-              {riskBrief.attributionDrivers.length > 0 && (
-                <Card
-                  title={t('results.riskBrief.attributionTitle', { count: riskBrief.shortageMonths.length, plural: riskBrief.shortageMonths.length === 1 ? '' : 's' })}
-                  bordered={false}
-                  size="small"
-                  extra={
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      {t('results.riskBrief.attributionSubtitle')}
+              {/* ================================================================
+                  2. Decision KPI Row
+                  ================================================================ */}
+              <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                <Col xs={12} md={6}>
+                  <div className="twk-card" style={{ height: '100%', textAlign: 'center', padding: '16px 12px' }}>
+                    <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>{t('results.riskBrief.maxBottleneck')}</Text>
+                    <Text strong style={{ fontSize: 22, color: decisionKpis.maxBottleneckPct >= 100 ? '#dc2626' : decisionKpis.maxBottleneckPct >= 90 ? '#f59e0b' : undefined }}>
+                      {decisionKpis.maxBottleneckLabel} {decisionKpis.maxBottleneckPct.toFixed(1)}%
                     </Text>
-                  }
-                >
-                  <Table
-                    dataSource={riskBrief.attributionDrivers}
-                    rowKey={(r) => `${r.dimension}-${r.metric}-${r.label}`}
-                    pagination={false}
-                    size="small"
-                    columns={[
-                      { title: t('results.riskBrief.dimension'), dataIndex: 'dimension', key: 'dimension', width: 110, render: (v: string) => t(`attr.dimension.${v}`) },
-                      { title: t('results.riskBrief.driver'), dataIndex: 'label', key: 'label', width: 180 },
-                      { title: t('results.riskBrief.metric'), dataIndex: 'metric', key: 'metric', width: 170, render: (v: string) => t(`attr.metric.${v}`) },
-                      {
-                        title: t('results.riskBrief.value'),
-                        dataIndex: 'value',
-                        key: 'value',
-                        width: 110,
-                        align: 'right',
-                        render: (v: number) => v.toLocaleString(undefined, { maximumFractionDigits: 1 }),
-                      },
-                      {
-                        title: t('results.riskBrief.share'),
-                        dataIndex: 'share',
-                        key: 'share',
-                        width: 80,
-                        align: 'right',
-                        render: (v: number | undefined) => (v !== undefined ? `${v.toFixed(1)}%` : '-'),
-                      },
-                      {
-                        title: t('results.riskBrief.severity'),
-                        dataIndex: 'severity',
-                        key: 'severity',
-                        width: 90,
-                        render: (s: string) => (
-                          <Tag color={s === 'critical' ? 'red' : s === 'warning' ? 'orange' : 'blue'}>{s.toUpperCase()}</Tag>
-                        ),
-                      },
-                      {
-                        title: t('results.riskBrief.periods'),
-                        dataIndex: 'affectedPeriods',
-                        key: 'affectedPeriods',
-                        render: (ps: string[]) => (ps.length > 4 ? t('results.riskBrief.morePeriods', { shown: ps.slice(0, 4).join(', '), rest: ps.length - 4 }) : ps.join(', ') || '-'),
-                      },
-                      { title: t('results.riskBrief.reason'), dataIndex: 'reasonMessage', key: 'reasonMessage', render: (_v: unknown, record: typeof riskBrief.attributionDrivers[0]) => t(record.reasonMessage) },
-                    ]}
-                  />
-                </Card>
-              )}
-
-              {/* SKU Health Signals (deterministic MVP) */}
-              {riskBrief.skuHealthSignals.length > 0 && (
-                <Card
-                  title={t('results.riskBrief.healthSignalsTitle', { count: riskBrief.skuHealthSignals.length })}
-                  bordered={false}
-                  size="small"
-                  extra={
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      {t('results.riskBrief.healthSignalsSubtitle')}
+                    <div><Text type="secondary" style={{ fontSize: 11 }}>{decisionKpis.maxBottleneckPeriod}</Text></div>
+                  </div>
+                </Col>
+                <Col xs={12} md={6}>
+                  <div className="twk-card" style={{ height: '100%', textAlign: 'center', padding: '16px 12px' }}>
+                    <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>{t('results.riskBrief.shortageMonths')}</Text>
+                    <Text strong style={{ fontSize: 22, color: decisionKpis.shortageMonths > 0 ? '#dc2626' : undefined }}>
+                      {decisionKpis.shortageMonths}
                     </Text>
-                  }
-                >
-                  <Table
-                    dataSource={riskBrief.skuHealthSignals}
-                    rowKey="skuId"
-                    pagination={false}
-                    size="small"
-                    columns={[
-                      { title: t('results.sku'), dataIndex: 'skuCode', key: 'skuCode', width: 140 },
-                      { title: t('attr.dimension.customer'), dataIndex: 'customer', key: 'customer', width: 140 },
-                      {
-                        title: t('results.riskBrief.classification'),
-                        dataIndex: 'classification',
-                        key: 'classification',
-                        width: 160,
-                        render: (c: string) => {
-                          const colorMap: Record<string, string> = {
-                            strategicGrowth: 'geekblue',
-                            cashCow: 'green',
-                            capacityDrainer: 'orange',
-                            lowValueHighLoad: 'red',
-                            watchList: 'default',
-                            dataIncomplete: 'volcano',
-                          };
-                          return <Tag color={colorMap[c] ?? 'default'}>{t(`health.${c}`)}</Tag>;
-                        },
-                      },
-                      {
-                        title: t('results.riskBrief.revenueShare'),
-                        dataIndex: 'revenueShare',
-                        key: 'revenueShare',
-                        width: 120,
-                        align: 'right',
-                        render: (v: number | undefined) => (v !== undefined ? `${v.toFixed(1)}%` : '-'),
-                      },
-                      {
-                        title: t('results.riskBrief.pressureShare'),
-                        dataIndex: 'capacityPressureShare',
-                        key: 'capacityPressureShare',
-                        width: 130,
-                        align: 'right',
-                        render: (v: number | undefined) => (v !== undefined ? `${v.toFixed(1)}%` : '-'),
-                      },
-                      {
-                        title: t('results.riskBrief.reason'),
-                        dataIndex: 'reasonMessages',
-                        key: 'reasonMessages',
-                        render: (_v: unknown, record: typeof riskBrief.skuHealthSignals[0]) => record.reasonMessages.map((m) => t(m)).join(' '),
-                      },
-                    ]}
-                  />
-                </Card>
-              )}
-
-              {/* Overall Contribution Drivers */}
-              {riskBrief.drivers.length > 0 && (
-                <Card
-                  title={t('results.riskBrief.contributionTitle')}
-                  bordered={false}
-                  size="small"
-                  extra={
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      {t('results.riskBrief.contributionSubtitle')}
+                    <div><Text type="secondary" style={{ fontSize: 11 }}>{decisionKpis.shortageRange}</Text></div>
+                  </div>
+                </Col>
+                <Col xs={12} md={6}>
+                  <div className="twk-card" style={{ height: '100%', textAlign: 'center', padding: '16px 12px' }}>
+                    <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>{t('results.riskBrief.lowestBpAttainment')}</Text>
+                    <Text strong style={{ fontSize: 22, color: decisionKpis.lowestBpAttainment !== null && decisionKpis.lowestBpAttainment < 0.9 ? '#dc2626' : decisionKpis.lowestBpAttainment !== null && decisionKpis.lowestBpAttainment < 1 ? '#f59e0b' : undefined }}>
+                      {decisionKpis.lowestBpAttainment !== null ? (decisionKpis.lowestBpAttainment * 100).toFixed(1) + '%' : '-'}
                     </Text>
-                  }
-                >
-                  <Tabs
-                    size="small"
-                    items={riskBrief.drivers.map((dg) => ({
-                      key: dg.metric,
-                      label: t(dg.titleMessage),
-                      children: (
-                        <Table
-                          dataSource={dg.items}
-                          rowKey="label"
-                          pagination={false}
-                          size="small"
-                          columns={[
-                            { title: t('results.riskBrief.driver'), dataIndex: 'label', key: 'label', width: 180 },
-                            {
-                              title: t('results.riskBrief.value'),
-                              dataIndex: 'value',
-                              key: 'value',
-                              width: 120,
-                              align: 'right',
-                              render: (v: number) => dg.metric === 'revenue' ? formatCurrency(v, currencySettings) : v.toLocaleString(),
-                            },
-                            {
-                              title: t('results.riskBrief.share'),
-                              dataIndex: 'share',
-                              key: 'share',
-                              width: 80,
-                              align: 'right',
-                              render: (v: number | undefined) => v !== undefined ? `${v.toFixed(1)}%` : '-',
-                            },
-                            { title: t('results.riskBrief.reason'), dataIndex: 'reasonMessage', key: 'reasonMessage', render: (_v: unknown, record: typeof dg.items[0]) => t(record.reasonMessage) },
-                          ]}
-                        />
-                      ),
-                    }))}
-                  />
-                </Card>
-              )}
-
-              {/* BP Risk */}
-              {riskBrief.bpRisk?.statement && (
-                <Card title={t('results.riskBrief.bpRiskTitle')} bordered={false} size="small">
-                  <Alert
-                    type="warning"
-                    showIcon
-                    icon={<WarningOutlined />}
-                    message={t(riskBrief.bpRisk.statement.titleMessage)}
-                    description={t(riskBrief.bpRisk.statement.detailMessage)}
-                  />
-                </Card>
-              )}
-
-              {/* Data Confidence & Caveats */}
-              <Card title={t('results.riskBrief.dataConfidenceTitle')} bordered={false} size="small">
-                <div style={{ marginBottom: 12 }}>
-                  <Tag
-                    color={
-                      riskBrief.confidence === 'high' ? 'green' :
-                      riskBrief.confidence === 'medium' ? 'orange' :
-                      riskBrief.confidence === 'blocked' ? 'default' : 'red'
-                    }
-                  >
-                    {riskBrief.confidence.toUpperCase()}
-                  </Tag>
-                  <Text type="secondary" style={{ marginLeft: 8, fontSize: 13 }}>
-                    {t(riskBrief.confidenceExplanationMessage)}
-                  </Text>
-                </div>
-                {riskBrief.dataCaveats.total > 0 && (
-                  <Collapse
-                    size="small"
-                    items={[{
-                      key: 'caveats',
-                      label: t('results.riskBrief.caveatsCollapse', { shown: riskBrief.dataCaveats.top.length, total: riskBrief.dataCaveats.total }),
-                      children: (
-                        <List
-                          size="small"
-                          dataSource={riskBrief.dataCaveats.top}
-                          renderItem={(issue) => (
-                            <List.Item>
-                              <Tag
-                                color={
-                                  issue.severity === 'error' ? 'red' :
-                                  issue.severity === 'warning' ? 'orange' : 'blue'
-                                }
-                                style={{ marginRight: 8 }}
-                              >
-                                {issue.severity.toUpperCase()}
-                              </Tag>
-                              <Tag color="default" style={{ marginRight: 8 }}>{issue.domain}</Tag>
-                              <Text strong>{t(issue.titleMessage)}</Text>
-                              <Text type="secondary" style={{ marginLeft: 4, fontSize: 12 }}>{t(issue.detailMessage)}</Text>
-                            </List.Item>
-                          )}
-                        />
-                      ),
-                    }]}
-                  />
-                )}
-              </Card>
-
-              {/* Assumptions */}
-              <Card title={t('results.riskBrief.assumptionsTitle')} bordered={false} size="small">
-                <List
-                  dataSource={riskBrief.assumptions}
-                  renderItem={(item) => (
-                    <List.Item style={{ border: 'none', padding: '4px 0' }}>
-                      <InfoCircleOutlined style={{ color: '#1677ff', marginRight: 8 }} />
-                      <Text strong>{t(item.titleMessage)}:</Text>
-                      <Text type="secondary" style={{ marginLeft: 4 }}>{t(item.detailMessage)}</Text>
-                    </List.Item>
-                  )}
-                />
-              </Card>
-
-              {/* Role-Based Attention */}
-              <Row gutter={[16, 16]}>
-                <Col xs={24} md={12}>
-                  <Card title={t('results.riskBrief.salesTitle')} size="small" bordered={false}>
-                    <List
-                      dataSource={riskBrief.roleAttention.salesMessages}
-                      renderItem={(item) => (
-                        <List.Item style={{ border: 'none', padding: '6px 0' }}>
-                          <CaretRightOutlined style={{ color: '#1677ff', marginRight: 8 }} />
-                          <Text style={{ fontSize: 13 }}>{t(item)}</Text>
-                        </List.Item>
-                      )}
-                    />
-                  </Card>
+                    <div><Text type="secondary" style={{ fontSize: 11 }}>{decisionKpis.lowestBpYear}</Text></div>
+                  </div>
                 </Col>
-                <Col xs={24} md={12}>
-                  <Card title={t('results.riskBrief.productPlanningTitle')} size="small" bordered={false}>
-                    <List
-                      dataSource={riskBrief.roleAttention.productPlanningMessages}
-                      renderItem={(item) => (
-                        <List.Item style={{ border: 'none', padding: '6px 0' }}>
-                          <CaretRightOutlined style={{ color: '#1677ff', marginRight: 8 }} />
-                          <Text style={{ fontSize: 13 }}>{t(item)}</Text>
-                        </List.Item>
-                      )}
-                    />
-                  </Card>
-                </Col>
-                <Col xs={24} md={12}>
-                  <Card title={t('results.riskBrief.capacityTitle')} size="small" bordered={false}>
-                    <List
-                      dataSource={riskBrief.roleAttention.capacityMessages}
-                      renderItem={(item) => (
-                        <List.Item style={{ border: 'none', padding: '6px 0' }}>
-                          <CaretRightOutlined style={{ color: '#1677ff', marginRight: 8 }} />
-                          <Text style={{ fontSize: 13 }}>{t(item)}</Text>
-                        </List.Item>
-                      )}
-                    />
-                  </Card>
-                </Col>
-                <Col xs={24} md={12}>
-                  <Card title={t('results.riskBrief.executiveTitle')} size="small" bordered={false}>
-                    <List
-                      dataSource={riskBrief.roleAttention.executiveMessages}
-                      renderItem={(item) => (
-                        <List.Item style={{ border: 'none', padding: '6px 0' }}>
-                          <CaretRightOutlined style={{ color: '#1677ff', marginRight: 8 }} />
-                          <Text style={{ fontSize: 13 }}>{t(item)}</Text>
-                        </List.Item>
-                      )}
-                    />
-                  </Card>
+                <Col xs={12} md={6}>
+                  <div className="twk-card" style={{ height: '100%', textAlign: 'center', padding: '16px 12px' }}>
+                    <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>{t('results.riskBrief.dataConfidence')}</Text>
+                    <Tag color={riskBrief?.confidence === 'high' ? 'green' : riskBrief?.confidence === 'medium' ? 'orange' : 'red'} style={{ fontSize: 16, padding: '2px 16px', marginTop: 4 }}>
+                      {riskBrief?.confidence ? riskBrief.confidence.toUpperCase() : '-'}
+                    </Tag>
+                    <div><Text type="secondary" style={{ fontSize: 11 }}>{t('results.riskBrief.affectsDataConfidence')}</Text></div>
+                  </div>
                 </Col>
               </Row>
 
-              {/* Metric Glossaries */}
-              <Card title={t('results.riskBrief.metricRegistryTitle')} size="small" bordered={false}>
-                <Table
-                  dataSource={METRIC_DEFINITIONS}
-                  rowKey="id"
-                  pagination={false}
-                  size="small"
-                  columns={[
-                    { title: t('results.riskBrief.metricId'), dataIndex: 'id', key: 'id', width: 140 },
-                    { title: t('results.riskBrief.formula'), dataIndex: 'formula', key: 'formula', width: 220, render: (v: string) => <code>{v}</code> },
-                    { title: t('results.riskBrief.description'), dataIndex: 'definition', key: 'definition' },
-                    { title: t('results.riskBrief.unit'), dataIndex: 'unit', key: 'unit', width: 90, render: (v: string) => <Tag>{v}</Tag> },
-                  ]}
+              {/* ================================================================
+                  3. Key Findings (max 5)
+                  ================================================================ */}
+              <div className="twk-card" style={{ marginBottom: 16 }}>
+                <div className="twk-card-header">
+                  <span className="twk-card-title">{t('results.keyFindings.title')}</span>
+                </div>
+                <div className="twk-card-body">
+                  {findings.length === 0 ? (
+                    <Text type="secondary">{t('results.riskBrief.keyFindings.empty')}</Text>
+                  ) : (
+                    findings.slice(0, 5).map((f, idx) => (
+                      <div key={idx} style={{
+                        padding: '12px',
+                        marginBottom: idx < Math.min(findings.length, 5) - 1 ? 8 : 0,
+                        borderRadius: 8,
+                        border: '1px solid #e5e7eb',
+                        background: '#fff',
+                      }}>
+                        <Space style={{ marginBottom: 6 }}>
+                          <Tag color={f.severity === 'critical' ? 'red' : f.severity === 'warning' ? 'orange' : 'blue'}>
+                            {t('keyFindings.severity.' + f.severity)}
+                          </Tag>
+                          <Tag color="default">{f.domain}</Tag>
+                        </Space>
+                        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{f.title}</div>
+                        <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 8 }}>{f.detail}</Text>
+                        {f.actions.length > 0 && (
+                          <Space>
+                            {f.actions.map((action, ai) => (
+                              <Button key={ai} size="small" type="link" style={{ padding: 0, fontSize: 12 }} onClick={action.onClick}>
+                                {action.label}
+                              </Button>
+                            ))}
+                          </Space>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* ================================================================
+                  4. AI Analysis Tools — collapsed by default
+                  ================================================================ */}
+              <Collapse size="small" style={{ marginBottom: 16 }}
+                items={[{
+                  key: 'aiTools',
+                  label: <Space><RobotOutlined /><span>{t('aiBriefExport.title')}</span></Space>,
+                  children: (
+                    <div>
+                      <Space wrap style={{ marginBottom: 12 }}>
+                        <Button type="primary" icon={<CopyOutlined />} onClick={async () => {
+                          if (!analysisPayload) return;
+                          const pack = buildCombinedAiBriefPack(analysisPayload);
+                          const success = await copyToClipboard(pack);
+                          message.success(success ? t('aiBriefExport.copied') : t('aiBriefExport.copyFailed'));
+                        }}>
+                          {t('aiBriefExport.copyPack')}
+                        </Button>
+                        <Button icon={<CopyOutlined />} onClick={async () => {
+                          if (!analysisPayload) return;
+                          const sanitized = buildSanitizedAnalysisContract(analysisPayload);
+                          const prompt = buildChineseAiBriefPrompt(sanitized);
+                          const success = await copyToClipboard(prompt);
+                          message.success(success ? t('aiBriefExport.copied') : t('aiBriefExport.copyFailed'));
+                        }}>
+                          {t('aiBriefExport.copyPrompt')}
+                        </Button>
+                        <Button icon={<CopyOutlined />} onClick={async () => {
+                          if (!analysisPayload) return;
+                          const sanitized = buildSanitizedAnalysisContract(analysisPayload);
+                          const json = JSON.stringify(sanitized, null, 2);
+                          const success = await copyToClipboard(json);
+                          message.success(success ? t('aiBriefExport.copied') : t('aiBriefExport.copyFailed'));
+                        }}>
+                          {t('aiBriefExport.copyJson')}
+                        </Button>
+                        <Button icon={<DownloadOutlined />} onClick={() => {
+                          if (!analysisPayload) return;
+                          const { dataUrl, filename } = downloadSanitizedContract(analysisPayload);
+                          const link = document.createElement('a');
+                          link.href = dataUrl;
+                          link.download = filename;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          revokeDownloadUrl(dataUrl);
+                          message.success(t('aiBriefExport.downloaded'));
+                        }}>
+                          {t('aiBriefExport.downloadJson')}
+                        </Button>
+                      </Space>
+                    </div>
+                  ),
+                }]}
+              />
+
+              {/* ================================================================
+                  5. BP Gap Attribution — collapsed by default (top 3 only)
+                  ================================================================ */}
+              {analysisPayload.bpAttribution.topDrivers.length > 0 && (
+                <Collapse size="small" style={{ marginBottom: 16 }}
+                  items={[{
+                    key: 'bpAttr',
+                    label: <span>{t('results.riskBrief.bpAttribution')} (Top {Math.min(analysisPayload.bpAttribution.topDrivers.length, 3)})</span>,
+                    children: (
+                      <Table size="small" pagination={false}
+                        dataSource={analysisPayload.bpAttribution.topDrivers.slice(0, 3)}
+                        rowKey={(r) => r.dimension + '-' + r.label + '-' + r.period}
+                        columns={[
+                          { title: t('results.bpAttr.period'), dataIndex: 'period', key: 'period', width: 120 },
+                          { title: t('results.bpAttr.dimension'), dataIndex: 'dimension', key: 'dimension', width: 130, render: (v) => t('attr.dimension.' + v) },
+                          { title: t('results.bpAttr.driver'), dataIndex: 'label', key: 'label', width: 220 },
+                          { title: t('results.bpAttr.shareOfGap'), dataIndex: 'shareOfGap', key: 'shareOfGap', width: 110, align: 'right', render: (v) => v.toFixed(1) + '%' },
+                          { title: t('results.bpAttr.gapContribution'), dataIndex: 'gapContributionMillionTwd', key: 'gapContributionMillionTwd', width: 160, align: 'right', render: (v) => v.toFixed(1) + ' M TWD' },
+                        ]}
+                      />
+                    ),
+                  }]}
                 />
-              </Card>
+              )}
+
+              {/* ================================================================
+                  6. Price Impact — collapsed by default
+                  ================================================================ */}
+              {analysisPayload.priceImpact.scenarios.length > 0 && (
+                <Collapse size="small" style={{ marginBottom: 16 }}
+                  items={[{
+                    key: 'priceImpact',
+                    label: <span>{t('results.riskBrief.priceImpact')}</span>,
+                    children: (
+                      <Tabs size="small"
+                        items={analysisPayload.priceImpact.scenarios.map((sc) => ({
+                          key: sc.scenarioId,
+                          label: (sc.priceDeltaPct > 0 ? '+' : '') + (sc.priceDeltaPct * 100).toFixed(0) + '%',
+                          children: (
+                            <Table size="small" pagination={false} dataSource={sc.yearly} rowKey="year"
+                              columns={[
+                                { title: t('results.priceImpact.year'), dataIndex: 'year', key: 'year', width: 100 },
+                                { title: t('results.priceImpact.baseRevenue'), dataIndex: 'baseRevenueMillionTwd', key: 'baseRevenueMillionTwd', width: 150, align: 'right', render: (v) => v.toFixed(1) + ' M TWD' },
+                                { title: t('results.priceImpact.scenarioRevenue'), dataIndex: 'scenarioRevenueMillionTwd', key: 'scenarioRevenueMillionTwd', width: 150, align: 'right', render: (v) => v.toFixed(1) + ' M TWD' },
+                                { title: t('results.priceImpact.revenueDelta'), dataIndex: 'revenueDeltaMillionTwd', key: 'revenueDeltaMillionTwd', width: 160, align: 'right', render: (v) => <Tag color={v > 0 ? 'green' : v < 0 ? 'red' : 'default'} style={{ margin: 0 }}>{(v > 0 ? '+' : '') + v.toFixed(1) + ' M TWD'}</Tag> },
+                              ]}
+                            />
+                          ),
+                        }))}
+                      />
+                    ),
+                  }]}
+                />
+              )}
+
+              {/* ================================================================
+                  7. Capacity Improvement Impact — collapsed by default
+                  ================================================================ */}
+              {analysisPayload.capacityImpact.scenarios.length > 0 && (
+                <Collapse size="small" style={{ marginBottom: 16 }}
+                  items={[{
+                    key: 'capacityImpact',
+                    label: <span>{t('results.riskBrief.capacityImpact')}</span>,
+                    children: (
+                      <Table size="small" pagination={false} dataSource={analysisPayload.capacityImpact.scenarios} rowKey="scenarioId"
+                        columns={[
+                          { title: t('results.capacityImpact.scenario'), dataIndex: 'scenarioId', key: 'scenarioId', width: 220, render: (v) => t('results.capacityImpact.scenarioName.' + v) },
+                          { title: t('results.capacityImpact.shortageBefore'), dataIndex: 'shortageMonthsBefore', key: 'shortageMonthsBefore', width: 140, align: 'right' },
+                          { title: t('results.capacityImpact.shortageAfter'), dataIndex: 'shortageMonthsAfter', key: 'shortageMonthsAfter', width: 140, align: 'right', render: (v, r) => <Tag color={v < r.shortageMonthsBefore ? 'green' : 'default'} style={{ margin: 0 }}>{v}</Tag> },
+                        ]}
+                      />
+                    ),
+                  }]}
+                />
+              )}
             </div>
           )}
 

@@ -275,3 +275,56 @@ export function buildAiCopilotContext(
   // --- Recursive sensitive-key strip (safety net) ---
   return sanitizeDeep(context);
 }
+
+/**
+ * Build a minimal AiCopilotContext for use in the global Copilot Drawer
+ * when no page-specific analytics data is available.
+ */
+export function buildMinimalAiCopilotContext(role?: WorkspaceRole): AiCopilotContext {
+  const now = new Date().toISOString();
+  return {
+    schemaVersion: '1.0',
+    generatedAt: now,
+    appVersion: 'v1.60.0',
+    projectSummary: {
+      totalRevenueUsd: 0,
+      totalForecastPcs: 0,
+      maxCoreUtilization: null,
+      maxBuUtilization: null,
+      shortageMonthCount: 0,
+      worstBottleneckMonth: null,
+      skuCount: 0,
+      forecastMonthCount: 0,
+    },
+    dataQualitySummary: {
+      confidence: 'high',
+      confidenceScore: 100,
+      status: 'ok',
+      issueCount: 0,
+      topIssues: [],
+    },
+    riskBriefSummary: {
+      shortageMonths: [],
+      topDrivers: [],
+    },
+    scenarioSummary: null,
+    bpSummary: {
+      yearly: [],
+      hasAnyMiss: false,
+      worstPeriod: null,
+    },
+    capacitySummary: {
+      monthlySummaries: [],
+      worstMonth: null,
+    },
+    currencyAssumptions: {
+      baseCurrency: 'USD',
+      displayCurrency: 'TWD',
+      exchangeRateMode: 'fixed',
+      usdToTwdRate: 32,
+      usdToCnyRate: 7.2,
+    },
+    assumptions: [],
+    role: role ?? 'viewer',
+  };
+}
