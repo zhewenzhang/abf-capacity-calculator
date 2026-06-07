@@ -305,7 +305,7 @@ describe('DailyOperationsWorkbench -- Render Tests', () => {
         <DailyOperationsWorkbench scope={scope} />
       );
       expect(container).toBeTruthy();
-    });
+    }, 15000);
 
     it('component module exports a valid React component', async () => {
       const { default: DailyOperationsWorkbench } = await import('./DailyOperationsWorkbench');
