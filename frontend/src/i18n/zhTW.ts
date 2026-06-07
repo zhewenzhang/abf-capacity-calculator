@@ -57,12 +57,17 @@ export const zhTW: Record<string, string> = {
   'common.bu': 'BU',
   'common.readOnlyMode': '唯讀模式',
   'common.readOnlyDesc': '您在此協作空間為檢視者，編輯功能已停用。',
+  'common.viewerReadOnly': '此頁面為唯讀模式，編輯功能已停用。',
+  'results.description': '查看詳細計算結果與分析視角。',
+  'results.months': '個月',
 
   // Dashboard
   'dashboard.title': '營運總覽',
   'dashboard.executiveKpi': '營運指標',
   'dashboard.totalSkus': '總 SKU 數',
   'dashboard.totalRevenue': '總營收',
+  'dashboard.annualRevenue': '年度營收',
+  'dashboard.yearlyMetricsNote': '指標按所選年份計算，金額口徑為 M NTD。',
   'dashboard.revenueTrend': '營收趨勢',
   'dashboard.worstYear': '最差年度',
   'dashboard.maxCoreUtil': '最大 Core 稼動率',
@@ -501,6 +506,20 @@ export const zhTW: Record<string, string> = {
   'products.save': '儲存',
   'products.cancel': '取消',
   'products.clear': '清除',
+  'products.deleteSuccess': '產品已刪除',
+  'products.invalidCurrency': '貨幣格式無效',
+  'products.unitPriceCurrency': '單價貨幣',
+
+  // Products Spreadsheet Lab
+  'productsLab.title': '產品試算表實驗室',
+  'productsLab.description': '以試算表方式批次編輯產品資料。',
+  'productsLab.save': '儲存',
+  'productsLab.total': '總筆數',
+  'productsLab.rows': '行數',
+  'productsLab.validate': '驗證',
+  'productsLab.blankRows': '空白行',
+  'productsLab.reload': '重新載入',
+  'productsLab.exportCsv': '匯出 CSV',
 
   // Forecasts
   'forecasts.title': '預測',
@@ -700,6 +719,7 @@ export const zhTW: Record<string, string> = {
   'parameters.year': '年度',
   'parameters.rate': 'USD → TWD',
   'parameters.usdToTwd': 'USD 兌 TWD 匯率',
+  'parameters.usdToCny': 'USD 兌 CNY 匯率',
   'parameters.mode.constant': '固定',
   'parameters.mode.yearly': '年度',
   'parameters.factoryName': '廠區名稱',

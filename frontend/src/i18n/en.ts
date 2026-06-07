@@ -48,12 +48,17 @@ export const en: Record<string, string> = {
   'common.bu': 'BU',
   'common.readOnlyMode': 'Read-only mode',
   'common.readOnlyDesc': 'You are a viewer in this workspace — editing is disabled.',
+  'common.viewerReadOnly': 'You are in read-only mode. Editing is disabled.',
+  'results.description': 'View detailed calculation results and analysis perspectives.',
+  'results.months': 'months',
 
   // Dashboard
   'dashboard.title': 'Operations Dashboard',
   'dashboard.executiveKpi': 'Executive KPIs',
   'dashboard.totalSkus': 'Total SKUs',
   'dashboard.totalRevenue': 'Total Revenue',
+  'dashboard.annualRevenue': 'Annual Revenue',
+  'dashboard.yearlyMetricsNote': 'Metrics are calculated for the selected year. Amounts use M NTD.',
   'dashboard.revenueTrend': 'Revenue Trend',
   'dashboard.worstYear': 'Worst Year',
   'dashboard.maxCoreUtil': 'Max Core Util.',
@@ -492,6 +497,20 @@ export const en: Record<string, string> = {
   'products.save': 'Save',
   'products.cancel': 'Cancel',
   'products.clear': 'Clear',
+  'products.deleteSuccess': 'Product deleted',
+  'products.invalidCurrency': 'Invalid currency format',
+  'products.unitPriceCurrency': 'Unit Price Currency',
+
+  // Products Spreadsheet Lab
+  'productsLab.title': 'Products Spreadsheet Lab',
+  'productsLab.description': 'Batch edit product data via spreadsheet.',
+  'productsLab.save': 'Save',
+  'productsLab.total': 'Total',
+  'productsLab.rows': 'Rows',
+  'productsLab.validate': 'Validate',
+  'productsLab.blankRows': 'Blank Rows',
+  'productsLab.reload': 'Reload',
+  'productsLab.exportCsv': 'Export CSV',
 
   // Forecasts
   'forecasts.title': 'Forecasts',
@@ -691,6 +710,7 @@ export const en: Record<string, string> = {
   'parameters.year': 'Year',
   'parameters.rate': 'USD → TWD',
   'parameters.usdToTwd': 'USD to TWD Rate',
+  'parameters.usdToCny': 'USD to CNY Rate',
   'parameters.mode.constant': 'Constant',
   'parameters.mode.yearly': 'Yearly',
   'parameters.factoryName': 'Factory Name',
