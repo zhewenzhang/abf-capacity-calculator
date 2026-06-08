@@ -71,7 +71,7 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [versions, setVersions] = useState<BpSimVersion[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY_PREFIX + (scope.projectId || 'default'));
+      const saved = localStorage.getItem(STORAGE_KEY_PREFIX + scope.userId + '-' + (scope.projectId || ''));
       return saved ? JSON.parse(saved) : [];
     } catch { return []; }
   });
@@ -356,7 +356,7 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
     const updated = [...versions, newVersion];
     setVersions(updated);
     try {
-      localStorage.setItem(STORAGE_KEY_PREFIX + (scope.projectId || 'default'), JSON.stringify(updated));
+      localStorage.setItem(STORAGE_KEY_PREFIX + scope.userId + '-' + (scope.projectId || ''), JSON.stringify(updated));
     } catch { /* localStorage may be full */ }
     setNewVersionName('');
     message.success(t('bpTargets.versionSaved'));
@@ -382,7 +382,7 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
     const updated = versions.filter(v => v.id !== verId);
     setVersions(updated);
     try {
-      localStorage.setItem(STORAGE_KEY_PREFIX + (scope.projectId || 'default'), JSON.stringify(updated));
+      localStorage.setItem(STORAGE_KEY_PREFIX + scope.userId + '-' + (scope.projectId || ''), JSON.stringify(updated));
     } catch { /* localStorage may be full */ }
     message.success(t('bpTargets.versionDeleted'));
   }, [versions, scope, t]);

@@ -81,6 +81,31 @@ check('AI NOT in PRIMARY_NAV', 'App.tsx', "key: 'copilot'", true); // invert = t
 check('No 問題摘要', 'pages/DailyOperationsWorkbench.tsx', '問題摘要', true);
 check('No 今日行動建議', 'pages/DailyOperationsWorkbench.tsx', '今日行動建議', true);
 
+// ========== Security: No API keys in source ==========
+check('No sk- in source', 'pages/BpTargets.tsx', 'sk-', true);
+check('No DEEPSEEK_API_KEY in source', 'pages/BpTargets.tsx', 'DEEPSEEK_API_KEY', true);
+check('No API key input in AI drawer', 'components/copilot/CopilotChat.tsx', 'apiKey', true);
+check('No BYOK in AI provider', 'components/copilot/AiProviderSettingsDrawer.tsx', 'BYOK', true);
+check('No console.log in production', 'pages/BpTargets.tsx', 'console.log', true);
+
+// ========== Legacy dead code check ==========
+check('No legacy TwkPage in components/ui', 'components/ui/index.ts', 'TwkPage', true);
+
+// ========== Firestore rules are not open ==========
+const FRONTEND_ROOT = path.join(__dirname, '..');
+const rulesPath = path.join(FRONTEND_ROOT, 'firestore.rules');
+if (fs.existsSync(rulesPath)) {
+  const rules = fs.readFileSync(rulesPath, 'utf-8');
+  if (rules.includes('allow read, write: if true')) {
+    errors.push('FAIL: firestore.rules has open read/write');
+    allPassed = false;
+  }
+  if (rules.includes('allow read, write: if request.auth == null')) {
+    errors.push('FAIL: firestore.rules allows unauthenticated access');
+    allPassed = false;
+  }
+}
+
 // ========== i18n key parity ==========
 // Check that key counts match between zhTW.ts and en.ts
 const zhTW = fs.readFileSync(path.join(FRONTEND, 'i18n', 'zhTW.ts'), 'utf-8');
