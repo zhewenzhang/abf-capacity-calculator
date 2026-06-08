@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Button, message, Alert, Space, InputNumber, Typography } from 'antd';
-import { SaveOutlined, UndoOutlined, PlusOutlined, MinusOutlined } from '@ant-design/icons';
+import { Button, message, Alert, Space, InputNumber, Input, Select, Segmented, Typography, Modal, List, Popconfirm } from 'antd';
+import { SaveOutlined, UndoOutlined, PlusOutlined, MinusOutlined, ExperimentOutlined, HistoryOutlined, DeleteOutlined } from '@ant-design/icons';
 import { DataSheetGrid, textColumn, floatColumn, keyColumn } from 'react-datasheet-grid';
 import 'react-datasheet-grid/dist/style.css';
 import { getParameters, saveParameters } from '../services/parameterService';
@@ -27,6 +27,18 @@ interface BpTargetsProps {
   scope: ProjectScope;
 }
 
+interface BpSimVersion {
+  id: string;
+  name: string;
+  timestamp: number;
+  data: Record<string, number>;
+  createdBy: string;
+  isBaseline?: boolean;
+}
+
+const STORAGE_KEY_PREFIX = 'bp-versions-';
+const generateId = () => 'bpv-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+
 const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
   const { t } = useI18n();
   const [loading, setLoading] = useState(true);
@@ -43,6 +55,26 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
 
   // Insert year input
   const [insertYearValue, setInsertYearValue] = useState<number | null>(null);
+
+  // Simulation state
+  const [simActive, setSimActive] = useState(false);
+  const [simMode, setSimMode] = useState<'multiply' | 'direct'>('multiply');
+  const [simScope, setSimScope] = useState<'all' | 'fromYear' | 'singleYear'>('all');
+  const [simFromYear, setSimFromYear] = useState<string>('');
+  const [simSingleYear, setSimSingleYear] = useState<string>('');
+  const [simMultiplier, setSimMultiplier] = useState<number>(1.1);
+  const [simDirectAmount, setSimDirectAmount] = useState<number | null>(null);
+  const [simResult, setSimResult] = useState<Record<string, number> | null>(null);
+
+  // Version history state
+  const [showVersionModal, setShowVersionModal] = useState(false);
+  const [versions, setVersions] = useState<BpSimVersion[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_PREFIX + (scope.projectId || 'default'));
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [newVersionName, setNewVersionName] = useState('');
 
   const writable = canEdit(scope.role);
 
@@ -262,6 +294,98 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
     message.info(t('bpTargets.discardSuccess'));
   };
 
+  // ---------- Simulation handlers ----------
+  const handleApplySimulation = useCallback(() => {
+    if (!params) return;
+    const baseRecord = savedRecord;
+    const years = visibleYears;
+    const result: Record<string, number> = {};
+
+    for (const year of years) {
+      const baseVal = baseRecord[year] ?? 0;
+
+      if (simScope === 'fromYear' && simFromYear && year < simFromYear) {
+        result[year] = baseVal;
+        continue;
+      }
+      if (simScope === 'singleYear' && simSingleYear && year !== simSingleYear) {
+        result[year] = baseVal;
+        continue;
+      }
+
+      if (simMode === 'multiply') {
+        result[year] = Math.round(baseVal * simMultiplier * 10) / 10;
+      } else if (simMode === 'direct' && simDirectAmount !== null) {
+        result[year] = simDirectAmount;
+      } else {
+        result[year] = baseVal;
+      }
+    }
+
+    setSimResult(result);
+    const newRows = rebuildRows(result, years, params);
+    setRows(newRows);
+    message.success(t('bpTargets.simApplied'));
+  }, [params, savedRecord, visibleYears, rebuildRows, simMode, simScope, simFromYear, simSingleYear, simMultiplier, simDirectAmount, t]);
+
+  const handleResetSimulation = useCallback(() => {
+    if (!params) return;
+    setSimResult(null);
+    setSimActive(false);
+    const years = buildVisibleYears(savedRecord);
+    setVisibleYears(years);
+    setRows(rebuildRows(savedRecord, years, params));
+    message.info(t('bpTargets.simReset'));
+  }, [params, savedRecord, rebuildRows, t]);
+
+  // ---------- Version history handlers ----------
+  const handleSaveVersion = useCallback(() => {
+    if (!newVersionName.trim()) {
+      message.warning(t('bpTargets.versionNameRequired'));
+      return;
+    }
+    const record = rowsToBpTargetRecord(rows, visibleYears);
+    const newVersion: BpSimVersion = {
+      id: generateId(),
+      name: newVersionName.trim(),
+      timestamp: Date.now(),
+      data: record,
+      createdBy: scope.userId,
+    };
+    const updated = [...versions, newVersion];
+    setVersions(updated);
+    try {
+      localStorage.setItem(STORAGE_KEY_PREFIX + (scope.projectId || 'default'), JSON.stringify(updated));
+    } catch { /* localStorage may be full */ }
+    setNewVersionName('');
+    message.success(t('bpTargets.versionSaved'));
+  }, [newVersionName, rows, visibleYears, versions, scope, t]);
+
+  const handleRestoreVersion = useCallback((ver: BpSimVersion) => {
+    if (!params) return;
+    const years = buildVisibleYears(ver.data);
+    setVisibleYears(years);
+    setRows(rebuildRows(ver.data, years, params));
+    setShowVersionModal(false);
+    message.info(t('bpTargets.versionRestored'));
+  }, [params, rebuildRows, t]);
+
+  const handleDeleteVersion = useCallback((verId: string) => {
+    // Owner can delete any; editor can delete own
+    const ver = versions.find(v => v.id === verId);
+    if (!ver) return;
+    if (scope.role === 'editor' && ver.createdBy !== scope.userId) {
+      message.error(t('bpTargets.versionDeleteDenied'));
+      return;
+    }
+    const updated = versions.filter(v => v.id !== verId);
+    setVersions(updated);
+    try {
+      localStorage.setItem(STORAGE_KEY_PREFIX + (scope.projectId || 'default'), JSON.stringify(updated));
+    } catch { /* localStorage may be full */ }
+    message.success(t('bpTargets.versionDeleted'));
+  }, [versions, scope, t]);
+
   // ---------- Columns definition ----------
   const columns = useMemo(() => {
     const yearCols = visibleYears.map((yearStr) =>
@@ -350,23 +474,66 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
 
       {/* Toolbar */}
       <ActionBar info={<Text type="secondary" style={{ fontSize: 12 }}>{t('bpTargets.hint')}</Text>}>
-        <Button
-          type="primary"
-          icon={<SaveOutlined />}
-          onClick={handleSave}
-          loading={saving}
-          disabled={!writable || !isDirty}
-        >
+        <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving} disabled={!writable || !isDirty}>
           {t('common.save')}
         </Button>
-        <Button
-          icon={<UndoOutlined />}
-          onClick={handleDiscard}
-          disabled={!writable || !isDirty || saving}
-        >
+        <Button icon={<UndoOutlined />} onClick={handleDiscard} disabled={!writable || !isDirty || saving}>
           {t('common.discard')}
         </Button>
+        <Button icon={<ExperimentOutlined />} onClick={() => setSimActive(!simActive)} type={simActive ? 'primary' : 'default'} ghost={simActive}>
+          {t('bpTargets.simulate')}
+        </Button>
+        <Button icon={<HistoryOutlined />} onClick={() => setShowVersionModal(true)} disabled={versions.length === 0 && !writable}>
+          {t('bpTargets.versions')} {versions.length > 0 && `(${versions.length})`}
+        </Button>
       </ActionBar>
+
+      {/* Simulation Controls */}
+      {simActive && (
+        <div style={{ marginBottom: 12, padding: '12px', border: '1px solid #d9d9d9', borderRadius: 8, background: '#fafafa' }}>
+          <Space direction="vertical" style={{ width: '100%' }} size={8}>
+            <Space wrap>
+              {/* Mode */}
+              <Segmented size="small" value={simMode} onChange={v => setSimMode(v as 'multiply' | 'direct')}
+                options={[
+                  { label: t('bpTargets.simMultiply'), value: 'multiply' },
+                  { label: t('bpTargets.simDirect'), value: 'direct' },
+                ]}
+              />
+              {/* Scope */}
+              <Segmented size="small" value={simScope} onChange={v => setSimScope(v as 'all' | 'fromYear' | 'singleYear')}
+                options={[
+                  { label: t('bpTargets.simAllYears'), value: 'all' },
+                  { label: t('bpTargets.simFromYear'), value: 'fromYear' },
+                  { label: t('bpTargets.simSingleYear'), value: 'singleYear' },
+                ]}
+              />
+            </Space>
+            <Space wrap>
+              {simScope === 'fromYear' && (
+                <Select size="small" style={{ width: 120 }} value={simFromYear || undefined} onChange={v => setSimFromYear(v)} placeholder={t('bpTargets.simSelectYear')}
+                  options={visibleYears.map(y => ({ label: y, value: y }))}
+                />
+              )}
+              {simScope === 'singleYear' && (
+                <Select size="small" style={{ width: 120 }} value={simSingleYear || undefined} onChange={v => setSimSingleYear(v)} placeholder={t('bpTargets.simSelectYear')}
+                  options={visibleYears.map(y => ({ label: y, value: y }))}
+                />
+              )}
+              {simMode === 'multiply' ? (
+                <InputNumber size="small" style={{ width: 120 }} min={0.01} max={10} step={0.05} value={simMultiplier} onChange={v => setSimMultiplier(v ?? 1)} addonBefore="×" />
+              ) : (
+                <InputNumber size="small" style={{ width: 160 }} min={0} step={100} value={simDirectAmount} onChange={v => setSimDirectAmount(v)} addonAfter="M NTD" />
+              )}
+              <Button size="small" type="primary" onClick={handleApplySimulation}>{t('bpTargets.simApply')}</Button>
+              <Button size="small" onClick={handleResetSimulation}>{t('bpTargets.simReset')}</Button>
+            </Space>
+            {simResult && (
+              <Text type="success" style={{ fontSize: 12 }}>{t('bpTargets.simResultNote')}</Text>
+            )}
+          </Space>
+        </div>
+      )}
 
       {/* Grid */}
       <div className="stable-spreadsheet-shell" style={{ marginTop: 16 }}>
@@ -375,11 +542,63 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
           onChange={handleRowsChange}
           columns={columns}
           rowHeight={36}
-          height={36 * 4 + 36} // 4 rows + header
+          height={36 * 4 + 36}
           lockRows={true}
           cellClassName={cellClassName}
         />
       </div>
+
+      {/* Version History Modal */}
+      <Modal
+        title={<Space><HistoryOutlined /><span>{t('bpTargets.versionHistory')}</span></Space>}
+        open={showVersionModal}
+        onCancel={() => setShowVersionModal(false)}
+        footer={null}
+        width={520}
+      >
+        {writable && (
+          <Space style={{ marginBottom: 12, width: '100%' }}>
+            <Input
+              size="small"
+              value={newVersionName}
+              onChange={e => setNewVersionName(e.target.value)}
+              placeholder={t('bpTargets.versionNamePlaceholder')}
+              style={{ flex: 1 }}
+            />
+            <Button size="small" type="primary" onClick={handleSaveVersion} disabled={!newVersionName.trim()}>
+              {t('bpTargets.versionSave')}
+            </Button>
+          </Space>
+        )}
+        {versions.length === 0 ? (
+          <Text type="secondary">{t('bpTargets.versionNoVersions')}</Text>
+        ) : (
+          <List
+            size="small"
+            dataSource={[...versions].reverse()}
+            renderItem={(ver) => (
+              <List.Item
+                actions={[
+                  <Button key="restore" size="small" type="link" onClick={() => handleRestoreVersion(ver)}
+                    disabled={!writable}>
+                    {t('bpTargets.versionRestore')}
+                  </Button>,
+                  (scope.role === 'owner' || (scope.role === 'editor' && ver.createdBy === scope.userId)) && (
+                    <Popconfirm key="delete" title={t('bpTargets.versionDeleteConfirm')} onConfirm={() => handleDeleteVersion(ver.id)}>
+                      <Button size="small" type="link" danger icon={<DeleteOutlined />}>{t('common.delete')}</Button>
+                    </Popconfirm>
+                  ),
+                ].filter(Boolean)}
+              >
+                <List.Item.Meta
+                  title={ver.name}
+                  description={new Date(ver.timestamp).toLocaleString()}
+                />
+              </List.Item>
+            )}
+          />
+        )}
+      </Modal>
     </div>
   );
 };
