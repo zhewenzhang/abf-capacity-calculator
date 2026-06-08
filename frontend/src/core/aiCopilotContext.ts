@@ -212,7 +212,7 @@ export function buildAiCopilotContext(
   const context: AiCopilotContext = {
     schemaVersion: '1.0',
     generatedAt: new Date().toISOString(),
-    appVersion: '',
+    appVersion: 'v1.62.3',
 
     projectSummary: {
       totalRevenueUsd: round2(model.totalRevenue),
@@ -285,7 +285,7 @@ export function buildMinimalAiCopilotContext(role?: WorkspaceRole): AiCopilotCon
   return {
     schemaVersion: '1.0',
     generatedAt: now,
-    appVersion: 'v1.60.0',
+    appVersion: 'v1.62.3',
     projectSummary: {
       totalRevenueUsd: 0,
       totalForecastPcs: 0,
