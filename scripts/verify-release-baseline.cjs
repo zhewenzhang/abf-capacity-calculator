@@ -82,11 +82,44 @@ check('No 問題摘要', 'pages/DailyOperationsWorkbench.tsx', '問題摘要', t
 check('No 今日行動建議', 'pages/DailyOperationsWorkbench.tsx', '今日行動建議', true);
 
 // ========== Security: No API keys in source ==========
-check('No sk- in source', 'pages/BpTargets.tsx', 'sk-', true);
-check('No DEEPSEEK_API_KEY in source', 'pages/BpTargets.tsx', 'DEEPSEEK_API_KEY', true);
+check('No sk- in BpTargets', 'pages/BpTargets.tsx', 'sk-', true);
+check('No DEEPSEEK_API_KEY in BpTargets', 'pages/BpTargets.tsx', 'DEEPSEEK_API_KEY', true);
+check('No sk- in aiChatService', 'services/aiChatService.ts', 'sk-', true);
+check('No DEEPSEEK_API_KEY in aiChatService', 'services/aiChatService.ts', 'DEEPSEEK_API_KEY', true);
 check('No API key input in AI drawer', 'components/copilot/CopilotChat.tsx', 'apiKey', true);
 check('No BYOK in AI provider', 'components/copilot/AiProviderSettingsDrawer.tsx', 'BYOK', true);
 check('No console.log in production', 'pages/BpTargets.tsx', 'console.log', true);
+
+// ========== BP Version Key Isolation ==========
+check('BP version storage key isolates by userId', 'pages/BpTargets.tsx', 'STORAGE_KEY_PREFIX + scope.userId');
+
+// ========== Functions Secrets ==========
+const FUNCTIONS = path.join(__dirname, '..', 'functions', 'src');
+function checkFunction(label, filePath, pattern, invert = false) {
+  const fullPath = path.join(FUNCTIONS, filePath);
+  if (!fs.existsSync(fullPath)) {
+    errors.push(`MISSING FUNCTION FILE: ${filePath}`);
+    allPassed = false;
+    return;
+  }
+  const content = fs.readFileSync(fullPath, 'utf-8');
+  const found = content.includes(pattern);
+  if (invert) {
+    if (found) {
+      errors.push(`FAIL (should NOT contain in functions): ${filePath} contains ${JSON.stringify(pattern)}`);
+      allPassed = false;
+    }
+  } else {
+    if (!found) {
+      errors.push(`FAIL (should contain in functions): ${filePath} missing ${JSON.stringify(pattern)}`);
+      allPassed = false;
+    }
+  }
+}
+
+checkFunction('DeepSeek secret manager configuration', 'index.ts', "secrets: ['DEEPSEEK_API_KEY']");
+checkFunction('DeepSeek key from process.env', 'aiChat.ts', 'process.env.DEEPSEEK_API_KEY');
+checkFunction('No sk- in deepseekClient', 'deepseekClient.ts', 'sk-', true);
 
 // ========== Legacy dead code check ==========
 check('No legacy TwkPage in components/ui', 'components/ui/index.ts', 'TwkPage', true);
