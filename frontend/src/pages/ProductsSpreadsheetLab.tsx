@@ -11,6 +11,7 @@ import { calculateSkuUpp, calculateSkuYieldEstimate, normalizeSkuDraft } from '.
 import { currencyOrUsd, normalizeCurrencyCode } from '../core/currency';
 import type { SizeCategory, ProjectScope } from '../types';
 import { canEdit } from '../services/projectScope';
+import PageShell from '../components/layout/PageShell';
 
 const { Text } = Typography;
 
@@ -280,7 +281,7 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ scope }
   }).length;
 
   return (
-    <div className="twk-page">
+    <PageShell variant="wide">
       <ExperimentalBanner
         label={t('productsLab.title')}
         description={t('productsLab.description')}
@@ -329,7 +330,7 @@ const ProductsSpreadsheetLab: React.FC<ProductsSpreadsheetLabProps> = ({ scope }
           height={gridHeight}
         />
       </div>
-    </div>
+    </PageShell>
   );
 };
 

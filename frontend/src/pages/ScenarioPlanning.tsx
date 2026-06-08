@@ -26,6 +26,7 @@ import {
   Legend, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 import { useI18n } from '../i18n';
+import PageShell from '../components/layout/PageShell';
 import { canEdit } from '../services/projectScope';
 import type {
   ProjectScope,
@@ -480,7 +481,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
   // Render
   // ============================================================
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 16px' }}>
+    <PageShell variant="wide">
       <PageHeader title={t('scenario.title')} description={t('scenario.description')} />
 
       {showDqWarning && (
@@ -857,7 +858,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
           </Card>
         </>
       )}
-    </div>
+    </PageShell>
   );
 };
 

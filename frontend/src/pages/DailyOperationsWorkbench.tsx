@@ -54,6 +54,7 @@ import { formatAttainment, formatBpAmount } from '../core/bpTargets';
 import { formatPlainMoney, formatDelta } from '../core/formatters';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from 'recharts';
 import type { ProjectScope, SKU, Forecast, CapacityPlan, ProjectParameters } from '../types';
+import PageShell from '../components/layout/PageShell';
 
 const { Text } = Typography;
 
@@ -340,23 +341,23 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   // ---- Error state ----
   if (error) {
     return (
-      <div className="twk-page">
+      <PageShell variant="wide">
         <Card>
           <Text type="danger">{error}</Text>
         </Card>
-      </div>
+      </PageShell>
     );
   }
 
   // ---- Empty state ----
   if (!vm || !hasData) {
     return (
-      <div className="twk-page">
+      <PageShell variant="wide">
         <EmptyState
           title={t('workbench.title')}
           description={t('workbench.subtitle')}
         />
-      </div>
+      </PageShell>
     );
   }
 
@@ -466,7 +467,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
 
   // ---- Render ----
   return (
-    <div className="twk-page">
+    <PageShell variant="wide">
       {/* Viewer read-only warning — Designbyte Alert */}
       {!writable && (
         <div className="twk-alert twk-alert--info" style={{ marginBottom: 16 }}>
@@ -1688,7 +1689,7 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
           </Space>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 };
 

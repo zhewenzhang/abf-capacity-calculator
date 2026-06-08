@@ -66,6 +66,14 @@ check('Annual revenue display', 'pages/DailyOperationsWorkbench.tsx', 'annualRev
 check('BP simActive', 'pages/BpTargets.tsx', 'simActive');
 check('BP version history', 'pages/BpTargets.tsx', 'handleSaveVersion');
 
+// ========== PageShell Wide Layout ==========
+check('PageShell component exists', 'components/layout/PageShell.tsx', 'PageShell');
+check('PageShell CSS in tweakcnTheme', 'styles/tweakcnTheme.css', 'abf-page-shell--wide');
+check('Operations uses PageShell wide', 'pages/DailyOperationsWorkbench.tsx', 'PageShell variant="wide"');
+check('Results uses PageShell wide', 'pages/CalculationResults.tsx', 'PageShell variant="wide"');
+check('Parameters uses PageShell standard', 'pages/Parameters.tsx', 'PageShell variant="standard"');
+check('AiCopilot uses PageShell full', 'pages/AiCopilot.tsx', 'PageShell variant="full"');
+
 // ========== AI NOT in PRIMARY_NAV ==========
 check('AI NOT in PRIMARY_NAV', 'App.tsx', "key: 'copilot'", true); // invert = true
 

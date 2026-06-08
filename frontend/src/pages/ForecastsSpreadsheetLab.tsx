@@ -9,6 +9,7 @@ import type { SKU, Forecast, ProjectScope } from '../types';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
 import { ExperimentalBanner, EmptyState, PageLoading } from '../components/common';
+import PageShell from '../components/layout/PageShell';
 
 const { Text } = Typography;
 
@@ -340,7 +341,7 @@ const ForecastsSpreadsheetLab: React.FC<ForecastsSpreadsheetLabProps> = ({ scope
   }
 
   return (
-    <div className="twk-page">
+    <PageShell variant="wide">
       {/* Experimental banner */}
       <ExperimentalBanner
         label={t('forecastsLab.experiment')}
@@ -438,7 +439,7 @@ const ForecastsSpreadsheetLab: React.FC<ForecastsSpreadsheetLabProps> = ({ scope
           cellClassName={cellClassName}
         />
       </div>
-    </div>
+    </PageShell>
   );
 };
 

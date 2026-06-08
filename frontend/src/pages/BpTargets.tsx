@@ -13,6 +13,7 @@ import { PageLoading, ActionBar, DataQualityAlert } from '../components/common';
 import { buildDataQualitySummary } from '../core/dataQuality';
 import { filterIssuesByDomain } from '../core/dataQualityVisibility';
 import { normalizeCurrencySettings } from '../core/currency';
+import PageShell from '../components/layout/PageShell';
 import {
   buildVisibleYears,
   buildBpSheetRows,
@@ -416,7 +417,7 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
   if (error) return <Alert message={error} type="error" showIcon style={{ margin: 16 }} />;
 
   return (
-    <div className="twk-page">
+    <PageShell variant="wide">
       {/* Viewer read-only warning */}
       {!writable && (
         <Alert
@@ -599,7 +600,7 @@ const BpTargetsPage: React.FC<BpTargetsProps> = ({ scope }) => {
           />
         )}
       </Modal>
-    </div>
+    </PageShell>
   );
 };
 

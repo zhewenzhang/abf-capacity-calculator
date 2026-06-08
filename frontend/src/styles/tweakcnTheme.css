@@ -328,6 +328,37 @@ code, pre, .twk-mono {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ============================================================
+   Page Shell (v1.58.7) — reusable page width variants
+   Applied via <PageShell variant="wide|standard|narrow|full">
+   ============================================================ */
+
+.abf-page-shell {
+  width: 100%;
+}
+
+/* Narrow — 960px, for text-heavy / form-only pages */
+.twk-main:has(.abf-page-shell--narrow) {
+  max-width: 960px;
+}
+
+/* Wide — 1560px+, for table / chart / dashboard pages */
+.twk-main:has(.abf-page-shell--wide) {
+  max-width: 1560px;
+}
+
+@media (min-width: 1800px) {
+  .twk-main:has(.abf-page-shell--wide) {
+    max-width: 1640px;
+    padding-inline: 32px;
+  }
+}
+
+/* Full — no constraint, for custom layouts (copilot, etc.) */
+.abf-page-shell--full {
+  max-width: none;
+}
+
 .twk-page-header {
   margin-bottom: var(--twk-space-6);
 }

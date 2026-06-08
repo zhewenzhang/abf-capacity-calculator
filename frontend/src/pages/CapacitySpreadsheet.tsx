@@ -9,6 +9,7 @@ import type { CapacityMetric, ProjectScope } from '../types';
 import { canEdit } from '../services/projectScope';
 import { useI18n } from '../i18n';
 import { ExperimentalBanner, EmptyState, PageLoading } from '../components/common';
+import PageShell from '../components/layout/PageShell';
 
 const { Text } = Typography;
 
@@ -326,7 +327,7 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ scope }) => {
   }
 
   return (
-    <div className="twk-page">
+    <PageShell variant="wide">
       {/* Experimental banner */}
       <ExperimentalBanner
         label={t('capacityLab.experiment')}
@@ -393,7 +394,7 @@ const CapacitySpreadsheet: React.FC<CapacitySpreadsheetProps> = ({ scope }) => {
       )}
 
       <Tabs defaultActiveKey="core" items={tabItems} size="small" />
-    </div>
+    </PageShell>
   );
 };
 

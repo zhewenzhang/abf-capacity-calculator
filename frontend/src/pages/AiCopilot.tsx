@@ -13,6 +13,7 @@ import { buildBpAnalysis } from '../core/bpTargets';
 import { buildAiCopilotContext, type AiCopilotContext } from '../core/aiCopilotContext';
 import CopilotChat from '../components/copilot/CopilotChat';
 import { DEFAULT_CURRENCY_SETTINGS } from '../core/currency';
+import PageShell from '../components/layout/PageShell';
 
 
 interface AiCopilotPageProps {
@@ -115,7 +116,7 @@ const AiCopilotPage: React.FC<AiCopilotPageProps> = ({ scope }) => {
   }
 
   return (
-    <div className="twk-page" style={{ maxWidth: 800, margin: '0 auto' }}>
+    <PageShell variant="full">
       <div className="twk-page-header">
         <h1 className="twk-page-title"><RobotOutlined style={{ marginRight: 8 }} />{t('copilot.title')}</h1>
         <p className="twk-page-subtitle">{t('copilot.description')}</p>
@@ -125,7 +126,7 @@ const AiCopilotPage: React.FC<AiCopilotPageProps> = ({ scope }) => {
         pendingToolId={pendingToolId}
         onPendingToolConsumed={handlePendingToolConsumed}
       />
-    </div>
+    </PageShell>
   );
 };
 

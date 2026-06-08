@@ -30,6 +30,7 @@ import { DEFAULT_CURRENCY_SETTINGS, type CurrencySettings, normalizeCurrencySett
 import { ActionBar } from '../components/common';
 import { buildDataQualitySummary } from '../core/dataQuality';
 import { filterIssuesByDomain } from '../core/dataQualityVisibility';
+import PageShell from '../components/layout/PageShell';
 
 const { Text } = Typography;
 
@@ -347,7 +348,7 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
     .map(([year, rate]) => ({ year, rate }));
 
   return (
-    <div className="twk-page">
+    <PageShell variant="standard">
       {error && <Alert message={error} type="error" showIcon className="abf-alert-page" />}
       <WorkspaceSettingsPanel />
       {!writable && (
@@ -629,7 +630,7 @@ const ParametersPage: React.FC<ParametersPageProps> = ({ scope }) => {
           </Button>
         </Space>
       </Card>
-    </div>
+    </PageShell>
   );
 };
 
