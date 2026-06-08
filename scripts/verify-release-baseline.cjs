@@ -80,6 +80,37 @@ check('AI NOT in PRIMARY_NAV', 'App.tsx', "key: 'copilot'", true); // invert = t
 // ========== No regressed content ==========
 check('No 問題摘要', 'pages/DailyOperationsWorkbench.tsx', '問題摘要', true);
 check('No 今日行動建議', 'pages/DailyOperationsWorkbench.tsx', '今日行動建議', true);
+check('No 情境檢視就緒', 'pages/DailyOperationsWorkbench.tsx', '情境檢視就緒', true);
+
+// ========== No old currency display units ==========
+// Check page files for old currency units that should not appear as default display
+// Note: CalculationResults.tsx is excluded because Change Review tab uses M TWD for BP gap (legitimate)
+const PAGE_FILES = ['App.tsx', 'pages/DailyOperationsWorkbench.tsx',
+  'pages/Products.tsx', 'pages/Forecasts.tsx', 'pages/CapacityPlan.tsx',
+  'pages/ScenarioPlanning.tsx', 'pages/BpTargets.tsx', 'pages/Parameters.tsx',
+  'pages/ProductsSpreadsheetLab.tsx', 'pages/ForecastsSpreadsheetLab.tsx', 'pages/CapacitySpreadsheet.tsx'];
+
+const CURRENCY_PATTERNS = [
+  { pattern: 'M TWD', label: 'M TWD (must use M NTD for default display)' },
+  { pattern: 'M CNY', label: 'M CNY (must use M NTD)' },
+  { pattern: 'K TWD', label: 'K TWD' },
+  { pattern: 'B TWD', label: 'B TWD' },
+  { pattern: 'NT$', label: 'NT$ (must use NTD)' },
+];
+
+for (const pf of PAGE_FILES) {
+  const fullPath = path.join(FRONTEND, pf);
+  if (!fs.existsSync(fullPath)) continue;
+  const pageContent = fs.readFileSync(fullPath, 'utf-8');
+  for (const cp of CURRENCY_PATTERNS) {
+    // Skip ¥ for App.tsx (currency selector button allowed)
+    if (pf === 'App.tsx' && cp.pattern === 'NT$') continue;
+    if (pageContent.includes(cp.pattern)) {
+      errors.push(`FAIL: ${pf} contains ${cp.label} (${JSON.stringify(cp.pattern)}) — must use NTD`);
+      allPassed = false;
+    }
+  }
+}
 
 // ========== Security: No API keys in source ==========
 check('No sk- in source', 'pages/BpTargets.tsx', 'sk-', true);
