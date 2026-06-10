@@ -1487,6 +1487,7 @@ export const zhTW: Record<string, string> = {
 
   // 情境 v2 快捷 (v1.44)
   'workbench.scenario.v2.title': '營運情境模擬',
+  'workbench.scenario.templates': '前往情境規劃',
   'workbench.scenario.v2.buCapacityDelay': 'BU 產能延遲',
   'workbench.scenario.v2.buCapacityDelay.desc': '模擬 BU 產能延遲 3 個月',
   'workbench.scenario.v2.topCustomerDown': '主要客戶流失',

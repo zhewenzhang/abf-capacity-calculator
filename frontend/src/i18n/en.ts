@@ -1478,6 +1478,7 @@ export const en: Record<string, string> = {
 
   // Scenario v2 shortcuts (v1.44)
   'workbench.scenario.v2.title': 'Operational Scenarios',
+  'workbench.scenario.templates': 'Go to Scenario Planning',
   'workbench.scenario.v2.buCapacityDelay': 'BU Capacity Delay',
   'workbench.scenario.v2.buCapacityDelay.desc': 'Simulate 3-month BU capacity shift delay',
   'workbench.scenario.v2.topCustomerDown': 'Top Customer Down',
