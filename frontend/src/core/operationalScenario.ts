@@ -60,6 +60,9 @@ export interface OperationalScenarioParams {
   capacityShiftMonths?: number; // for delay/pull-forward
   capacityShiftTarget?: 'core' | 'bu' | 'both';
   factoryIds?: string[];
+  // v1.63.1 — extended capacity delay params
+  capacityDelayStartMonth?: string; // YYYY-MM: only delay plans from this month onward
+  capacityDelayRatio?: number; // 0–100: reduce delayed capacity by this percentage
   forecastAdjustPercent?: number; // for adjustment
   forecastFilter?: {
     customers?: string[];
@@ -257,6 +260,8 @@ function runCapacityShiftScenario(
   const rawShift = p.capacityShiftMonths ?? 0;
   const target = p.capacityShiftTarget ?? 'both';
   const factoryIds = p.factoryIds;
+  const startMonth = p.capacityDelayStartMonth;
+  const delayRatio = p.capacityDelayRatio; // 0-100
 
   // For pull-forward, the shift is negative
   const shiftMonths = scenarioType === 'capacityPullForward' ? -Math.abs(rawShift) : Math.abs(rawShift);
@@ -267,14 +272,35 @@ function runCapacityShiftScenario(
   const clonedForecasts = deepCloneArray(forecasts);
   const clonedCapacityPlans = deepCloneArray(capacityPlans);
 
+  // v1.63.1: separate capacity plans into "to-shift" (>= startMonth) and "keep"
+  let plansForShift = clonedCapacityPlans;
+  let plansKept: CapacityPlan[] = [];
+  if (startMonth) {
+    plansForShift = clonedCapacityPlans.filter(cp => cp.month >= startMonth);
+    plansKept = clonedCapacityPlans.filter(cp => cp.month < startMonth);
+  }
+
+  // v1.63.1: apply ratio reduction to plans before shifting
+  if (delayRatio !== undefined && delayRatio > 0) {
+    const factor = Math.max(0, 1 - delayRatio / 100);
+    plansForShift = plansForShift.map(cp => ({
+      ...cp,
+      corePanelPerDay: cp.corePanelPerDay * factor,
+      buPanelPerDay: cp.buPanelPerDay * factor,
+    }));
+  }
+
   // Transform: shift capacity plans by N months
   const shiftedCapacity = shiftCapacityPlans(
-    clonedCapacityPlans,
+    plansForShift,
     clampedShift,
     target,
     factoryIds,
     clonedForecasts,
   );
+
+  // Recombine kept + shifted
+  const scenarioCapacity = [...plansKept, ...shiftedCapacity];
 
   const dqSummary = buildDataQualitySummary({
     skus: clonedSkus,
@@ -288,7 +314,7 @@ function runCapacityShiftScenario(
     clonedForecasts,
     clonedCapacityPlans, // baseline: original capacity
     clonedForecasts,
-    shiftedCapacity,     // scenario: shifted capacity
+    scenarioCapacity,    // scenario: kept + shifted capacity
     params,
     dqSummary,
   );
@@ -296,16 +322,17 @@ function runCapacityShiftScenario(
   const impact = computeCustomerSkuImpact(comparison, clonedSkus);
   const direction = clampedShift > 0 ? 'delayed' : 'pulled forward';
 
+  const parts: string[] = [`Capacity ${direction} by ${Math.abs(clampedShift)} month(s)`];
+  if (startMonth) parts.push(`from ${startMonth}`);
+  if (delayRatio !== undefined && delayRatio > 0) parts.push(`reduced by ${delayRatio}%`);
+  if (target !== 'both') parts.push(`(target: ${target})`);
+  if (factoryIds && factoryIds.length > 0) parts.push(`(factories: ${factoryIds.join(', ')})`);
+
   return {
     comparison,
     impact,
     scenarioType,
-    description:
-      `Capacity ${direction} by ${Math.abs(clampedShift)} month(s)`
-      + (target !== 'both' ? ` (target: ${target})` : '')
-      + (factoryIds && factoryIds.length > 0
-        ? ` (factories: ${factoryIds.join(', ')})`
-        : ''),
+    description: parts.join(', '),
     caveats: [WHAT_IF_CAVEAT],
   };
 }
