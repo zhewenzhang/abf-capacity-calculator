@@ -191,6 +191,66 @@ describe('operationalScenario', () => {
   });
 
   // ----------------------------------------------------------
+  // 1b. Capacity delay — delivery risk non-empty + BU util changes
+  // ----------------------------------------------------------
+  describe('capacity delay delivery risk', () => {
+    it('produces non-empty monthly summaries with BU utilization changes', () => {
+      const result = runOperationalScenario({
+        scenarioType: 'capacityDelay',
+        skus,
+        forecasts,
+        capacityPlans,
+        params: defaultParams,
+        capacityShiftMonths: 2,
+        capacityDelayRatio: 25,
+        capacityDelayStartMonth: '2026-01',
+      });
+
+      // Result should be non-empty
+      expect(result.comparison).toBeDefined();
+
+      // Monthly summaries should exist for both baseline and scenario
+      const baseMonthly = result.comparison.baseline.calcResult.monthlySummaries;
+      const scenMonthly = result.comparison.scenario.calcResult.monthlySummaries;
+      expect(baseMonthly.length).toBeGreaterThan(0);
+      expect(scenMonthly.length).toBeGreaterThan(0);
+
+      // BU utilization should differ (scenario has reduced capacity)
+      for (const month of baseMonthly) {
+        const scenMonth = scenMonthly.find(m => m.month === month.month);
+        if (scenMonth) {
+          // In delay window (2026-01 to 2026-02), BU util should be higher or equal
+          // (less capacity = higher utilization for same demand)
+          const isDelayWindow = month.month >= '2026-01' && month.month < '2026-03';
+          if (isDelayWindow) {
+            // Utilization should be non-zero and generally higher (or equal if already zero)
+            expect(month.buUtilization).toBeDefined();
+            expect(scenMonth.buUtilization).toBeDefined();
+            // Scenario util should be >= baseline util (or close to it)
+            expect(scenMonth.buUtilization! >= month.buUtilization! - 0.01).toBe(true);
+            // Capacity should be reduced in delay window
+            expect(scenMonth.buCapacity).toBeLessThan(month.buCapacity);
+          } else {
+            // Outside delay window: should be unchanged
+            expect(scenMonth.buCapacity).toBe(month.buCapacity);
+            expect(scenMonth.buUtilization).toBe(month.buUtilization);
+          }
+        }
+      }
+
+      // Shortage should be non-negative
+      for (const m of scenMonthly) {
+        expect(m.buShortage).toBeGreaterThanOrEqual(0);
+        expect(m.coreShortage).toBeGreaterThanOrEqual(0);
+      }
+
+      // Delta should show BU utilization change
+      expect(result.comparison.deltas.maxBuUtilization.delta).toBeDefined();
+      expect(result.comparison.deltas.shortageMonthCount.delta).toBeDefined();
+    });
+  });
+
+  // ----------------------------------------------------------
   // 2. Capacity pull-forward by 1 month
   // ----------------------------------------------------------
   describe('capacity pull-forward by 1 month', () => {
