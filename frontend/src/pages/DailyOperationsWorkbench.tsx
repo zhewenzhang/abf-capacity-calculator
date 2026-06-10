@@ -35,10 +35,6 @@ import { buildAnalyticsModel, type AnalyticsModel } from '../core/analytics';
 import { buildBpAnalysis, type BpAnalysisModel } from '../core/bpTargets';
 import { normalizeCurrencySettings } from '../core/currency';
 import {
-  runOperationalScenario,
-  type OperationalScenarioResult,
-} from '../core/operationalScenario';
-import {
   buildManagementReport,
   exportReportToMarkdown,
   exportReportToJson,
@@ -53,7 +49,7 @@ import { convertFromUsd, DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from
 import { formatAttainment, formatBpAmount } from '../core/bpTargets';
 import { formatPlainMoney, formatDelta } from '../core/formatters';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from 'recharts';
-import type { ProjectScope, SKU, Forecast, CapacityPlan, ProjectParameters } from '../types';
+import type { ProjectScope } from '../types';
 import PageShell from '../components/layout/PageShell';
 
 const { Text } = Typography;
@@ -137,12 +133,6 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   const [vm, setVm] = useState<WorkbenchViewModel | null>(null);
 
   // v1.43-v1.45: new state for integrated modules
-  const [rawData, setRawData] = useState<{
-    skus: SKU[];
-    forecasts: Forecast[];
-    capacityPlans: CapacityPlan[];
-    params: ProjectParameters;
-  } | null>(null);
   const [dqSummary, setDqSummary] = useState<DataQualitySummary | null>(null);
   const [analyticsModel, setAnalyticsModel] = useState<AnalyticsModel | null>(null);
   const [bpModel, setBpModel] = useState<BpAnalysisModel | null>(null);
@@ -150,8 +140,6 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
   const [bpTargets, setBpTargets] = useState<Record<string, number>>({});
   const [managementReport, setManagementReport] = useState<ManagementReport | null>(null);
   const [reportPreview, setReportPreview] = useState<string>('');
-  const [scenarioV2Loading, setScenarioV2Loading] = useState<string | null>(null);
-  const [scenarioV2Result, setScenarioV2Result] = useState<OperationalScenarioResult | null>(null);
   const [metricsYear, setMetricsYear] = useState<string>('');
   const [bpSelectedYear, setBpSelectedYear] = useState<string>('2026');
   const [driverTab, setDriverTab] = useState<string>('customer');
@@ -182,9 +170,6 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
         getCapacityPlans(scope),
         getParameters(scope),
       ]);
-
-      // Store raw data for scenario v2 computations
-      setRawData({ skus, forecasts, capacityPlans, params: paramsData });
 
       const viewModel = buildWorkbenchViewModel({
         skus,
@@ -276,62 +261,8 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
     downloadFile(json, `management-report-${managementReport.period}.json`, 'application/json');
   }, [writable, managementReport, downloadFile]);
 
-  // ---- Run scenario v2 ----
-  const handleRunScenarioV2 = useCallback((scenarioType: 'capacityDelay' | 'orderDisappearance' | 'forecastAdjustment') => {
-    if (!writable) return;
-    if (!rawData) return;
-    setScenarioV2Loading(scenarioType);
-    setScenarioV2Result(null);
-
-    // Compute in next tick to allow loading state to render
-    setTimeout(() => {
-      try {
-        let result: OperationalScenarioResult;
-        if (scenarioType === 'capacityDelay') {
-          result = runOperationalScenario({
-            scenarioType: 'capacityDelay',
-            skus: rawData.skus,
-            forecasts: rawData.forecasts,
-            capacityPlans: rawData.capacityPlans,
-            params: rawData.params,
-            capacityShiftMonths: 3,
-            capacityShiftTarget: 'both',
-          });
-        } else if (scenarioType === 'orderDisappearance') {
-          // Find top customer by SKU count
-          const customerCounts = new Map<string, number>();
-          for (const sku of rawData.skus) {
-            customerCounts.set(sku.customer, (customerCounts.get(sku.customer) ?? 0) + 1);
-          }
-          const topCustomer = [...customerCounts.entries()]
-            .sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
-
-          result = runOperationalScenario({
-            scenarioType: 'orderDisappearance',
-            skus: rawData.skus,
-            forecasts: rawData.forecasts,
-            capacityPlans: rawData.capacityPlans,
-            params: rawData.params,
-            orderFilter: { customer: topCustomer },
-          });
-        } else {
-          result = runOperationalScenario({
-            scenarioType: 'forecastAdjustment',
-            skus: rawData.skus,
-            forecasts: rawData.forecasts,
-            capacityPlans: rawData.capacityPlans,
-            params: rawData.params,
-            forecastAdjustPercent: 20,
-          });
-        }
-        setScenarioV2Result(result);
-      } catch {
-        // Scenario computation failed silently
-      } finally {
-        setScenarioV2Loading(null);
-      }
-    }, 0);
-  }, [writable, rawData]);
+  // ---- Scenario shortcut ----
+  // Navigate to /scenario for full scenario planning with templates
 
   // ---- Loading state ----
   if (loading) {
@@ -1482,69 +1413,15 @@ const DailyOperationsWorkbench: React.FC<DailyOperationsWorkbenchProps> = ({ sco
         );
       })()}
 
-      {/* SECTION 5B: Scenario v2 Shortcuts (v1.44) — Designbyte db-card */}
+      {/* SECTION 5B: Scenario Shortcut — linked to /scenario */}
       <div className="twk-card" style={{ marginBottom: 16 }}>
         <div className="twk-card-header">
-          <span className="twk-card-title"><ThunderboltOutlined /> {t('workbench.scenario.v2.title')}</span>
+          <span className="twk-card-title"><ExperimentOutlined /> {t('workbench.scenario.v2.title')}</span>
         </div>
         <div className="twk-card-body">
-        <Space wrap>
-          <Button
-            icon={<ExperimentOutlined />}
-            loading={scenarioV2Loading === 'capacityDelay'}
-            disabled={!rawData || !writable}
-            onClick={() => handleRunScenarioV2('capacityDelay')}
-          >
-            {t('workbench.scenario.v2.buCapacityDelay')}
+          <Button icon={<ExperimentOutlined />} onClick={() => navigate('/scenario')}>
+            {t('workbench.scenario.templates') || 'Go to Scenario Planning'}
           </Button>
-          <Button
-            icon={<ExperimentOutlined />}
-            loading={scenarioV2Loading === 'orderDisappearance'}
-            disabled={!rawData || !writable}
-            onClick={() => handleRunScenarioV2('orderDisappearance')}
-          >
-            {t('workbench.scenario.v2.topCustomerDown')}
-          </Button>
-          <Button
-            icon={<ExperimentOutlined />}
-            loading={scenarioV2Loading === 'forecastAdjustment'}
-            disabled={!rawData || !writable}
-            onClick={() => handleRunScenarioV2('forecastAdjustment')}
-          >
-            {t('workbench.scenario.v2.forecastSurge')}
-          </Button>
-        </Space>
-
-        {/* Scenario v2 Result Preview */}
-        {scenarioV2Result && (
-          <div style={{ marginTop: 12 }}>
-            <Card size="small" style={{ background: token.colorBgTextHover }}>
-              <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                <Text strong style={{ fontSize: 12 }}>{scenarioV2Result.description}</Text>
-                <Space wrap size={16}>
-                  {scenarioV2Result.comparison.deltas.totalRevenueUsd.delta !== null && (
-                    <Text style={{ fontSize: 12 }}>
-                      Revenue: <Text strong style={{
-                        color: scenarioV2Result.comparison.deltas.totalRevenueUsd.delta >= 0
-                          ? token.colorSuccess : token.colorError,
-                      }}>
-                        {formatDelta(convertFromUsd(scenarioV2Result.comparison.deltas.totalRevenueUsd.delta, 'TWD', currencySettings), { suffix: ' M NTD' })}
-                      </Text>
-                    </Text>
-                  )}
-                  {scenarioV2Result.comparison.deltas.shortageMonthCount.delta !== null && (
-                    <Text style={{ fontSize: 12 }}>
-                      Shortage months: <Text strong>{scenarioV2Result.comparison.deltas.shortageMonthCount.delta}</Text>
-                    </Text>
-                  )}
-                  <Text type="secondary" style={{ fontSize: 11 }}>
-                    {scenarioV2Result.caveats[0]}
-                  </Text>
-                </Space>
-              </Space>
-            </Card>
-          </div>
-        )}
         </div>
       </div>
 
