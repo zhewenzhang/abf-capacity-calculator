@@ -49,6 +49,7 @@ import {
   type AnnualScenarioComparison,
   type YearlyResult,
 } from '../core/scenarioEngine';
+import { runOperationalScenario, type OperationalScenarioResult } from '../core/operationalScenario';
 import { formatNumber } from '../core/formatters';
 import { convertFromUsd, normalizeCurrencySettings, DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
 import PageHeader from '../components/common/PageHeader';
@@ -156,6 +157,12 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
   const [resultMode, setResultMode] = useState<'original' | 'simulated' | 'delta'>('simulated');
   const [dqDismissed, setDqDismissed] = useState(false);
   const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(DEFAULT_CURRENCY_SETTINGS);
+
+  // Template scenario state
+  const [templateResult, setTemplateResult] = useState<OperationalScenarioResult | null>(null);
+  const [templateLoading, setTemplateLoading] = useState<string | null>(null);
+  const [templateShiftMonths, setTemplateShiftMonths] = useState(3);
+  const [templateForecastSurgePct, setTemplateForecastSurgePct] = useState(20);
 
   // Years management
   const [years, setYears] = useState<string[]>([]);
@@ -280,6 +287,30 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
       setComputing(false);
     }
   }, [skus, forecasts, capacityPlans, params, annualMultipliers]);
+
+  // ---- Template scenario handlers ----
+  const handleRunTemplateScenario = useCallback((scenarioType: 'capacityDelay' | 'orderDisappearance' | 'forecastAdjustment') => {
+    if (!params) return;
+    setTemplateLoading(scenarioType);
+    setTemplateResult(null);
+    setTimeout(() => {
+      try {
+        const baseInput = { skus, forecasts, capacityPlans, params };
+        let result: OperationalScenarioResult;
+        if (scenarioType === 'capacityDelay') {
+          result = runOperationalScenario({ ...baseInput, scenarioType: 'capacityDelay', capacityShiftMonths: templateShiftMonths, capacityShiftTarget: 'both' });
+        } else if (scenarioType === 'orderDisappearance') {
+          const cc = new Map<string, number>();
+          for (const sku of skus) cc.set(sku.customer, (cc.get(sku.customer) || 0) + 1);
+          const top = [...cc.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+          result = runOperationalScenario({ ...baseInput, scenarioType: 'orderDisappearance', orderFilter: { customer: top } });
+        } else {
+          result = runOperationalScenario({ ...baseInput, scenarioType: 'forecastAdjustment', forecastAdjustPercent: templateForecastSurgePct });
+        }
+        setTemplateResult(result);
+      } catch { /* silent */ } finally { setTemplateLoading(null); }
+    }, 0);
+  }, [skus, forecasts, capacityPlans, params, templateShiftMonths, templateForecastSurgePct]);
 
   // ---- Derived results ----
 
@@ -506,6 +537,60 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
           </Button>
         }
       >
+        {/* Scenario Templates */}
+        <div className="twk-card" style={{ marginBottom: 16, border: '1px solid #d9d9d9', borderRadius: 8 }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0', fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ThunderboltOutlined /> {t('scenario.templates.title')}
+          </div>
+          <div style={{ padding: '12px 16px' }}>
+            <Row gutter={[12, 12]}>
+              <Col xs={24} md={8}>
+                <Card size="small" title={t('scenario.templates.buCapacityDelay')}>
+                  <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{t('scenario.templates.buCapacityDelay.desc')}</Text>
+                    <Space><Text style={{ fontSize: 12 }}>{t('scenario.templates.delayMonths')}:</Text>
+                    <InputNumber size="small" min={1} max={12} value={templateShiftMonths} onChange={v => setTemplateShiftMonths(v || 3)} /></Space>
+                    <Button size="small" type="primary" loading={templateLoading === 'capacityDelay'} onClick={() => handleRunTemplateScenario('capacityDelay')}>{t('scenario.templates.run')}</Button>
+                  </Space>
+                </Card>
+              </Col>
+              <Col xs={24} md={8}>
+                <Card size="small" title={t('scenario.templates.customerLoss')}>
+                  <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{t('scenario.templates.customerLoss.desc')}</Text>
+                    <Button size="small" type="primary" loading={templateLoading === 'orderDisappearance'} onClick={() => handleRunTemplateScenario('orderDisappearance')}>{t('scenario.templates.run')}</Button>
+                  </Space>
+                </Card>
+              </Col>
+              <Col xs={24} md={8}>
+                <Card size="small" title={t('scenario.templates.forecastSurge')}>
+                  <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{t('scenario.templates.forecastSurge.desc')}</Text>
+                    <Space><Text style={{ fontSize: 12 }}>{t('scenario.templates.surgePct')}:</Text>
+                    <InputNumber size="small" min={5} max={100} value={templateForecastSurgePct} onChange={v => setTemplateForecastSurgePct(v || 20)} addonAfter="%" /></Space>
+                    <Button size="small" type="primary" loading={templateLoading === 'forecastAdjustment'} onClick={() => handleRunTemplateScenario('forecastAdjustment')}>{t('scenario.templates.run')}</Button>
+                  </Space>
+                </Card>
+              </Col>
+            </Row>
+            {templateResult && (
+              <Card size="small" style={{ marginTop: 12, background: '#f6ffed' }}>
+                <Text strong>{templateResult.description}</Text>
+                <Space wrap size={16} style={{ marginTop: 8, display: 'flex' }}>
+                  {templateResult.comparison.deltas.totalRevenueUsd.delta !== null && (
+                    <Text style={{ fontSize: 12 }}>Revenue: <Text strong style={{ color: templateResult.comparison.deltas.totalRevenueUsd.delta >= 0 ? '#059669' : '#dc2626' }}>
+                      {(templateResult.comparison.deltas.totalRevenueUsd.delta >= 0 ? '+' : '') + templateResult.comparison.deltas.totalRevenueUsd.delta.toFixed(1)} M USD
+                    </Text></Text>
+                  )}
+                  {templateResult.comparison.deltas.shortageMonthCount.delta !== null && (
+                    <Text style={{ fontSize: 12 }}>Shortage months: <Text strong>{templateResult.comparison.deltas.shortageMonthCount.delta >= 0 ? '+' : ''}{templateResult.comparison.deltas.shortageMonthCount.delta}</Text></Text>
+                  )}
+                </Space>
+              </Card>
+            )}
+          </div>
+        </div>
+
         {/* Presets */}
         <div style={{ marginBottom: 16 }}>
           <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
