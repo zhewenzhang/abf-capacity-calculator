@@ -13,7 +13,6 @@ import {
   Tooltip,
   Empty,
   Tabs,
-  Table,
 } from 'antd';
 import {
   ExperimentOutlined,
@@ -23,8 +22,6 @@ import {
   MinusOutlined,
   BarChartOutlined,
 } from '@ant-design/icons';
-// @ts-ignore - unused temporarily
-// import recharts commented out
 import { useI18n } from '../i18n';
 import PageShell from '../components/layout/PageShell';
 import { canEdit } from '../services/projectScope';
@@ -50,7 +47,6 @@ import {
   type YearlyResult,
 } from '../core/scenarioEngine';
 import { runOperationalScenario, type OperationalScenarioResult, type OperationalScenarioParams } from '../core/operationalScenario';
-import { formatNumber } from '../core/formatters';
 import { convertFromUsd, normalizeCurrencySettings, DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
 import PageHeader from '../components/common/PageHeader';
 import ScenarioTemplates from './ScenarioTemplates';
@@ -130,10 +126,13 @@ function getYearsFromResults(yearly: YearlyResult[]): string[] {
   return yearly.map(y => y.year);
 }
 
+/* UNUSED */
+/* UNUSED - getMetricValue removed
 function getMetricValue(row: YearlyResult, key: string): number | null {
   const r = row as unknown as Record<string, number | null>;
   return r[key] ?? null;
 }
+*/
 
 // ============================================================
 // Component
@@ -155,8 +154,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
   const [annualMultipliers, setAnnualMultipliers] = useState<AnnualMultipliers>({});
   const [comparison, setComparison] = useState<AnnualScenarioComparison | null>(null);
   const [computing, setComputing] = useState(false);
-  const [resultMode] = useState<'original' | 'simulated' | 'delta'>('simulated');
-  const [dqDismissed, setDqDismissed] = useState(false);
+    const [dqDismissed, setDqDismissed] = useState(false);
   const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(DEFAULT_CURRENCY_SETTINGS);
 
   // Template scenario state
@@ -198,8 +196,8 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
     if (lastRunType === 'template' && templateResult) return templateResult.comparison;
     return comparison;
   }, [lastRunType, templateResult, comparison]);
-  const displayTemplateImpact = lastRunType === 'template' && templateResult ? templateResult.impact : null;
-  const displayTemplateDesc = lastRunType === 'template' && templateResult ? templateResult.description : null;
+    const displayTemplateDesc = lastRunType === 'template' && templateResult ? templateResult.description : null;
+  const displayTemplateScenarioDeltas = lastRunType === 'template' && templateResult ? templateResult.comparison.deltas : null;
 
   // Derive default years from forecasts
   const defaultYears = useMemo(() => {
@@ -375,6 +373,8 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
     return getYearsFromResults(comparison.baseline.yearly);
   }, [comparison, years]);
 
+  // Summary KPIs 
+
   // Summary KPIs
   const kpi = useMemo(() => {
     if (!comparison) return null;
@@ -412,141 +412,6 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
 
     return { revDelta, worstBpDelta, worstBpYear, maxBuUtil, maxBuYear };
   }, [comparison, displayYears, currencySettings]);
-
-  // Chart data
-
-
-  // @ts-ignore
-const bpChartData = useMemo(() => {
-    if (!comparison) return [];
-    return displayYears.map(y => {
-      const b = comparison.baseline.yearly.find(r => r.year === y);
-      const s = comparison.scenario.yearly.find(r => r.year === y);
-      return {
-        year: y,
-        baseline: b?.bpAttainmentPct ?? null,
-        scenario: s?.bpAttainmentPct ?? null,
-      };
-    });
-  }, [comparison, displayYears]);
-
-  // @ts-ignore
-const utilChartData = useMemo(() => {
-    if (!comparison) return [];
-    return displayYears.map(y => {
-      const b = comparison.baseline.yearly.find(r => r.year === y);
-      const s = comparison.scenario.yearly.find(r => r.year === y);
-      return {
-        year: y,
-        coreBase: b?.maxCoreUtilization ?? null,
-        coreScen: s?.maxCoreUtilization ?? null,
-        buBase: b?.maxBuUtilization ?? null,
-        buScen: s?.maxBuUtilization ?? null,
-      };
-    });
-  }, [comparison, displayYears]);
-
-  // Results table data
-  // @ts-ignore
-const tableRows = useMemo(() => {
-    if (!comparison) return [];
-    const base = comparison.baseline.yearly;
-    const scen = comparison.scenario.yearly;
-
-    const metrics: { key: string; labelKey: string; format: (v: number | null) => string; deltaFormat: (b: number | null, s: number | null) => string }[] = [
-      {
-        key: 'totalRevenueUsd',
-        labelKey: 'scenario.metric.totalRevenue',
-        format: v => {
-          if (v === null) return '—';
-          const vTwd = convertFromUsd(v, 'TWD', currencySettings);
-          return `${(vTwd / 1e6).toFixed(1)} M NTD`;
-        },
-        deltaFormat: (b, s) => {
-          if (b === null || s === null) return '—';
-          const bTwd = convertFromUsd(b, 'TWD', currencySettings);
-          const sTwd = convertFromUsd(s, 'TWD', currencySettings);
-          const d = (sTwd - bTwd) / 1e6;
-          return `${d >= 0 ? '+' : ''}${d.toFixed(1)} M NTD`;
-        },
-      },
-      {
-        key: 'bpAttainmentPct',
-        labelKey: 'scenario.metric.bpAttainment',
-        format: v => v !== null ? `${v.toFixed(1)}%` : '—',
-        deltaFormat: (b, s) => {
-          if (b === null || s === null) return '—';
-          const d = s - b;
-          return `${d >= 0 ? '+' : ''}${d.toFixed(1)}pp`;
-        },
-      },
-      {
-        key: 'bpGapMillionTwd',
-        labelKey: 'scenario.metric.bpGap',
-        format: v => v !== null ? `${v.toFixed(1)}M` : '—',
-        deltaFormat: (b, s) => {
-          if (b === null || s === null) return '—';
-          const d = s - b;
-          return `${d >= 0 ? '+' : ''}${d.toFixed(1)}M`;
-        },
-      },
-      {
-        key: 'totalForecastPcs',
-        labelKey: 'scenario.metric.forecastPcs',
-        format: v => v !== null ? formatNumber(v) : '—',
-        deltaFormat: (b, s) => {
-          if (b === null || s === null) return '—';
-          const d = s - b;
-          return `${d >= 0 ? '+' : ''}${formatNumber(d)}`;
-        },
-      },
-      {
-        key: 'maxCoreUtilization',
-        labelKey: 'scenario.metric.maxCoreUtil',
-        format: v => v !== null ? `${v.toFixed(1)}%` : '—',
-        deltaFormat: (b, s) => {
-          if (b === null || s === null) return '—';
-          const d = s - b;
-          return `${d >= 0 ? '+' : ''}${d.toFixed(1)}pp`;
-        },
-      },
-      {
-        key: 'maxBuUtilization',
-        labelKey: 'scenario.metric.maxBuUtil',
-        format: v => v !== null ? `${v.toFixed(1)}%` : '—',
-        deltaFormat: (b, s) => {
-          if (b === null || s === null) return '—';
-          const d = s - b;
-          return `${d >= 0 ? '+' : ''}${d.toFixed(1)}pp`;
-        },
-      },
-      {
-        key: 'shortageMonthCount',
-        labelKey: 'scenario.metric.shortage',
-        format: v => v !== null ? String(v) : '—',
-        deltaFormat: (b, s) => {
-          if (b === null || s === null) return '—';
-          const d = s - b;
-          return `${d >= 0 ? '+' : ''}${d}`;
-        },
-      },
-    ];
-
-    return metrics.map(m => ({
-      key: m.key,
-      label: t(m.labelKey),
-      values: displayYears.map(y => {
-        const bRow = base.find(r => r.year === y);
-        const sRow = scen.find(r => r.year === y);
-        const bVal = bRow ? getMetricValue(bRow, m.key) : null;
-        const sVal = sRow ? getMetricValue(sRow, m.key) : null;
-        if (resultMode === 'original') return m.format(bVal);
-        if (resultMode === 'simulated') return m.format(sVal);
-        return m.deltaFormat(bVal, sVal);
-      }),
-    }));
-  }, [comparison, displayYears, resultMode, t, currencySettings]);
-
   // ---- Loading ----
   if (loading) {
     return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>;
@@ -807,29 +672,43 @@ const tableRows = useMemo(() => {
                         </Card>
                       </Col>
                     </Row>
-                    {displayTemplateImpact && displayTemplateImpact.byCustomer.length > 0 && (
-                      <>
-                        <Card style={{ ...S.card, marginBottom: 16 }} title={<Text strong>{t('scenario.templates.results.customerImpact')}</Text>}>
-                          <Table dataSource={displayTemplateImpact.byCustomer.slice(0, 10)} rowKey="id" size="small" pagination={false}
-                            columns={[
-                              { title: t('scenario.templates.selectCustomer'), dataIndex: "label", key: "label" },
-                              { title: t('scenario.kpi.revenueImpact'), dataIndex: "delta", key: "delta",
-                                render: (v: number) => <Text style={{ color: v >= 0 ? "#059669" : "#dc2626" }}>{(v >= 0 ? "+" : "") + (v / 1e6).toFixed(1) + " M USD"}</Text> },
-                              { title: "%", dataIndex: "deltaPercent", key: "deltaPercent",
-                                render: (v: number) => (v >= 0 ? "+" : "") + v.toFixed(1) + "%" },
-                            ]} />
-                        </Card>
-                        <Card style={{ ...S.card, marginBottom: 16 }} title={<Text strong>{t('scenario.templates.results.skuImpact')}</Text>}>
-                          <Table dataSource={displayTemplateImpact.top20Sku} rowKey="id" size="small" pagination={false}
-                            columns={[
-                              { title: t('scenario.table.metric'), dataIndex: "label", key: "label" },
-                              { title: t('scenario.kpi.revenueImpact'), dataIndex: "delta", key: "delta",
-                                render: (v: number) => <Text style={{ color: v >= 0 ? "#059669" : "#dc2626" }}>{(v >= 0 ? "+" : "") + (v / 1e6).toFixed(1) + " M USD"}</Text> },
-                              { title: "%", dataIndex: "deltaPercent", key: "deltaPercent",
-                                render: (v: number) => (v >= 0 ? "+" : "") + v.toFixed(1) + "%" },
-                            ]} />
-                        </Card>
-                      </>
+                    {displayTemplateScenarioDeltas && (
+                      <Card style={{ ...S.card, marginBottom: 16 }} title={<Text strong>{t('scenario.templates.results.capacityImpact')}</Text>}>
+                        <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                          <Row gutter={[16, 8]}>
+                            <Col span={8}>
+                              <Text type="secondary" style={{ fontSize: 12 }}>{t('scenario.metric.shortage')}</Text>
+                              <div style={{ fontSize: 20, fontWeight: 600 }}>
+                                <span style={{ color: displayTemplateScenarioDeltas.shortageMonthCount.delta !== null && displayTemplateScenarioDeltas.shortageMonthCount.delta > 0 ? S.negative : S.textPrimary }}>
+                                  Δ{(displayTemplateScenarioDeltas.shortageMonthCount.delta !== null && displayTemplateScenarioDeltas.shortageMonthCount.delta >= 0 ? '+' : '') + (displayTemplateScenarioDeltas.shortageMonthCount.delta ?? 0)}
+                                </span>
+                                {displayTemplateScenarioDeltas.shortageMonthCount.base !== null &&
+                                  <Text type="secondary" style={{ fontSize: 11 }}> (base: {displayTemplateScenarioDeltas.shortageMonthCount.base})</Text>}
+                              </div>
+                            </Col>
+                            <Col span={8}>
+                              <Text type="secondary" style={{ fontSize: 12 }}>Max BU Util.</Text>
+                              <div style={{ fontSize: 20, fontWeight: 600 }}>
+                                <span style={{ color: displayTemplateScenarioDeltas.maxBuUtilization.delta !== null && displayTemplateScenarioDeltas.maxBuUtilization.delta > 0 ? S.warning : S.textPrimary }}>
+                                  {displayTemplateScenarioDeltas.maxBuUtilization.scenario !== null ? displayTemplateScenarioDeltas.maxBuUtilization.scenario.toFixed(1) + '%' : '—'}
+                                </span>
+                                {displayTemplateScenarioDeltas.maxBuUtilization.base !== null && displayTemplateScenarioDeltas.maxBuUtilization.base !== Infinity &&
+                                  <Text type="secondary" style={{ fontSize: 11 }}> (base: {displayTemplateScenarioDeltas.maxBuUtilization.base.toFixed(1)}%)</Text>}
+                              </div>
+                            </Col>
+                            <Col span={8}>
+                              <Text type="secondary" style={{ fontSize: 12 }}>Max Core Util.</Text>
+                              <div style={{ fontSize: 20, fontWeight: 600 }}>
+                                <span style={{ color: displayTemplateScenarioDeltas.maxCoreUtilization.delta !== null && displayTemplateScenarioDeltas.maxCoreUtilization.delta > 0 ? S.warning : S.textPrimary }}>
+                                  {displayTemplateScenarioDeltas.maxCoreUtilization.scenario !== null && displayTemplateScenarioDeltas.maxCoreUtilization.scenario !== Infinity
+                                    ? displayTemplateScenarioDeltas.maxCoreUtilization.scenario.toFixed(1) + '%' : '—'}
+                                </span>
+                              </div>
+                            </Col>
+                          </Row>
+                          <Alert type="info" showIcon message="Revenue impact is based on forecast PCS x unit price, not capacity constraints. Capacity-driven scenarios primarily affect utilization, shortage months, and delivery risk. The shortage/utilization metrics above reflect the real capacity impact." style={{ fontSize: 12 }} />
+                        </Space>
+                      </Card>
                     )}
                   </>
                 )}

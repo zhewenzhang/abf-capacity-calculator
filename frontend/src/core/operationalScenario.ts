@@ -260,8 +260,8 @@ function runCapacityShiftScenario(
   const rawShift = p.capacityShiftMonths ?? 0;
   const target = p.capacityShiftTarget ?? 'both';
   const factoryIds = p.factoryIds;
-  const startMonth = p.capacityDelayStartMonth;
   const delayRatio = p.capacityDelayRatio; // 0-100
+  const startMonth = p.capacityDelayStartMonth;
 
   // For pull-forward, the shift is negative
   const shiftMonths = scenarioType === 'capacityPullForward' ? -Math.abs(rawShift) : Math.abs(rawShift);
@@ -272,35 +272,24 @@ function runCapacityShiftScenario(
   const clonedForecasts = deepCloneArray(forecasts);
   const clonedCapacityPlans = deepCloneArray(capacityPlans);
 
-  // v1.63.1: separate capacity plans into "to-shift" (>= startMonth) and "keep"
-  let plansForShift = clonedCapacityPlans;
-  let plansKept: CapacityPlan[] = [];
-  if (startMonth) {
-    plansForShift = clonedCapacityPlans.filter(cp => cp.month >= startMonth);
-    plansKept = clonedCapacityPlans.filter(cp => cp.month < startMonth);
-  }
-
-  // v1.63.1: apply ratio reduction to plans before shifting
+  // v1.63.2: Instead of shifting plans (which creates gaps where months lose all capacity),
+  // keep plans in place and apply ratio reduction during the delay window.
+  // This correctly simulates "capacity is delayed" = "temporarily less capacity".
+  let scenarioCapacity: CapacityPlan[];
   if (delayRatio !== undefined && delayRatio > 0) {
     const factor = Math.max(0, 1 - delayRatio / 100);
-    plansForShift = plansForShift.map(cp => ({
-      ...cp,
-      corePanelPerDay: cp.corePanelPerDay * factor,
-      buPanelPerDay: cp.buPanelPerDay * factor,
-    }));
+    const windowEndMonth = startMonth ? shiftMonthString(startMonth, clampedShift) : null;
+    scenarioCapacity = clonedCapacityPlans.map(cp => {
+      // Before delay window: unchanged
+      if (startMonth && cp.month < startMonth) return cp;
+      // After delay window: unchanged (delayed capacity has arrived)
+      if (windowEndMonth && cp.month >= windowEndMonth) return cp;
+      // Inside delay window: apply reduction
+      return { ...cp, corePanelPerDay: cp.corePanelPerDay * factor, buPanelPerDay: cp.buPanelPerDay * factor };
+    });
+  } else {
+    scenarioCapacity = clonedCapacityPlans;
   }
-
-  // Transform: shift capacity plans by N months
-  const shiftedCapacity = shiftCapacityPlans(
-    plansForShift,
-    clampedShift,
-    target,
-    factoryIds,
-    clonedForecasts,
-  );
-
-  // Recombine kept + shifted
-  const scenarioCapacity = [...plansKept, ...shiftedCapacity];
 
   const dqSummary = buildDataQualitySummary({
     skus: clonedSkus,
@@ -343,47 +332,6 @@ function runCapacityShiftScenario(
  * - Entries for non-matching factory IDs are kept unchanged.
  * - Shifted entries that fall outside the forecast date range are dropped.
  */
-function shiftCapacityPlans(
-  capacityPlans: CapacityPlan[],
-  shiftMonths: number,
-  target: 'core' | 'bu' | 'both',
-  factoryIds: string[] | undefined,
-  forecasts: Forecast[],
-): CapacityPlan[] {
-  if (target !== 'both') {
-    throw new Error(
-      `shiftCapacityPlans: target="${target}" is not supported. Only "both" is currently supported.`
-    );
-  }
-  const forecastMonths = forecasts.map((f) => f.month);
-  const minMonth = forecastMonths.length > 0 ? forecastMonths.reduce((a, b) => (a < b ? a : b)) : '';
-  const maxMonth = forecastMonths.length > 0 ? forecastMonths.reduce((a, b) => (a > b ? a : b)) : '';
-
-  return capacityPlans
-    .map((cp) => {
-      // If factoryIds specified and this entry doesn't match, keep unchanged
-      if (factoryIds && factoryIds.length > 0 && !factoryIds.includes(cp.factoryId)) {
-        return cp;
-      }
-
-      // Shift the month
-      const shiftedMonth = shiftMonthString(cp.month, shiftMonths);
-      if (!shiftedMonth) {
-        return null; // invalid month format
-      }
-
-      // Drop if outside forecast range
-      if (minMonth && maxMonth && (shiftedMonth < minMonth || shiftedMonth > maxMonth)) {
-        return null;
-      }
-
-      return {
-        ...cp,
-        month: shiftedMonth,
-      };
-    })
-    .filter((cp): cp is CapacityPlan => cp !== null);
-}
 
 // ============================================================
 // Forecast adjustment scenario

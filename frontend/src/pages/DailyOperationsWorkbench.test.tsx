@@ -523,7 +523,7 @@ describe('DailyOperationsWorkbench -- Render Tests', () => {
   // Test 8: capacityShiftTarget regression (uses real module, not mock)
   // ---------------------------------------------------------------
   describe('capacityShiftTarget regression', () => {
-    it('runOperationalScenario with capacityShiftTarget "bu" throws unsupported', async () => {
+    it('runOperationalScenario with capacityShiftTarget "bu" no longer throws (v1.63.2)', async () => {
       const real = await vi.importActual<typeof import('../core/operationalScenario')>('../core/operationalScenario');
       expect(() =>
         real.runOperationalScenario({
@@ -535,10 +535,10 @@ describe('DailyOperationsWorkbench -- Render Tests', () => {
           capacityShiftMonths: 3,
           capacityShiftTarget: 'bu',
         })
-      ).toThrow(/not supported/);
+      ).not.toThrow();
     });
 
-    it('runOperationalScenario with capacityShiftTarget "core" throws unsupported', async () => {
+    it('runOperationalScenario with capacityShiftTarget "core" no longer throws (v1.63.2)', async () => {
       const real = await vi.importActual<typeof import('../core/operationalScenario')>('../core/operationalScenario');
       expect(() =>
         real.runOperationalScenario({
@@ -550,7 +550,7 @@ describe('DailyOperationsWorkbench -- Render Tests', () => {
           capacityShiftMonths: 3,
           capacityShiftTarget: 'core',
         })
-      ).toThrow(/not supported/);
+      ).not.toThrow();
     });
 
     it('workbench does not use unsupported capacityShiftTarget values', async () => {

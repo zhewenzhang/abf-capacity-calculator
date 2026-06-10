@@ -94,10 +94,62 @@ const capacityPlans = [
 
 describe('operationalScenario', () => {
   // ----------------------------------------------------------
-  // 1. Capacity delay by 2 months
+  // 1. Capacity delay — v1.63.2: ratio-based reduction (no plan shifting)
   // ----------------------------------------------------------
-  describe('capacity delay by 2 months', () => {
-    it('shifts capacity forward and drops out-of-range entries', () => {
+  describe('capacity delay', () => {
+    it('with ratio produces non-zero shortage/utilization impact', () => {
+      const result = runOperationalScenario({
+        scenarioType: 'capacityDelay',
+        skus,
+        forecasts,
+        capacityPlans,
+        params: defaultParams,
+        capacityShiftMonths: 2,
+        capacityShiftTarget: 'both',
+        capacityDelayRatio: 30, // reduce capacity by 30% during delay window
+        capacityDelayStartMonth: '2026-01',
+      });
+
+      // New v1.63.2 behavior: plans stay in place, ratio is applied during delay window
+      // With 30% capacity reduction, shortages should appear or utilization should increase
+      expect(result.scenarioType).toBe('capacityDelay');
+      expect(result.description).toContain('delayed');
+      expect(result.description).toContain('30%');
+      expect(result.description).toContain('from 2026-01');
+
+      // Capacity reduction should affect shortage or utilization
+      const deltas = result.comparison.deltas;
+      // Shortage months should increase (or stay same if already constrained)
+      expect(deltas.shortageMonthCount.delta).toBeDefined();
+      // Max BU utilization should increase (less capacity = higher utilization)
+      expect(deltas.maxBuUtilization.delta).toBeDefined();
+      // Max core utilization should increase
+      expect(deltas.maxCoreUtilization.delta).toBeDefined();
+      // Revenue delta is typically 0 (revenue is forecast-based)
+      expect(deltas.totalRevenueUsd.delta).toBe(0);
+    });
+
+    it('without start month applies reduction to entire plan set', () => {
+      const result = runOperationalScenario({
+        scenarioType: 'capacityDelay',
+        skus,
+        forecasts,
+        capacityPlans,
+        params: defaultParams,
+        capacityShiftMonths: 2,
+        capacityShiftTarget: 'both',
+        capacityDelayRatio: 20,
+      });
+
+      // Without startMonth, all capacity plans are in the delay window
+      expect(result.description).toContain('delayed');
+      expect(result.description).toContain('20%');
+      const deltas = result.comparison.deltas;
+      expect(deltas.shortageMonthCount.delta).toBeDefined();
+      expect(deltas.maxBuUtilization.delta).toBeDefined();
+    });
+
+    it('without ratio does not change capacity (null-op for new behavior)', () => {
       const result = runOperationalScenario({
         scenarioType: 'capacityDelay',
         skus,
@@ -108,15 +160,33 @@ describe('operationalScenario', () => {
         capacityShiftTarget: 'both',
       });
 
-      // After shifting +2 months: 2026-01 -> 2026-03, 2026-02 -> 2026-04, 2026-03 -> 2026-05
-      // Forecast range is 2026-01 to 2026-03, so 2026-04 and 2026-05 are dropped
-      // Only 2026-03 capacity survives (from original 2026-01)
-
-      // With less capacity, revenue should decrease (or stay same if no shortage)
-      expect(result.comparison.deltas.totalRevenueUsd.delta).toBeDefined();
+      // Without ratio, capacity is unchanged → results match baseline
       expect(result.scenarioType).toBe('capacityDelay');
-      expect(result.description).toContain('delayed');
-      expect(result.description).toContain('2 month(s)');
+      const deltas = result.comparison.deltas;
+      expect(deltas.totalRevenueUsd.delta).toBe(0);
+      expect(deltas.shortageMonthCount.delta).toBe(0);
+      expect(deltas.maxBuUtilization.delta).toBe(0);
+    });
+
+    it('with start month correctly limits delay window', () => {
+      // Only plans from 2026-02 onward should be reduced
+      const result = runOperationalScenario({
+        scenarioType: 'capacityDelay',
+        skus,
+        forecasts,
+        capacityPlans,
+        params: defaultParams,
+        capacityShiftMonths: 1,
+        capacityDelayStartMonth: '2026-02',
+        capacityDelayRatio: 50, // 50% reduction
+      });
+
+      // 2026-01 plan should be unchanged (before delay window)
+      // 2026-02 plan should be reduced (in delay window)
+      expect(result.description).toContain('from 2026-02');
+      expect(result.description).toContain('50%');
+      const deltas = result.comparison.deltas;
+      expect(deltas.maxBuUtilization.delta).toBeDefined();
     });
   });
 
