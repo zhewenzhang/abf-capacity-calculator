@@ -579,7 +579,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
         color: '#d97706',
         explanation: shortageDelta > 0
           ? `产能压力中等 — 短缺增加 ${shortageDelta} 个月，最大利用率 ${maxUtil.toFixed(1)}%。建议关注高风险月份。`
-          : `产能压力中等 — 最大利用率 ${maxUtil.toFixed(1)}%，产能缺口 ${(capGap / 1000).toFixed(0)}K 面板。虽然未触发短缺，但产能已实质下降。`,
+          : `产能压力中等 — 最大利用率 ${maxUtil.toFixed(1)}%，产能缺口 ${(capGap / 1000).toFixed(0)}K Panel PNL。虽然未触发短缺，但产能已实质下降。`,
       };
     }
     // LOW: very comfortable capacity
@@ -866,7 +866,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
                           <Col xs={12} sm={6}>
                             <Card size="small" style={{ ...S.cardCompact, borderLeft: (deliveryRisk.totalCapGap > 0) ? "4px solid " + S.warning : "4px solid " + S.accent }}>
                               <Text type="secondary" style={{ fontSize: 12 }}>产能缺口</Text>
-                              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>{(deliveryRisk.totalCapGap / 1000).toFixed(0)}K 面板</div>
+                              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>{(deliveryRisk.totalCapGap / 1000).toFixed(0)}K Panel PNL</div>
                               <Text type="secondary" style={{ fontSize: 11 }}>BU capacity reduction sum</Text>
                             </Card>
                           </Col>
@@ -1018,7 +1018,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
                         </details>
                         {deliveryRisk.affectedMonthCount === 0 && deliveryRisk.totalCapGap > 0 && (
                           <Alert type="warning" showIcon
-                            message={"短缺月份数未变化，但产能缺口总计 " + (deliveryRisk.totalCapGap / 1000).toFixed(0) + "K 面板。"}
+                            message={"短缺月份数未变化，但产能缺口总计 " + (deliveryRisk.totalCapGap / 1000).toFixed(0) + "K Panel PNL。"}
                             description={"BU 利用率从基线 " + (displayTemplateScenarioDeltas?.maxBuUtilization?.base !== null && displayTemplateScenarioDeltas?.maxBuUtilization?.base !== Infinity
                               ? Number(displayTemplateScenarioDeltas?.maxBuUtilization?.base).toFixed(1) + "%" : "---") + " 上升至情景 " + deliveryRisk.maxBuUtilPct.toFixed(1) + "%。产能可用性已实质性下降。"}
                             style={{ fontSize: 12 }} />
