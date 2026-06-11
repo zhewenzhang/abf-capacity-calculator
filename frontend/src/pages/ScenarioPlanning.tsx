@@ -51,6 +51,7 @@ import { runOperationalScenario, type OperationalScenarioResult, type Operationa
 import { convertFromUsd, normalizeCurrencySettings, DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
 import PageHeader from '../components/common/PageHeader';
 import ScenarioTemplates from './ScenarioTemplates';
+import { LineChart, BarChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 const { Text, Title } = Typography;
 
@@ -367,6 +368,69 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
     }, 0);
   }, [skus, forecasts, capacityPlans, params, delayStartMonth, delayMonths, delayRatio, lossCustomer, surgeTargetType, surgeTargetValue, surgePercent]);
 
+  // ---- v1.63.5 One-click stress test buttons ----
+  // These run scenarios with custom parameters directly (bypassing form state).
+  // They only change simulation parameters, never save formal data.
+  const handleStrongStressTest = useCallback(() => {
+    if (!params) return;
+    setTemplateLoading('capacityDelay');
+    setTemplateResult(null);
+    setTimeout(() => {
+      try {
+        const result = runOperationalScenario({
+          skus, forecasts, capacityPlans, params,
+          scenarioType: 'capacityDelay',
+          capacityShiftMonths: 6,
+          capacityShiftTarget: 'both',
+          capacityDelayStartMonth: delayStartMonth || undefined,
+          capacityDelayRatio: 40,
+        });
+        setTemplateResult(result);
+        setLastRunType('template');
+        setActiveTab('results');
+      } catch { /* silent */ } finally { setTemplateLoading(null); }
+    }, 0);
+  }, [skus, forecasts, capacityPlans, params, delayStartMonth]);
+
+  const handleExtendDelay = useCallback(() => {
+    if (!params) return;
+    setTemplateLoading('capacityDelay');
+    setTemplateResult(null);
+    setTimeout(() => {
+      try {
+        const result = runOperationalScenario({
+          skus, forecasts, capacityPlans, params,
+          scenarioType: 'capacityDelay',
+          capacityShiftMonths: 6,
+          capacityShiftTarget: 'both',
+          capacityDelayStartMonth: delayStartMonth || undefined,
+          capacityDelayRatio: delayRatio,
+        });
+        setTemplateResult(result);
+        setLastRunType('template');
+        setActiveTab('results');
+      } catch { /* silent */ } finally { setTemplateLoading(null); }
+    }, 0);
+  }, [skus, forecasts, capacityPlans, params, delayStartMonth, delayRatio]);
+
+  const handleIncreaseForecast = useCallback(() => {
+    if (!params) return;
+    setTemplateLoading('forecastAdjustment');
+    setTemplateResult(null);
+    setTimeout(() => {
+      try {
+        const result = runOperationalScenario({
+          skus, forecasts, capacityPlans, params,
+          scenarioType: 'forecastAdjustment',
+          forecastAdjustPercent: 30,
+        });
+        setTemplateResult(result);
+        setLastRunType('template');
+        setActiveTab('results');
+      } catch { /* silent */ } finally { setTemplateLoading(null); }
+    }, 0);
+  }, [skus, forecasts, capacityPlans, params]);
+
   // ---- Derived results ----
 
   const displayYears = useMemo(() => {
@@ -491,6 +555,42 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
     const topCustomers = (customersAtRisk || []).slice(0, 5);
     return { monthlyGaps, topMonths, affectedMonthCount: affectedMonths.length, revenueAtRiskMntd, customersAtRisk, topCustomers, totalCapGap, maxBuUtilPct, utilChartData, gapChartData };
   }, [displayComparison, lastRunType, skus, currencySettings]);
+
+  // ---- v1.63.5 Stress level classification ----
+  const stressInfo = useMemo(() => {
+    if (!deliveryRisk || !displayTemplateScenarioDeltas) return null;
+    const shortageDelta = displayTemplateScenarioDeltas.shortageMonthCount.delta ?? 0;
+    const maxUtil = deliveryRisk.maxBuUtilPct;
+    const capGap = deliveryRisk.totalCapGap;
+    // HIGH: severe shortage, near-capacity utilization, or massive cap gap
+    if (shortageDelta > 3 || maxUtil > 85 || capGap > 150000) {
+      return {
+        level: 'high' as const,
+        label: '高',
+        color: '#dc2626',
+        explanation: `产能压力高 — 短缺${shortageDelta > 0 ? '增加 ' + shortageDelta + ' 个月' : ''}${maxUtil > 85 ? '，最大利用率 ' + maxUtil.toFixed(1) + '%' : ''}。建议立即评估交付计划。`,
+      };
+    }
+    // MEDIUM: some shortage or noticeable utilization
+    if (shortageDelta > 0 || maxUtil > 30 || capGap > 50000) {
+      return {
+        level: 'medium' as const,
+        label: '中',
+        color: '#d97706',
+        explanation: shortageDelta > 0
+          ? `产能压力中等 — 短缺增加 ${shortageDelta} 个月，最大利用率 ${maxUtil.toFixed(1)}%。建议关注高风险月份。`
+          : `产能压力中等 — 最大利用率 ${maxUtil.toFixed(1)}%，产能缺口 ${(capGap / 1000).toFixed(0)}K 面板。虽然未触发短缺，但产能已实质下降。`,
+      };
+    }
+    // LOW: very comfortable capacity
+    return {
+      level: 'low' as const,
+      label: '低',
+      color: '#10b981',
+      explanation: `产能基线利用率仅 ${maxUtil.toFixed(1)}%，产能十分宽松。当前模拟参数不足以触发短缺。建议尝试加大压力参数以观察产能瓶颈效应。`,
+      suggestionNote: '以下按钮可一键运行更强压力模拟（不保存正式数据）：',
+    };
+  }, [deliveryRisk, displayTemplateScenarioDeltas]);
 
 // ---- Loading ----
   if (loading) {
@@ -780,6 +880,89 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
                             </Card>
                           </Col>
                         </Row>
+
+                        {/* ---- v1.63.5 Stress level + suggestions ---- */}
+                        {stressInfo && (
+                          <Card size="small" style={{
+                            ...S.cardCompact, marginBottom: 16,
+                            borderLeft: `4px solid ${stressInfo.color}`,
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+                              <span style={{
+                                display: 'inline-block', fontSize: 12, fontWeight: 600,
+                                padding: '2px 10px', borderRadius: 4,
+                                color: '#fff', background: stressInfo.color,
+                              }}>
+                                压力等级: {stressInfo.label}
+                              </span>
+                              <Text style={{ fontSize: 13, flex: 1, minWidth: 200 }}>{stressInfo.explanation}</Text>
+                            </div>
+                            {stressInfo.level === 'low' && (
+                              <div style={{ marginTop: 10 }}>
+                                <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 6 }}>{stressInfo.suggestionNote}</Text>
+                                <Space wrap size={[8, 8]}>
+                                  <Button size="small" type="primary" onClick={handleStrongStressTest}
+                                    style={{ borderRadius: 8, background: S.negative, borderColor: S.negative }}>
+                                    套用强压力测试
+                                  </Button>
+                                  <Button size="small" onClick={handleExtendDelay} style={{ borderRadius: 8 }}>
+                                    延长延迟至 6 个月
+                                  </Button>
+                                  <Button size="small" onClick={handleIncreaseForecast} style={{ borderRadius: 8 }}>
+                                    提高预测 30%
+                                  </Button>
+                                  <Text type="secondary" style={{ fontSize: 10, fontStyle: 'italic' }}>
+                                    仅模拟，不保存
+                                  </Text>
+                                </Space>
+                              </div>
+                            )}
+                          </Card>
+                        )}
+
+                        {/* ---- Charts row: BU utilization + capacity gap ---- */}
+                        <Row gutter={[12, 12]}>
+                          <Col xs={24} lg={12}>
+                            <Card size="small" style={{ ...S.cardCompact }}
+                              title={<Text strong style={{ fontSize: 13 }}>BU 利用率趋势</Text>}>
+                              <ResponsiveContainer width="100%" height={220}>
+                                <LineChart data={deliveryRisk.utilChartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                  <XAxis dataKey="month" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                                  <YAxis domain={[0, 'auto']} tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 10 }} />
+                                  <RechartsTooltip
+                                    formatter={(value: any) => value !== null && value !== undefined ? `${Number(value).toFixed(1)}%` : '---'}
+                                    labelFormatter={(label: any) => `月份: ${label}`}
+                                  />
+                                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                                  <ReferenceLine y={100} stroke="#dc2626" strokeDasharray="5 5" strokeWidth={1.5}
+                                    label={{ value: '100% 警戒线', position: 'right', fontSize: 10, fill: '#dc2626' }} />
+                                  <Line type="monotone" dataKey="baseline" stroke="#9ca3af" name="Baseline" dot={false} strokeWidth={2} connectNulls={false} />
+                                  <Line type="monotone" dataKey="scenario" stroke="#dc2626" name="Scenario" dot={false} strokeWidth={2} connectNulls={false} />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </Card>
+                          </Col>
+                          <Col xs={24} lg={12}>
+                            <Card size="small" style={{ ...S.cardCompact }}
+                              title={<Text strong style={{ fontSize: 13 }}>产能缺口率</Text>}>
+                              <ResponsiveContainer width="100%" height={220}>
+                                <BarChart data={deliveryRisk.gapChartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                  <XAxis dataKey="month" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                                  <YAxis tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 10 }} />
+                                  <RechartsTooltip
+                                    formatter={(value: any) => [`${Number(value).toFixed(0)}%`, '产能缺口']}
+                                    labelFormatter={(label: any) => `月份: ${label}`}
+                                  />
+                                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                                  <Bar dataKey="gapPct" fill="#d97706" name="Cap Gap %" radius={[3, 3, 0, 0]} />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </Card>
+                          </Col>
+                        </Row>
+
                         {/* Top 6 months by capacity gap */}
                         <Card style={{ ...S.card, marginBottom: 16 }} size="small"
                           title={<Text strong style={{ fontSize: 13 }}>重点月份 Top 6</Text>}>

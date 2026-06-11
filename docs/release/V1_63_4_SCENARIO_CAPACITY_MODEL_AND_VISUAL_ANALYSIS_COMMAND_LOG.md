@@ -1,52 +1,63 @@
 # v1.63.4 Scenario Capacity Model and Visual Analysis — Command Log
 
-## Root Cause
+## Root Cause Investigation
 
-**Problem**: BU delay with "2027-01 delay 3 months, reduce 20%" showed shortage Δ=0, max BU util=2%.
+**Problem**: BU delay with "2027-01 delay 3 months, reduce 20%" showed shortage Δ=0, max BU util=2%. Results appear unrealistic.
 
-**Root cause**: capacity >> demand in the test data. `buPanelPerDay=5000 × 28 days = 140K` monthly BU capacity, but `buPanelDemand` was only ~2-3K. A 20% reduction to 112K still leaves capacity 40x demand, so no shortage appears and utilization barely changes.
+**Root cause**: Test data has BU capacity >> demand:
+- `buPanelPerDay=5000` × 28 days = 140K panels/month BU capacity
+- `buPanelDemand` was only ~2-3K panels/month
+- Baseline utilisation = (2-3K)/140K ≈ 1.4–2.1%
+- Scenario (20% reduction → 112K) = (2-3K)/112K ≈ 1.8–2.7%
+- Shortage change = 0 (demand never exceeds capacity even after reduction)
 
-## Changes
+**Calculation logic verified as correct**:
+1. **Units**: Both demand and capacity in panels per month — match ✓
+2. **Month application**: capacity `cp.month` aligned with forecast `fc.month` — correct ✓
+3. **Shortage**: `Math.max(demand - capacity, 0)` — standard computation ✓
+4. **Utilization**: `demand / capacity` — correct ratio ✓
+5. **Delay window**: `[startMonth, startMonth + shiftMonths)` applies ratio reduction to `corePanelPerDay`/`buPanelPerDay` — correct ✓
 
-### Model Improvement (deliveryRisk useMemo)
-- Added `totalCapGap`: sum of capacity reductions across months (shows severity regardless of demand)
-- Added `maxBuUtilPct`: scenario's max BU utilization  
-- Added `utilChartData`, `gapChartData`: chart-ready data for utilization/capacity gap trends
-- Added `topMonths`: Top 6 months sorted by capacity gap % 
-- Added `topCustomers`: Top 5 customers by revenue at risk
+**Conclusion**: Model is mathematically correct. Low utilisation is caused by test data mismatch (capacity >> demand). When baseline utilisation < 5%, even a 20% reduction cannot create shortage.
 
-### Results Restructuring (Tab 3)
-- **KPI row**: 3 columns → 4 columns (added "产能缺口" showing total capacity gap in K panels)
-- **Replaced full monthly table** with:
-  - **重点月份 Top 6** card (sorted by capacity gap %, concise view)
-  - **客户影响 Top 5** card (per-customer revenue at risk in M NTD)
-  - **折叠明细** `<details>` section (expandable full monthly data)
-- **Added severity alert**: when `shortageMonthCount.delta = 0` but `totalCapGap > 0`, shows warning explaining capacity gap & BU utilization increase
-- Removed old "customers at risk" section and redundant info alert
-- Amounts in M NTD throughout
+## Changes (this round)
+
+### Visual Analysis (Charts)
+- Added **BU utilization trend line chart** (recharts `LineChart`):
+  - Baseline (gray) vs Scenario (red) lines across all months
+  - 100% alert `ReferenceLine` with dashed red line and label
+  - Auto-scaled Y-axis for data visibility, tooltip with exact values
+- Added **capacity gap rate bar chart** (recharts `BarChart`):
+  - Per-month capacity gap percentage (`(1 - scenCap / baseCap) × 100`)
+  - Orange bars with tooltip and legend
 
 ### Root Cause Documentation
 - BU model accuracy depends on realistic capacity/demand ratios
-- 20% reduction doesn't create shortage when baseline util is <5%
-- Severity metrics (totalCapGap) provide meaningful impact even when shortage count is 0
+- 20% reduction doesn't create shortage when baseline util is < 5%
+- Severity metrics (`totalCapGap`) already provide meaningful impact even when shortage count = 0
+
+### Previous Round Changes (v1.63.4 initial)
+- Added `totalCapGap`, `maxBuUtilPct`, `utilChartData`, `gapChartData`, `topMonths`, `topCustomers` to `deliveryRisk` useMemo
+- Replaced full monthly table with: KPI row (4 columns), 重点月份 Top 6 card, 客户影响 Top 5 card, 折叠明细 `<details>` section
+- Added severity alert when `shortageMonthCount.delta = 0` but `totalCapGap > 0`
+- Amounts shown in M NTD throughout
 
 ## Verification
 
 | Check | Result |
 |---|---|
-| `npm run lint` | ✅ 0 errors |
-| `npm run build` | ✅ |
+| `npm run lint` | ✅ 0 errors, 187 warnings (pre-existing) |
+| `npm run build` | ✅ Built in 874ms |
 | `npm test -- --run` | ✅ 64 files, 1550 tests |
-| `npm run verify:release-baseline` | ✅ All checks passed (from v1.63.2, unchanged) |
+| `npm run verify:release-baseline` | ✅ ALL CHECKS PASSED |
 
-## Files Changed
+## Files Changed Since v1.63.4
 
 | File | Change |
 |---|---|
-| `frontend/src/pages/ScenarioPlanning.tsx` | deliveryRisk useMemo expanded, Tab 3 restructured |
-| `frontend/src/App.tsx` | APP_VERSION v1.63.4 |
-| `frontend/package.json` | version 1.63.4 |
+| `frontend/src/pages/ScenarioPlanning.tsx` | Added recharts LineChart (BU utilisation + 100% alert line) and BarChart (capacity gap rate) between KPI row and Top 6 table; fixed antd/recharts Tooltip name conflict via alias |
+| `docs/release/V1_63_4_SCENARIO_CAPACITY_MODEL_AND_VISUAL_ANALYSIS_COMMAND_LOG.md` | Updated this log |
 
 ## Version
 
-`v1.63.3` → `v1.63.4`
+`v1.63.4` (no bump — charts complete existing v1.63.4 scope)
