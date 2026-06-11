@@ -579,7 +579,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
         color: '#d97706',
         explanation: shortageDelta > 0
           ? `产能压力中等 — 短缺增加 ${shortageDelta} 个月，最大利用率 ${maxUtil.toFixed(1)}%。建议关注高风险月份。`
-          : `产能压力中等 — 最大利用率 ${maxUtil.toFixed(1)}%，产能缺口 ${(capGap / 1000).toFixed(0)}K Panel PNL。虽然未触发短缺，但产能已实质下降。`,
+          : `产能压力中等 — 最大利用率 ${maxUtil.toFixed(1)}%，产能缺口 ${capGap.toLocaleString()} panels。虽然未触发短缺，但产能已实质下降。`,
       };
     }
     // LOW: very comfortable capacity
@@ -608,18 +608,18 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
 
       {showDqWarning && (
         <Alert message={t('scenario.dqWarning')} type="warning" showIcon closable
-          onClose={() => setDqDismissed(true)} style={{ marginBottom: 16 }} />
+          onClose={() => setDqDismissed(true)} style={{ marginTop: 8, marginBottom: 16 }} />
       )}
 
       {!writable && (
-        <Alert message={t('scenario.viewerReadOnly')} type="info" showIcon style={{ marginBottom: 16 }} />
+        <Alert message={t('scenario.viewerReadOnly')} type="info" showIcon style={{ marginTop: 8, marginBottom: 16 }} />
       )}
 
       {!hasData && (
-        <Alert message={t('scenario.noData')} type="warning" showIcon style={{ marginBottom: 16 }} />
+        <Alert message={t('scenario.noData')} type="warning" showIcon style={{ marginTop: 8, marginBottom: 16 }} />
       )}
 
-            <Tabs activeKey={activeTab} onChange={setActiveTab} style={{ marginTop: 8 }}
+            <Tabs activeKey={activeTab} onChange={setActiveTab} style={{ marginTop: 16 }}
         items={[
           {
             key: 'multipliers',
@@ -866,8 +866,12 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
                           <Col xs={12} sm={6}>
                             <Card size="small" style={{ ...S.cardCompact, borderLeft: (deliveryRisk.totalCapGap > 0) ? "4px solid " + S.warning : "4px solid " + S.accent }}>
                               <Text type="secondary" style={{ fontSize: 12 }}>产能缺口</Text>
-                              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>{(deliveryRisk.totalCapGap / 1000).toFixed(0)}K Panel PNL</div>
-                              <Text type="secondary" style={{ fontSize: 11 }}>BU capacity reduction sum</Text>
+                              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>
+                                {deliveryRisk.totalCapGap > 0 ? deliveryRisk.totalCapGap.toLocaleString() + ' panels' : '0 panels'}
+                              </div>
+                              <Text type="secondary" style={{ fontSize: 11 }}>
+                                {deliveryRisk.totalCapGap > 0 ? '延迟期间累计缺口' : '未触发短缺，产能余裕下降'}
+                              </Text>
                             </Card>
                           </Col>
                           <Col xs={12} sm={6}>
@@ -1018,7 +1022,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
                         </details>
                         {deliveryRisk.affectedMonthCount === 0 && deliveryRisk.totalCapGap > 0 && (
                           <Alert type="warning" showIcon
-                            message={"短缺月份数未变化，但产能缺口总计 " + (deliveryRisk.totalCapGap / 1000).toFixed(0) + "K Panel PNL。"}
+                            message={"短缺月份数未变化，但产能缺口总计 " + deliveryRisk.totalCapGap.toLocaleString() + " panels。"}
                             description={"BU 利用率从基线 " + (displayTemplateScenarioDeltas?.maxBuUtilization?.base !== null && displayTemplateScenarioDeltas?.maxBuUtilization?.base !== Infinity
                               ? Number(displayTemplateScenarioDeltas?.maxBuUtilization?.base).toFixed(1) + "%" : "---") + " 上升至情景 " + deliveryRisk.maxBuUtilPct.toFixed(1) + "%。产能可用性已实质性下降。"}
                             style={{ fontSize: 12 }} />
