@@ -58,8 +58,30 @@ v1.63.5 adds stress level classification, clear explanatory badges, and one-clic
 | File | Change |
 |---|---|
 | `frontend/src/pages/ScenarioPlanning.tsx` | Added `stressInfo` useMemo; added 3 one-click stress test handlers (`handleStrongStressTest`, `handleExtendDelay`, `handleIncreaseForecast`); added stress level badge + explanation + suggestion buttons in render section |
+| `frontend/src/App.tsx` | APP_VERSION → v1.63.5 |
+| `frontend/package.json` | version → 1.63.5 |
 | `docs/release/V1_63_5_SCENARIO_STRESS_TEST_GUIDANCE_COMMAND_LOG.md` | Created this log |
+
+## Merge & Deploy
+
+| Step | Action | Result |
+|---|---|---|
+| 1 | Create `xiaomi/v1-63-5-scenario-stress-test-guidance` branch | ✅ Created from v1.63.4 + stress test commits |
+| 2 | Push branch to origin | ✅ `origin/xiaomi/v1-63-5-scenario-stress-test-guidance` |
+| 3 | FF-only merge to main | ✅ Fast-forward `6f78de0..d261b01` |
+| 4 | Tag v1.63.5 | ✅ Created and pushed |
+| 5 | Build frontend | ✅ 695ms |
+| 6 | Deploy Firebase Hosting | ✅ **Deploy complete!** |
+| 7 | Functions deploy | 🚫 Skipped (hosting only) |
+
+### Post-deploy Canary
+
+| Check | Result |
+|---|---|
+| `curl` HTML source | ✅ `index-CAguVv5i.js` matches local build |
+| Version string in deployed JS | ✅ `v1.63.5` found in live `index-CAguVv5i.js` |
+| Hosting URL | ✅ `https://abf-capacity-calculator.web.app` |
 
 ## Version
 
-`v1.62.3` → `v1.63.5` (log file is new)
+`v1.62.3` → `v1.63.5`
