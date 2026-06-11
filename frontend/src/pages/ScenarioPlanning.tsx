@@ -49,6 +49,14 @@ import {
 } from '../core/scenarioEngine';
 import { runOperationalScenario, type OperationalScenarioResult, type OperationalScenarioParams } from '../core/operationalScenario';
 import { convertFromUsd, normalizeCurrencySettings, DEFAULT_CURRENCY_SETTINGS, type CurrencySettings } from '../core/currency';
+import {
+  buildScenarioKpis,
+  buildYearlyRiskRevenueRows,
+  buildCapacityGapChartSet,
+  buildCapacityReductionChartSet,
+  buildDataQualityInfo,
+  buildScenarioTypeInfo,
+} from '../core/scenarioResultPresentation';
 import PageHeader from '../components/common/PageHeader';
 import ScenarioTemplates from './ScenarioTemplates';
 import { LineChart, BarChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
@@ -544,24 +552,73 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
       }))
       .sort((a, b) => b.revenueAtRiskMntd - a.revenueAtRiskMntd);
 
-    // Severity metrics
-    const totalCapGap = monthlyGaps.reduce((s, m) => s + (m.baseBuCapacity - m.scenBuCapacity), 0);
+    // v1.64.3 — Corrected semantics:
+    // - totalCapGap: actual unmet demand (shortage)
+    // - totalCapReduction: capacity removed by delay/reduction
+    const totalCapGap = monthlyGaps.reduce((s, m) => s + Math.max(0, m.scenShortage), 0);
+    const totalCapReduction = monthlyGaps.reduce((s, m) => s + Math.max(0, m.baseBuCapacity - m.scenBuCapacity), 0);
     const maxBuUtilPct = Math.max(...monthlyGaps.filter(m => m.scenBuUtil !== null).map(m => m.scenBuUtil!), 0);
     // Chart data
     const utilChartData = monthlyGaps.map(m => ({ month: m.month, baseline: m.baseBuUtil, scenario: m.scenBuUtil }));
-    const gapChartData = monthlyGaps.map(m => ({ month: m.month, gapPct: m.capGapPct }));
-    // Top 6 months, top 5 customers
+    const gapChartData = monthlyGaps.map(m => ({ month: m.month, gapPanels: Math.max(0, m.scenShortage) }));
+    const reductionChartData = monthlyGaps.map(m => ({ month: m.month, reductionPanels: Math.max(0, m.baseBuCapacity - m.scenBuCapacity) }));
+    // Top 6 months by cap gap %, top 5 customers
     const topMonths = [...monthlyGaps].sort((a, b) => b.capGapPct - a.capGapPct).slice(0, 6);
     const topCustomers = (customersAtRisk || []).slice(0, 5);
-    return { monthlyGaps, topMonths, affectedMonthCount: affectedMonths.length, revenueAtRiskMntd, customersAtRisk, topCustomers, totalCapGap, maxBuUtilPct, utilChartData, gapChartData };
+    return { monthlyGaps, topMonths, affectedMonthCount: affectedMonths.length, revenueAtRiskMntd, customersAtRisk, topCustomers, totalCapGap, totalCapReduction, maxBuUtilPct, utilChartData, gapChartData, reductionChartData };
   }, [displayComparison, lastRunType, skus, currencySettings]);
+
+  // ---- v1.64.3 Scenario result presentation (using helper module) ----
+  const resultPresentation = useMemo(() => {
+    if (!deliveryRisk || !displayTemplateScenarioDeltas || !displayComparison) return null;
+    const sc = displayComparison as any;
+    const baseSkuResults: any[] = sc.baseline?.calcResult?.skuResults ?? [];
+    const monthlyGaps = deliveryRisk.monthlyGaps ?? [];
+
+    // Collect affected month set
+    const affectedMonths = monthlyGaps.filter((m: any) => m.scenShortage > m.baseShortage);
+    const affectedMonthSet = new Set(affectedMonths.map((m: any) => m.month));
+
+    // Find top year for revenue at risk
+    const topYearRevenueData = (() => {
+      const yearMap = new Map<string, number>();
+      for (const r of baseSkuResults) {
+        if (!affectedMonthSet.has(r.month)) continue;
+        const year = r.month.substring(0, 4);
+        yearMap.set(year, (yearMap.get(year) ?? 0) + r.revenue);
+      }
+      let topYear = '';
+      let topAmount = 0;
+      for (const [y, rev] of yearMap) {
+        const mntd = Math.round(convertFromUsd(rev, 'TWD', currencySettings) / 1e6 * 100) / 100;
+        if (mntd > topAmount) { topAmount = mntd; topYear = y; }
+      }
+      return topYear ? { year: topYear, amount: topAmount } : null;
+    })();
+
+    const kpis = buildScenarioKpis(
+      displayTemplateScenarioDeltas,
+      deliveryRisk.maxBuUtilPct,
+      deliveryRisk.totalCapGap,
+      deliveryRisk.totalCapReduction,
+      deliveryRisk.revenueAtRiskMntd,
+      topYearRevenueData,
+    );
+    const yearlyRows = buildYearlyRiskRevenueRows(baseSkuResults, affectedMonthSet, skus, currencySettings);
+    const gapChartData = buildCapacityGapChartSet(monthlyGaps);
+    const reductionChartData = buildCapacityReductionChartSet(monthlyGaps);
+    const dqInfo = buildDataQualityInfo(baselineDq);
+    const scenarioTypeInfo = buildScenarioTypeInfo(templateResult?.scenarioType, templateResult?.description);
+
+    return { kpis, yearlyRows, gapChartData, reductionChartData, dqInfo, scenarioTypeInfo, topYearRevenueData, monthlyGaps, affectedMonthSet };
+  }, [deliveryRisk, displayTemplateScenarioDeltas, displayComparison, skus, currencySettings, baselineDq, templateResult]);
 
   // ---- v1.63.5 Stress level classification ----
   const stressInfo = useMemo(() => {
     if (!deliveryRisk || !displayTemplateScenarioDeltas) return null;
     const shortageDelta = displayTemplateScenarioDeltas.shortageMonthCount.delta ?? 0;
     const maxUtil = deliveryRisk.maxBuUtilPct;
-    const capGap = deliveryRisk.totalCapGap;
+    const capGap = deliveryRisk.totalCapReduction;
     // HIGH: severe shortage, near-capacity utilization, or massive cap gap
     if (shortageDelta > 3 || maxUtil > 85 || capGap > 150000) {
       return {
@@ -579,7 +636,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
         color: '#d97706',
         explanation: shortageDelta > 0
           ? `产能压力中等 — 短缺增加 ${shortageDelta} 个月，最大利用率 ${maxUtil.toFixed(1)}%。建议关注高风险月份。`
-          : `产能压力中等 — 最大利用率 ${maxUtil.toFixed(1)}%，产能缺口 ${(capGap / 1000).toFixed(0)}K Panel PNL。虽然未触发短缺，但产能已实质下降。`,
+          : `产能压力中等 — 最大利用率 ${maxUtil.toFixed(1)}%，产能减少 ${capGap.toLocaleString()} panels。虽然未触发短缺，但产能已实质下降。`,
       };
     }
     // LOW: very comfortable capacity
@@ -606,9 +663,26 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
     <PageShell variant="wide">
       <PageHeader title={t('scenario.title')} description={t('scenario.description')} />
 
-      {showDqWarning && (
-        <Alert message={t('scenario.dqWarning')} type="warning" showIcon closable
-          onClose={() => setDqDismissed(true)} style={{ marginBottom: 16 }} />
+      {showDqWarning && baselineDq && (
+        <Alert type="warning" showIcon closable
+          onClose={() => setDqDismissed(true)}
+          style={{ marginTop: 8, marginBottom: 16 }}
+          message={
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
+                发现 {baselineDq.issues?.length ?? 0} 个资料品质问题
+              </div>
+              <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
+                {baselineDq.confidence === 'blocked'
+                  ? '部分关键资料缺失，模拟结果可能不完整。建议先修复资料问题。'
+                  : '预测引用了不存在的 SKU，会影响客户、产品与产能归因。BP 或产能结论仍可参考，但归因可能不完整。'}
+              </div>
+              <Button size="small" type="link" style={{ padding: 0, fontSize: 12 }} onClick={() => setDqDismissed(true)}>
+                查看资料问题 →
+              </Button>
+            </div>
+          }
+        />
       )}
 
       {!writable && (
@@ -845,41 +919,47 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
                     <Card style={{ ...S.card, marginBottom: 16 }}
                       title={<Space><BarChartOutlined /><Text strong>交付风险暴露 (Delivery Risk Exposure)</Text></Space>}>
                       <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                        {/* ---- KPI row (v1.64.3: 5 business KPIs with corrected semantics) ---- */}
+                        {resultPresentation && (
+                          <>
                         <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
-                          <Col xs={12} sm={6}>
-                            <Card size="small" style={{ ...S.cardCompact, borderLeft: "4px solid " + S.negative }}>
-                              <Text type="secondary" style={{ fontSize: 12 }}>短缺变化</Text>
-                              <div style={{ fontSize: 22, fontWeight: 700, color: (displayTemplateScenarioDeltas?.shortageMonthCount.delta ?? 0) > 0 ? S.negative : S.textPrimary, marginTop: 4 }}>
-                                {(displayTemplateScenarioDeltas?.shortageMonthCount?.delta ?? null) !== null ? ((displayTemplateScenarioDeltas?.shortageMonthCount?.delta ?? 0) >= 0 ? "+" : "") + (displayTemplateScenarioDeltas?.shortageMonthCount?.delta ?? 0) : "—"}
-                                <Text type="secondary" style={{ fontSize: 12, marginLeft: 4 }}>(base: {displayTemplateScenarioDeltas?.shortageMonthCount.base ?? 0})</Text>
-                              </div>
-                            </Card>
-                          </Col>
-                          <Col xs={12} sm={6}>
-                            <Card size="small" style={{ ...S.cardCompact, borderLeft: "4px solid " + S.warning }}>
-                              <Text type="secondary" style={{ fontSize: 12 }}>Max BU 利用率</Text>
-                              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>
-                                {deliveryRisk.maxBuUtilPct > 0 ? deliveryRisk.maxBuUtilPct.toFixed(1) + "%" : "—"}
-                              </div>
-                            </Card>
-                          </Col>
-                          <Col xs={12} sm={6}>
-                            <Card size="small" style={{ ...S.cardCompact, borderLeft: (deliveryRisk.totalCapGap > 0) ? "4px solid " + S.warning : "4px solid " + S.accent }}>
-                              <Text type="secondary" style={{ fontSize: 12 }}>产能缺口</Text>
-                              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>{(deliveryRisk.totalCapGap / 1000).toFixed(0)}K Panel PNL</div>
-                              <Text type="secondary" style={{ fontSize: 11 }}>BU capacity reduction sum</Text>
-                            </Card>
-                          </Col>
-                          <Col xs={12} sm={6}>
-                            <Card size="small" style={{ ...S.cardCompact, borderLeft: (deliveryRisk.revenueAtRiskMntd > 0) ? "4px solid " + S.warning : "4px solid " + S.accent }}>
-                              <Text type="secondary" style={{ fontSize: 12 }}>风险营收暴露</Text>
-                              <div style={{ fontSize: 22, fontWeight: 700, color: (deliveryRisk.revenueAtRiskMntd > 0) ? S.negative : S.textPrimary, marginTop: 4 }}>
-                                {deliveryRisk.revenueAtRiskMntd > 0 ? deliveryRisk.revenueAtRiskMntd.toFixed(1) + " M NTD" : "0.0 M NTD"}
-                              </div>
-                              <Text type="secondary" style={{ fontSize: 11 }}>短缺月份中的预测营收</Text>
-                            </Card>
-                          </Col>
+                          {resultPresentation!.kpis.map(kpi => {
+                            const borderColor = kpi.state === 'danger' ? S.negative : kpi.state === 'warning' ? S.warning : kpi.state === 'success' ? S.accent : '#e8e8e8';
+                            return (
+                              <Col xs={12} sm={6} key={kpi.key}>
+                                <Card size="small" style={{ ...S.cardCompact, borderLeft: `4px solid ${borderColor}` }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>{kpi.label}</Text>
+                                    {kpi.badge && (
+                                      <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 4, color: '#fff', background: kpi.badge.state === 'success' ? S.positive : S.warning }}>
+                                        {kpi.badge.text}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div style={{ fontSize: 20, fontWeight: 700, color: kpi.state === 'danger' ? S.negative : kpi.state === 'warning' ? S.warning : S.textPrimary, marginTop: 4 }}>
+                                    {kpi.value}
+                                  </div>
+                                  <Text type="secondary" style={{ fontSize: 11 }}>{kpi.subtext}</Text>
+                                </Card>
+                              </Col>
+                            );
+                          })}
                         </Row>
+                        {/* Yearly risk revenue breakdown */}
+                        {resultPresentation!.yearlyRows.length > 0 && (
+                          <Card size="small" style={{ ...S.cardCompact, marginBottom: 16 }}
+                            title={<Text strong style={{ fontSize: 13 }}>年度风险营收暴露</Text>}>
+                            <Table dataSource={resultPresentation!.yearlyRows} rowKey="year" size="small" pagination={false}
+                              columns={[
+                                { title: "年度", dataIndex: "year", key: "year", width: 70 },
+                                { title: "风险营收 (M NTD)", dataIndex: "riskRevenueMntd", key: "riskRevenueMntd", align: "right", render: (v: number) => v.toFixed(1) },
+                                { title: "短缺月份", dataIndex: "shortageMonths", key: "shortageMonths", align: "right" },
+                                { title: "主要客户", dataIndex: "topCustomers", key: "topCustomers" },
+                              ]} />
+                          </Card>
+                        )}
+                          </>
+                        )}
 
                         {/* ---- v1.63.5 Stress level + suggestions ---- */}
                         {stressInfo && (
@@ -944,22 +1024,41 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
                             </Card>
                           </Col>
                           <Col xs={24} lg={12}>
-                            <Card size="small" style={{ ...S.cardCompact }}
-                              title={<Text strong style={{ fontSize: 13 }}>产能缺口率</Text>}>
-                              <ResponsiveContainer width="100%" height={220}>
-                                <BarChart data={deliveryRisk.gapChartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-                                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                  <XAxis dataKey="month" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                                  <YAxis tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 10 }} />
-                                  <RechartsTooltip
-                                    formatter={(value: any) => [`${Number(value).toFixed(0)}%`, '产能缺口']}
-                                    labelFormatter={(label: any) => `月份: ${label}`}
-                                  />
-                                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                                  <Bar dataKey="gapPct" fill="#d97706" name="Cap Gap %" radius={[3, 3, 0, 0]} />
-                                </BarChart>
-                              </ResponsiveContainer>
-                            </Card>
+                            {resultPresentation && resultPresentation!.gapChartData.isAllZero ? (
+                              <Card size="small" style={{ ...S.cardCompact, height: '100%' }}
+                                title={<Text strong style={{ fontSize: 13 }}>产能缺口</Text>}>
+                                <div style={{ textAlign: 'center', padding: '20px 12px' }}>
+                                  <Text strong style={{ fontSize: 14, color: S.accent, display: 'block', marginBottom: 4 }}>未产生产能缺口</Text>
+                                  <Text type="secondary" style={{ fontSize: 12 }}>
+                                    当前情境虽然降低了可用产能（减少 {deliveryRisk.totalCapReduction.toLocaleString()} panels），
+                                    但需求仍低于可用产能，因此没有交付缺口。
+                                  </Text>
+                                </div>
+                              </Card>
+                            ) : !resultPresentation ? (
+                              <Card size="small" style={{ ...S.cardCompact, height: '100%' }}
+                                title={<Text strong style={{ fontSize: 13 }}>产能缺口</Text>}>
+                                <div style={{ textAlign: 'center', padding: '20px 12px' }}>
+                                  <Text type="secondary" style={{ fontSize: 12 }}>生产中...</Text>
+                                </div>
+                              </Card>
+                            ) : (
+                              <Card size="small" style={{ ...S.cardCompact }}
+                                title={<Text strong style={{ fontSize: 13 }}>产能缺口（短缺面板数）</Text>}>
+                                <ResponsiveContainer width="100%" height={220}>
+                                  <BarChart data={deliveryRisk.gapChartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                    <XAxis dataKey="month" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                                    <YAxis tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}K` : `${v}`} tick={{ fontSize: 10 }} />
+                                    <RechartsTooltip
+                                      formatter={(value: any) => [`${Number(value).toLocaleString()} panels`, '短缺']}
+                                      labelFormatter={(label: any) => `月份: ${label}`}
+                                    />
+                                    <Bar dataKey="gapPanels" fill="#dc2626" name="短缺面板数" radius={[3, 3, 0, 0]} />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                              </Card>
+                            )}
                           </Col>
                         </Row>
 
@@ -1018,7 +1117,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
                         </details>
                         {deliveryRisk.affectedMonthCount === 0 && deliveryRisk.totalCapGap > 0 && (
                           <Alert type="warning" showIcon
-                            message={"短缺月份数未变化，但产能缺口总计 " + (deliveryRisk.totalCapGap / 1000).toFixed(0) + "K Panel PNL。"}
+                            message={"短缺月份数未变化，但产能减少总计 " + deliveryRisk.totalCapReduction.toLocaleString() + " panels（产能缺口 " + deliveryRisk.totalCapGap.toLocaleString() + " panels）。"}
                             description={"BU 利用率从基线 " + (displayTemplateScenarioDeltas?.maxBuUtilization?.base !== null && displayTemplateScenarioDeltas?.maxBuUtilization?.base !== Infinity
                               ? Number(displayTemplateScenarioDeltas?.maxBuUtilization?.base).toFixed(1) + "%" : "---") + " 上升至情景 " + deliveryRisk.maxBuUtilPct.toFixed(1) + "%。产能可用性已实质性下降。"}
                             style={{ fontSize: 12 }} />
