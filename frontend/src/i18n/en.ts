@@ -1321,6 +1321,12 @@ export const en: Record<string, string> = {
   'scenario.templates.targetAll': 'All',
   'scenario.templates.targetCustomer': 'By Customer',
   'scenario.templates.targetSku': 'By SKU',
+  // v1.64 — Graduated churn
+  'scenario.templates.churnRatio': 'Churn Ratio',
+  'scenario.templates.churnMonths': 'Churn Duration (months)',
+  'scenario.templates.churnScope': 'Impact Scope',
+  'scenario.templates.churnScopeAll': 'All SKUs',
+  'scenario.templates.churnScopeSku': 'Specific SKU',
   // v1.63.1 — Template results
   'scenario.templates.results.annualImpact': 'Annual Impact',
   'scenario.templates.results.customerImpact': 'Customer Impact',

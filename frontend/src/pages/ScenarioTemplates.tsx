@@ -17,10 +17,22 @@ interface ScenarioTemplatesProps {
   surgeTargetValue: string | undefined;
   surgePercent: number;
   templateLoading: string | null;
+  // v1.64 — graduated churn params
+  churnStartMonth: string | undefined;
+  churnMonths: number;
+  churnRatio: number;
+  churnScope: 'all' | 'sku';
+  churnSkuCode: string | undefined;
   onDelayStartMonthChange: (v: string | undefined) => void;
   onDelayMonthsChange: (v: number | null) => void;
   onDelayRatioChange: (v: number | null) => void;
   onLossCustomerChange: (v: string | undefined) => void;
+  // v1.64 — churn handlers
+  onChurnStartMonthChange: (v: string | undefined) => void;
+  onChurnMonthsChange: (v: number | null) => void;
+  onChurnRatioChange: (v: number | null) => void;
+  onChurnScopeChange: (v: 'all' | 'sku') => void;
+  onChurnSkuCodeChange: (v: string | undefined) => void;
   onSurgeTargetTypeChange: (v: 'all' | 'customer' | 'sku') => void;
   onSurgeTargetValueChange: (v: string | undefined) => void;
   onSurgePercentChange: (v: number | null) => void;
@@ -61,7 +73,7 @@ const ScenarioTemplates: React.FC<ScenarioTemplatesProps> = (p) => {
       <Col xs={24} md={8}>
         <Card title={<Space><TeamOutlined /><Text strong>{t('scenario.templates.customerLoss')}</Text></Space>}
           style={{ borderRadius: 16, border: '1px solid #e8e8e8', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', height: '100%' }}>
-          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Space direction="vertical" size={10} style={{ width: '100%' }}>
             <Text type="secondary" style={{ fontSize: 12 }}>{t('scenario.templates.customerLoss.desc')}</Text>
             <div>
               <Text style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>{t('scenario.templates.selectCustomer')}</Text>
@@ -69,6 +81,39 @@ const ScenarioTemplates: React.FC<ScenarioTemplatesProps> = (p) => {
                 value={p.lossCustomer} onChange={p.onLossCustomerChange}
                 options={p.customerList.map(c => ({ label: c, value: c }))} />
             </div>
+            <div>
+              <Text style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>{t('scenario.templates.startMonth')}</Text>
+              <Select size="small" style={{ width: '100%' }} placeholder={t('scenario.templates.startMonth')} allowClear
+                value={p.churnStartMonth} onChange={p.onChurnStartMonthChange}
+                options={p.availableMonths.map(m => ({ label: m, value: m }))} />
+            </div>
+            <div>
+              <Text style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>{t('scenario.templates.churnRatio')}</Text>
+              <InputNumber size="small" min={5} max={100} value={p.churnRatio}
+                onChange={p.onChurnRatioChange} addonAfter="%" style={{ width: '100%' }} />
+            </div>
+            <div>
+              <Text style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>{t('scenario.templates.churnMonths')}</Text>
+              <InputNumber size="small" min={1} max={24} value={p.churnMonths}
+                onChange={p.onChurnMonthsChange} style={{ width: '100%' }} />
+            </div>
+            <div>
+              <Text style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>{t('scenario.templates.churnScope')}</Text>
+              <Select size="small" style={{ width: '100%' }} value={p.churnScope}
+                onChange={(v) => { p.onChurnScopeChange(v as 'all' | 'sku'); p.onChurnSkuCodeChange(undefined); }}
+                options={[
+                  { label: t('scenario.templates.churnScopeAll'), value: 'all' },
+                  { label: t('scenario.templates.churnScopeSku'), value: 'sku' },
+                ]} />
+            </div>
+            {p.churnScope === 'sku' && (
+              <div>
+                <Text style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>{t('scenario.templates.targetSku')}</Text>
+                <Select size="small" style={{ width: '100%' }} placeholder={t('scenario.templates.targetSku')} allowClear
+                  value={p.churnSkuCode} onChange={p.onChurnSkuCodeChange}
+                  options={p.skuCodeList.map(c => ({ label: c, value: c }))} />
+              </div>
+            )}
             <Button type="primary" size="small" block loading={p.templateLoading === 'orderDisappearance'}
               onClick={() => p.onRunTemplate('orderDisappearance')} icon={<PlayCircleOutlined />}>{t('scenario.templates.run')}</Button>
           </Space>

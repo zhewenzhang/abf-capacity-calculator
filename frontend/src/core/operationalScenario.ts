@@ -76,6 +76,12 @@ export interface OperationalScenarioParams {
     skuCode?: string;
     month?: string;
   };
+  // v1.64 — graduated order disappearance params
+  orderDisappearanceStartMonth?: string;  // YYYY-MM: churn starts from this month
+  orderDisappearanceMonths?: number;      // how many months the churn lasts
+  orderDisappearanceRatio?: number;       // 0–100: % of forecast volume lost
+  orderDisappearanceScope?: 'all' | 'sku'; // scope: all customer SKUs or specific SKU
+  orderDisappearanceSkuCode?: string;     // specific SKU code if scope === 'sku'
 }
 
 export interface CustomerSkuDelta {
@@ -425,6 +431,11 @@ function runOrderDisappearanceScenario(
 ): OperationalScenarioResult {
   const { skus, forecasts, capacityPlans, params } = p;
   const filter = p.orderFilter;
+  const startMonth = p.orderDisappearanceStartMonth;
+  const churnMonths = p.orderDisappearanceMonths ?? 0;
+  const churnRatio = p.orderDisappearanceRatio ?? 0;
+  const churnScope = p.orderDisappearanceScope ?? 'all';
+  const churnSkuCode = p.orderDisappearanceSkuCode;
 
   // Deep clone inputs
   const clonedSkus = deepCloneArray(skus);
@@ -435,8 +446,21 @@ function runOrderDisappearanceScenario(
   const skuMap = new Map<string, SKU>();
   for (const s of clonedSkus) skuMap.set(s.id, s);
 
-  // Transform: filter out matching forecasts
-  const filteredForecasts = removeMatchingForecasts(clonedForecasts, filter, skuMap);
+  // Build the effective order filter (add skuCode if scope==='sku')
+  const effectiveFilter: OperationalScenarioParams['orderFilter'] = { ...filter };
+  if (churnScope === 'sku' && churnSkuCode) {
+    effectiveFilter.skuCode = churnSkuCode;
+  }
+
+  // Transform: apply graduated churn or total removal
+  let scenarioForecasts: Forecast[];
+  if (startMonth && churnMonths > 0 && churnRatio > 0) {
+    // Graduated churn: reduce forecast volume within the churn window
+    scenarioForecasts = applyGraduatedChurn(clonedForecasts, effectiveFilter, skuMap, startMonth, churnMonths, churnRatio);
+  } else {
+    // Legacy behavior: remove all matching forecasts
+    scenarioForecasts = removeMatchingForecasts(clonedForecasts, effectiveFilter, skuMap);
+  }
 
   const dqSummary = buildDataQualitySummary({
     skus: clonedSkus,
@@ -449,7 +473,7 @@ function runOrderDisappearanceScenario(
     clonedSkus,
     clonedForecasts,     // baseline: all forecasts
     clonedCapacityPlans,
-    filteredForecasts,   // scenario: filtered forecasts
+    scenarioForecasts,   // scenario: churned forecasts
     clonedCapacityPlans,
     params,
     dqSummary,
@@ -457,7 +481,10 @@ function runOrderDisappearanceScenario(
 
   const impact = computeCustomerSkuImpact(comparison, clonedSkus);
 
-  const filterDesc = buildOrderFilterDescription(filter);
+  const filterDesc = buildOrderFilterDescription(effectiveFilter);
+  const churnDesc = startMonth && churnMonths > 0 && churnRatio > 0
+    ? `reduce ${churnRatio}% for ${churnMonths} month(s) from ${startMonth}`
+    : '';
 
   return {
     comparison,
@@ -465,7 +492,8 @@ function runOrderDisappearanceScenario(
     scenarioType: 'orderDisappearance',
     description:
       'Order disappearance'
-      + (filterDesc ? `: ${filterDesc}` : ''),
+      + (filterDesc ? `: ${filterDesc}` : '')
+      + (churnDesc ? ` (${churnDesc})` : ''),
     caveats: [WHAT_IF_CAVEAT],
   };
 }
@@ -483,6 +511,45 @@ function removeMatchingForecasts(
   if (!filter) return forecasts;
 
   return forecasts.filter((f) => !matchesOrderFilterWithSkus(f, filter, skuMap));
+}
+
+/**
+ * v1.64 — Apply graduated churn to matching forecasts within a time window.
+ *
+ * - Matching forecasts within [startMonth, startMonth + churnMonths) have their
+ *   forecastPcs reduced by churnRatio%.
+ * - Matching forecasts outside the window are unchanged.
+ * - Non-matching forecasts are always unchanged.
+ */
+function applyGraduatedChurn(
+  forecasts: Forecast[],
+  filter: OperationalScenarioParams['orderFilter'],
+  skuMap: Map<string, SKU>,
+  startMonth: string,
+  churnMonths: number,
+  churnRatio: number,
+): Forecast[] {
+  if (!filter || !startMonth || churnMonths <= 0 || churnRatio <= 0) {
+    return forecasts;
+  }
+
+  const factor = Math.max(0, 1 - churnRatio / 100);
+  const rawEndMonth = shiftMonthString(startMonth, churnMonths);
+  if (!rawEndMonth) return forecasts;
+
+  return forecasts.map(f => {
+    // Non-matching: unchanged
+    if (!matchesOrderFilterWithSkus(f, filter, skuMap)) return f;
+
+    // Before churn window: unchanged
+    if (f.month < startMonth) return f;
+
+    // After churn window: unchanged (churn period ended)
+    if (f.month >= rawEndMonth) return f;
+
+    // Inside churn window: reduce volume
+    return { ...f, forecastPcs: f.forecastPcs * factor };
+  });
 }
 
 // ============================================================

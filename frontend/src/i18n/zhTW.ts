@@ -1330,6 +1330,12 @@ export const zhTW: Record<string, string> = {
   'scenario.templates.targetAll': '全部',
   'scenario.templates.targetCustomer': '依客戶',
   'scenario.templates.targetSku': '依產品',
+  // v1.64 — 階段性流失
+  'scenario.templates.churnRatio': '流失比例',
+  'scenario.templates.churnMonths': '流失持續月數',
+  'scenario.templates.churnScope': '影響範圍',
+  'scenario.templates.churnScopeAll': '全部產品',
+  'scenario.templates.churnScopeSku': '指定產品',
   // v1.63.1 — 範本結果
   'scenario.templates.results.annualImpact': '年度影響',
   'scenario.templates.results.customerImpact': '客戶影響',

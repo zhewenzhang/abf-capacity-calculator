@@ -22,6 +22,7 @@ import {
   PlusOutlined,
   MinusOutlined,
   BarChartOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import { useI18n } from '../i18n';
 import PageShell from '../components/layout/PageShell';
@@ -172,6 +173,12 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
   const [surgeTargetType, setSurgeTargetType] = useState<'all' | 'customer' | 'sku'>('all');
   const [surgeTargetValue, setSurgeTargetValue] = useState<string | undefined>(undefined);
   const [surgePercent, setSurgePercent] = useState(20);
+  // v1.64 — Graduated churn params
+  const [churnStartMonth, setChurnStartMonth] = useState<string | undefined>(undefined);
+  const [churnMonths, setChurnMonths] = useState(3);
+  const [churnRatio, setChurnRatio] = useState(50);
+  const [churnScope, setChurnScope] = useState<'all' | 'sku'>('all');
+  const [churnSkuCode, setChurnSkuCode] = useState<string | undefined>(undefined);
 
   // Years management
   const [years, setYears] = useState<string[]>([]);
@@ -346,6 +353,12 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
             ...baseInput,
             scenarioType: 'orderDisappearance',
             orderFilter: customer ? { customer } : undefined,
+            // v1.64 — graduated churn params
+            orderDisappearanceStartMonth: churnStartMonth || undefined,
+            orderDisappearanceMonths: churnMonths,
+            orderDisappearanceRatio: churnRatio,
+            orderDisappearanceScope: churnScope,
+            orderDisappearanceSkuCode: churnScope === 'sku' ? churnSkuCode : undefined,
           });
         } else {
           const filter: OperationalScenarioParams['forecastFilter'] = {};
@@ -366,7 +379,7 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
         setActiveTab('results');
       } catch { /* silent */ } finally { setTemplateLoading(null); }
     }, 0);
-  }, [skus, forecasts, capacityPlans, params, delayStartMonth, delayMonths, delayRatio, lossCustomer, surgeTargetType, surgeTargetValue, surgePercent]);
+  }, [skus, forecasts, capacityPlans, params, delayStartMonth, delayMonths, delayRatio, lossCustomer, surgeTargetType, surgeTargetValue, surgePercent, churnStartMonth, churnMonths, churnRatio, churnScope, churnSkuCode]);
 
   // ---- v1.63.5 One-click stress test buttons ----
   // These run scenarios with custom parameters directly (bypassing form state).
@@ -592,6 +605,104 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
     };
   }, [deliveryRisk, displayTemplateScenarioDeltas]);
 
+  // ---- v1.64 Customer churn analysis ----
+  const isChurnScenario = lastRunType === 'template' && templateResult?.scenarioType === 'orderDisappearance';
+
+  const churnAnalysis = useMemo(() => {
+    if (!isChurnScenario || !templateResult) return null;
+
+    const comp = templateResult.comparison;
+    const deltas = comp.deltas;
+    const baseCalc = comp.baseline.calcResult;
+    const scenCalc = comp.scenario.calcResult;
+    const impact = templateResult.impact;
+
+    // Revenue impact (M NTD)
+    const revenueDeltaUsd = deltas.totalRevenueUsd.delta ?? 0;
+    const revenueDeltaMntd = Math.round(convertFromUsd(revenueDeltaUsd, 'TWD', currencySettings) / 1e6 * 100) / 100;
+
+    // Revenue to compensate (absolute negative delta)
+    const revenueToCompensateMntd = revenueDeltaUsd < 0
+      ? Math.round(convertFromUsd(Math.abs(revenueDeltaUsd), 'TWD', currencySettings) / 1e6 * 100) / 100
+      : 0;
+
+    // BP metrics
+    const bpAttainmentDelta = deltas.bpAttainmentPct.delta;
+    const bpGapBase = deltas.bpGapMillionTwd.base;
+    const bpGapScen = deltas.bpGapMillionTwd.scenario;
+    const shortageDelta = deltas.shortageMonthCount.delta ?? 0;
+
+    // Core/BU capacity released: compare demand reduction between baseline and scenario
+    const baseMonthly = baseCalc.monthlySummaries;
+    const scenMonthly = scenCalc.monthlySummaries;
+    let totalCoreDemandFreed = 0;
+    let totalBuDemandFreed = 0;
+    for (const baseM of baseMonthly) {
+      const scenM = scenMonthly.find((m: any) => m.month === baseM.month);
+      if (scenM) {
+        totalCoreDemandFreed += Math.max(0, (baseM as any).totalCorePanelDemand - (scenM as any).totalCorePanelDemand);
+        totalBuDemandFreed += Math.max(0, (baseM as any).totalBuPanelDemand - (scenM as any).totalBuPanelDemand);
+      }
+    }
+
+    // Annual revenue comparison data (aggregate by year from skuResults)
+    const yearMap = new Map<string, { baseRevenue: number; scenRevenue: number }>();
+    for (const r of baseCalc.skuResults) {
+      const year = r.month.substring(0, 4);
+      const entry = yearMap.get(year) || { baseRevenue: 0, scenRevenue: 0 };
+      entry.baseRevenue += r.revenue;
+      yearMap.set(year, entry);
+    }
+    for (const r of scenCalc.skuResults) {
+      const year = r.month.substring(0, 4);
+      const entry = yearMap.get(year) || { baseRevenue: 0, scenRevenue: 0 };
+      entry.scenRevenue += r.revenue;
+      yearMap.set(year, entry);
+    }
+    const annualData = Array.from(yearMap.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([year, data]) => ({
+      year,
+      baseRevenueMntd: Math.round(convertFromUsd(data.baseRevenue, 'TWD', currencySettings) / 1e6 * 100) / 100,
+      scenRevenueMntd: Math.round(convertFromUsd(data.scenRevenue, 'TWD', currencySettings) / 1e6 * 100) / 100,
+      deltaMntd: Math.round(convertFromUsd(data.scenRevenue - data.baseRevenue, 'TWD', currencySettings) / 1e6 * 100) / 100,
+    }));
+
+    // Capacity released by year
+    const capYearMap = new Map<string, { coreFreed: number; buFreed: number }>();
+    for (const baseM of baseMonthly) {
+      const scenM = scenMonthly.find((m: any) => m.month === baseM.month);
+      if (scenM) {
+        const year = (baseM as any).month.substring(0, 4);
+        const entry = capYearMap.get(year) || { coreFreed: 0, buFreed: 0 };
+        entry.coreFreed += Math.max(0, (baseM as any).totalCorePanelDemand - (scenM as any).totalCorePanelDemand);
+        entry.buFreed += Math.max(0, (baseM as any).totalBuPanelDemand - (scenM as any).totalBuPanelDemand);
+        capYearMap.set(year, entry);
+      }
+    }
+    const capReleaseData = Array.from(capYearMap.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([year, data]) => ({
+      year, coreFreed: Math.round(data.coreFreed), buFreed: Math.round(data.buFreed),
+    }));
+
+    // Alternative order suggestions: top unaffected customers by revenue
+    const affectedCustomer = lossCustomer;
+    const alternativeCustomers = impact.byCustomer
+      .filter(c => c.delta === 0 && c.baselineRevenue > 0 && c.label !== affectedCustomer)
+      .sort((a, b) => b.baselineRevenue - a.baselineRevenue)
+      .slice(0, 5)
+      .map(c => ({
+        customer: c.label,
+        currentRevenueMntd: Math.round(convertFromUsd(c.baselineRevenue, 'TWD', currencySettings) / 1e6 * 100) / 100,
+      }));
+
+    return {
+      revenueDeltaMntd, revenueToCompensateMntd,
+      bpAttainmentDelta, bpGapBase, bpGapScen,
+      shortageDelta,
+      totalCoreDemandFreed: Math.round(totalCoreDemandFreed),
+      totalBuDemandFreed: Math.round(totalBuDemandFreed),
+      annualData, capReleaseData, alternativeCustomers,
+    };
+  }, [isChurnScenario, templateResult, currencySettings, lossCustomer]);
+
 // ---- Loading ----
   if (loading) {
     return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>;
@@ -808,10 +919,20 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
                 surgeTargetValue={surgeTargetValue}
                 surgePercent={surgePercent}
                 templateLoading={templateLoading}
+                churnStartMonth={churnStartMonth}
+                churnMonths={churnMonths}
+                churnRatio={churnRatio}
+                churnScope={churnScope}
+                churnSkuCode={churnSkuCode}
                 onDelayStartMonthChange={setDelayStartMonth}
                 onDelayMonthsChange={v => setDelayMonths(v || 3)}
                 onDelayRatioChange={v => setDelayRatio(v ?? 20)}
                 onLossCustomerChange={setLossCustomer}
+                onChurnStartMonthChange={setChurnStartMonth}
+                onChurnMonthsChange={v => setChurnMonths(v || 3)}
+                onChurnRatioChange={v => setChurnRatio(v ?? 50)}
+                onChurnScopeChange={setChurnScope}
+                onChurnSkuCodeChange={setChurnSkuCode}
                 onSurgeTargetTypeChange={setSurgeTargetType}
                 onSurgeTargetValueChange={setSurgeTargetValue}
                 onSurgePercentChange={v => setSurgePercent(v || 20)}
@@ -840,6 +961,143 @@ const ScenarioPlanningPage: React.FC<ScenarioPlanningProps> = ({ scope }) => {
                       }
                     />
                   </Card>
+                ) : churnAnalysis ? (
+                  <>
+                    <Card style={{ ...S.card, marginBottom: 16 }}
+                      title={<Space><TeamOutlined /><Text strong>客户流失影响分析</Text></Space>}>
+                      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                        {/* Churn KPI row */}
+                        <Row gutter={[12, 12]}>
+                          <Col xs={12} sm={6}>
+                            <Card size="small" style={{ ...S.cardCompact, borderLeft: "4px solid " + S.negative }}>
+                              <Text type="secondary" style={{ fontSize: 12 }}>营收影响</Text>
+                              <div style={{ fontSize: 22, fontWeight: 700, color: churnAnalysis.revenueDeltaMntd >= 0 ? S.positive : S.negative, marginTop: 4 }}>
+                                {churnAnalysis.revenueDeltaMntd >= 0 ? "+" : ""}{churnAnalysis.revenueDeltaMntd.toFixed(1)} M NTD
+                              </div>
+                            </Card>
+                          </Col>
+                          <Col xs={12} sm={6}>
+                            <Card size="small" style={{ ...S.cardCompact, borderLeft: "4px solid " + S.warning }}>
+                              <Text type="secondary" style={{ fontSize: 12 }}>需补回营收</Text>
+                              <div style={{ fontSize: 22, fontWeight: 700, color: churnAnalysis.revenueToCompensateMntd > 0 ? S.negative : S.textPrimary, marginTop: 4 }}>
+                                {churnAnalysis.revenueToCompensateMntd > 0 ? churnAnalysis.revenueToCompensateMntd.toFixed(1) + " M NTD" : "—"}
+                              </div>
+                            </Card>
+                          </Col>
+                          <Col xs={12} sm={6}>
+                            <Card size="small" style={{ ...S.cardCompact, borderLeft: (churnAnalysis.bpAttainmentDelta !== null && churnAnalysis.bpAttainmentDelta < 0) ? "4px solid " + S.negative : "4px solid " + S.accent }}>
+                              <Text type="secondary" style={{ fontSize: 12 }}>BP 达成率变化</Text>
+                              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>
+                                {churnAnalysis.bpAttainmentDelta !== null
+                                  ? (churnAnalysis.bpAttainmentDelta >= 0 ? "+" : "") + churnAnalysis.bpAttainmentDelta.toFixed(1) + "%"
+                                  : "—"}
+                              </div>
+                            </Card>
+                          </Col>
+                          <Col xs={12} sm={6}>
+                            <Card size="small" style={{ ...S.cardCompact, borderLeft: (churnAnalysis.bpGapBase !== null && churnAnalysis.bpGapScen !== null && (churnAnalysis.bpGapScen ?? 0) > (churnAnalysis.bpGapBase ?? 0)) ? "4px solid " + S.negative : "4px solid " + S.accent }}>
+                              <Text type="secondary" style={{ fontSize: 12 }}>BP 差距</Text>
+                              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>
+                                {churnAnalysis.bpGapBase !== null && churnAnalysis.bpGapScen !== null
+                                  ? churnAnalysis.bpGapScen.toFixed(1) + " M NTD"
+                                  : "—"}
+                              </div>
+                            </Card>
+                          </Col>
+                        </Row>
+
+                        {/* Capacity released KPI sub-row */}
+                        <Row gutter={[12, 12]}>
+                          <Col xs={12} sm={6}>
+                            <Card size="small" style={{ ...S.cardCompact, borderLeft: "4px solid #3b82f6" }}>
+                              <Text type="secondary" style={{ fontSize: 12 }}>Core 产能释放</Text>
+                              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>
+                                {churnAnalysis.totalCoreDemandFreed > 0 ? churnAnalysis.totalCoreDemandFreed.toLocaleString() + " Panel PNL" : "0"}
+                              </div>
+                            </Card>
+                          </Col>
+                          <Col xs={12} sm={6}>
+                            <Card size="small" style={{ ...S.cardCompact, borderLeft: "4px solid #10b981" }}>
+                              <Text type="secondary" style={{ fontSize: 12 }}>BU 产能释放</Text>
+                              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>
+                                {churnAnalysis.totalBuDemandFreed > 0 ? churnAnalysis.totalBuDemandFreed.toLocaleString() + " Panel PNL" : "0"}
+                              </div>
+                            </Card>
+                          </Col>
+                        </Row>
+
+                        {/* Annual impact chart */}
+                        <Card size="small" style={{ ...S.cardCompact }}
+                          title={<Text strong style={{ fontSize: 13 }}>年度营收影响</Text>}>
+                          <ResponsiveContainer width="100%" height={220}>
+                            <BarChart data={churnAnalysis.annualData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                              <XAxis dataKey="year" tick={{ fontSize: 10 }} />
+                              <YAxis tickFormatter={(v: number) => `${v} M`} tick={{ fontSize: 10 }} />
+                              <RechartsTooltip formatter={(value: any) => `${Number(value).toFixed(1)} M NTD`} />
+                              <Legend wrapperStyle={{ fontSize: 11 }} />
+                              <Bar dataKey="baseRevenueMntd" fill="#9ca3af" name="基线" radius={[3, 3, 0, 0]} />
+                              <Bar dataKey="scenRevenueMntd" fill="#dc2626" name="情景" radius={[3, 3, 0, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </Card>
+
+                        {/* Capacity released chart */}
+                        <Card size="small" style={{ ...S.cardCompact }}
+                          title={<Text strong style={{ fontSize: 13 }}>产能释放（按年）</Text>}>
+                          <ResponsiveContainer width="100%" height={220}>
+                            <BarChart data={churnAnalysis.capReleaseData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                              <XAxis dataKey="year" tick={{ fontSize: 10 }} />
+                              <YAxis tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}K` : `${v}`} tick={{ fontSize: 10 }} />
+                              <RechartsTooltip formatter={(value: any) => Number(value).toLocaleString() + " Panel PNL"} />
+                              <Legend wrapperStyle={{ fontSize: 11 }} />
+                              <Bar dataKey="coreFreed" fill="#3b82f6" name="Core 面板" radius={[3, 3, 0, 0]} />
+                              <Bar dataKey="buFreed" fill="#10b981" name="BU 面板" radius={[3, 3, 0, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </Card>
+
+                        {/* Annual impact table */}
+                        <Card size="small" style={{ ...S.cardCompact }}
+                          title={<Text strong style={{ fontSize: 13 }}>年度影响明细</Text>}>
+                          <Table dataSource={churnAnalysis.annualData} rowKey="year" size="small" pagination={false}
+                            columns={[
+                              { title: "年度", dataIndex: "year", key: "year", width: 80 },
+                              { title: "基线营收 (M NTD)", dataIndex: "baseRevenueMntd", key: "baseRevenueMntd", align: "right",
+                                render: (v: number) => v.toFixed(1) },
+                              { title: "情景营收 (M NTD)", dataIndex: "scenRevenueMntd", key: "scenRevenueMntd", align: "right",
+                                render: (v: number, record: any) => {
+                                  const base = record?.baseRevenueMntd ?? 0;
+                                  return <Text style={{ color: v < base ? S.negative : S.textPrimary }}>{v.toFixed(1)}</Text>;
+                                } },
+                              { title: "差异 (M NTD)", dataIndex: "deltaMntd", key: "deltaMntd", align: "right",
+                                render: (v: number) => {
+                                  return <Text style={{ color: v < 0 ? S.negative : v > 0 ? S.positive : S.textPrimary }}>
+                                    {v >= 0 ? "+" : ""}{v.toFixed(1)}
+                                  </Text>;
+                                } },
+                            ]} />
+                        </Card>
+
+                        {/* Alternative order suggestions */}
+                        {churnAnalysis.alternativeCustomers.length > 0 && (
+                          <Card size="small" style={{ ...S.cardCompact }}
+                            title={<Text strong style={{ fontSize: 13 }}>替代订单建议</Text>}>
+                            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
+                              以下客户营收未受影响，具备替代订单潜力：
+                            </Text>
+                            <Table dataSource={churnAnalysis.alternativeCustomers} rowKey="customer" size="small" pagination={false}
+                              columns={[
+                                { title: "客户", dataIndex: "customer", key: "customer" },
+                                { title: "当前营收 (M NTD)", dataIndex: "currentRevenueMntd", key: "currentRevenueMntd", align: "right",
+                                  render: (v: number) => v.toFixed(1) },
+                              ]} />
+                          </Card>
+                        )}
+                      </Space>
+                    </Card>
+                  </>
                 ) : deliveryRisk ? (
                   <>
                     <Card style={{ ...S.card, marginBottom: 16 }}
